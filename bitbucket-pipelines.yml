@@ -1,0 +1,27 @@
+image: eclipse-temurin:21
+
+definitions:
+  caches:
+    gradle: ~/.gradle
+
+pipelines:
+  default:
+    - step:
+        name: Build and check
+        caches:
+          - gradle
+        script:
+          - ./gradlew build --build-cache
+        artifacts:
+          - build/reports/**
+          - "**/build/reports/**"
+          - "**/build/test-results/**"
+
+  pull-requests:
+    "**":
+      - step:
+          name: Build and check (PR)
+          caches:
+            - gradle
+          script:
+            - ./gradlew check --build-cache

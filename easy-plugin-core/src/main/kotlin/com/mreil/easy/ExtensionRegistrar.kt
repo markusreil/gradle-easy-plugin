@@ -1,0 +1,156 @@
+package com.mreil.easy
+
+import org.gradle.api.Project
+import org.gradle.api.plugins.ExtensionAware
+import org.gradle.api.plugins.ExtensionContainer
+import kotlin.reflect.KClass
+
+/**
+ * Central utility responsible for instantiating and configuring [EasyExtension] instances and their contributed child extensions.
+ *
+ * It manages:
+ * - Registering the root [EasyExtension] container on target Gradle objects (such as `Settings` or `Project`).
+ * - Discovering and instantiating modular [EasyPluginExtension] child extensions provided via [PluginRegistry].
+ * - Propagating and copying configuration state from a parent [ExtensionAware] scope (e.g. from `Settings` to root `Project`)
+ *   using [ExtensionCopier].
+ * - Injecting extension copies to subprojects when the contributor is annotated with [ApplyToSubprojects]
+ *   (mirroring [PluginRegistrar] plugin application). Currently the injection is unguarded — all
+ *   registered extensions are copied to subprojects — and can be narrowed to per-extension
+ *   contributors later.
+ */
+object ExtensionRegistrar {
+    /**
+     * Creates and registers the root [EasyExtension] on the provided [target] [ExtensionAware] instance.
+     *
+     * @param target The Gradle entity hosting extensions (e.g., [org.gradle.api.Project] or [org.gradle.api.initialization.Settings]).
+     * @param registry The [PluginRegistry] containing registered [EasyPluginExtension] classes to attach as child extensions.
+     * @param parent An optional parent [ExtensionAware] or [CanBeCopied] instance from which existing configuration is copied.
+     * @return The created and configured [EasyExtension] instance.
+     */
+    fun createExtension(
+        target: ExtensionAware,
+        registry: PluginRegistry,
+        parent: ExtensionAware? = null,
+    ): EasyExtension = createExtension(target.extensions, registry, parent)
+
+    /**
+     * Creates and registers the root [EasyExtension] on the given [project] and, if the project
+     * is the root, injects copies into all subprojects.
+     *
+     * For now the injection is unconditional for all registered extensions (the plugin-side
+     * guard `ApplyToSubprojects` is not yet mirrored for extensions). This ensures a plugin
+     * applied to subprojects via [PluginRegistrar] always finds its `easy.*` extension in the
+     * target project, with values copied from the parent `easy` (typically the root or `Settings`).
+     *
+     * @param project The project requesting extension creation.
+     * @param registry The registry containing registered child extension types.
+     * @param parent Optional parent for the root project (usually the `Settings` `easy`).
+     * @return The created `EasyExtension` for `project`.
+     */
+    fun createExtension(
+        project: Project,
+        registry: PluginRegistry,
+        parent: ExtensionAware? = null,
+    ): EasyExtension {
+        val extension = createExtension(project as ExtensionAware, registry, parent)
+        injectExtensionsToSubprojects(project, registry, extension)
+        return extension
+    }
+
+    private fun injectExtensionsToSubprojects(
+        project: Project,
+        registry: PluginRegistry,
+        parentExtension: EasyExtension,
+    ) {
+        if (project != project.gradle.rootProject) return
+        val allProjects = orderedAllProjects(project)
+        for (subproject in allProjects) {
+            if (subproject == project || subproject.extensions.findByName(EasyExtension.name) != null) continue
+            createExtension(subproject as ExtensionAware, registry, parentExtension as ExtensionAware)
+        }
+    }
+
+    private fun orderedAllProjects(project: Project): List<Project> {
+        val root = project.gradle.rootProject
+        return listOf(root) + root.subprojects.sortedBy { it.path }
+    }
+
+    /**
+     * Creates and registers the root [EasyExtension] within the specified [extensions] container.
+     *
+     * In addition to creating the root extension, this method:
+     * 1. Iterates over all contributed extension classes in [registry] and attaches them to [EasyExtension.extensions].
+     * 2. If [parent] is supplied, extracts the source [CanBeCopied] configuration and copies its values into the new extension.
+     *
+     * @param extensions The [ExtensionContainer] where [EasyExtension] will be created.
+     * @param registry The [PluginRegistry] holding registered child extension types.
+     * @param parent An optional parent [ExtensionAware] or [CanBeCopied] instance used as the source for copying configuration.
+     * @return The created and populated [EasyExtension] instance.
+     */
+    fun createExtension(
+        extensions: ExtensionContainer,
+        registry: PluginRegistry,
+        parent: ExtensionAware? = null,
+    ): EasyExtension {
+        val extension =
+            createExtension(
+                extensions,
+                EasyExtension::class,
+                DefaultEasyExtension::class,
+            )
+        registry.getRegisteredExtensions().forEach { extClass ->
+            createExtension(extension.extensions, extClass)
+        }
+        if (parent != null) {
+            val source =
+                if (parent is CanBeCopied) {
+                    parent
+                } else {
+                    parent.extensions.findByName(EasyExtension.name) as? CanBeCopied
+                }
+            if (source != null) {
+                ExtensionCopier.copy(source, extension)
+            }
+        }
+        return extension
+    }
+
+    /**
+     * Creates and registers a polymorphic extension pair on the given [extensions] container using the name
+     * defined in the [publicType]'s [Named] companion object.
+     *
+     * @param P The public extension interface type.
+     * @param I The implementation class type extending [P].
+     * @param extensions The target [ExtensionContainer].
+     * @param publicType The public Kotlin class interface.
+     * @param instanceType The concrete Kotlin class implementation.
+     * @return The instantiated extension of type [P].
+     */
+    fun <P : Any, I : P> createExtension(
+        extensions: ExtensionContainer,
+        publicType: KClass<P>,
+        instanceType: KClass<I>,
+    ): P =
+        extensions.create(
+            publicType.java,
+            Named.extensionName(publicType),
+            instanceType.java,
+        )
+
+    /**
+     * Creates and registers a concrete extension class on the given [extensions] container using the name
+     * defined in its [Named] companion object.
+     *
+     * @param extensions The target [ExtensionContainer].
+     * @param extensionClass The concrete Kotlin class of the extension to instantiate and register.
+     */
+    fun createExtension(
+        extensions: ExtensionContainer,
+        extensionClass: KClass<out Any>,
+    ) {
+        extensions.create(
+            Named.extensionName(extensionClass),
+            extensionClass.java,
+        )
+    }
+}

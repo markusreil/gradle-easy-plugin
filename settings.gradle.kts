@@ -7,4 +7,10 @@
  */
 
 rootProject.name = "gradle-easy-plugin-new"
-include("plugin")
+include("easy-plugin")
+include("easy-plugin-core")
+include("gradle-plugin-tools")
+include("gradle-plugin-tools-api")
+include("test-fixtures")
+include("contributor-plugins:publish-plugin")
+include("contributor-plugins:jvm-defaults")
