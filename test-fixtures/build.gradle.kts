@@ -11,7 +11,7 @@ repositories {
 
 dependencies {
     compileOnly(gradleApi())
-    api(project(":gradle-plugin-tools-api"))
+    api(project(":easy-contributor-api"))
 }
 
 detekt {

@@ -17,6 +17,11 @@ import kotlin.reflect.KClass
  *   (mirroring [PluginRegistrar] plugin application). Currently the injection is unguarded — all
  *   registered extensions are copied to subprojects — and can be narrowed to per-extension
  *   contributors later.
+ *
+ * Note: Extension creation is eager — done directly in `ProjectPlugin`/`SettingsPlugin.apply`
+ * so `easy { }` is available immediately during script evaluation. Only plugin *behaviour*
+ * (`AbstractEasyProjectPlugin.afterEnabled` / `AbstractEasySettingsPlugin.afterEnabled`) is
+ * deferred via `afterEvaluate` / `settingsEvaluated` to respect `easy { }` configuration.
  */
 object ExtensionRegistrar {
     /**
@@ -65,14 +70,9 @@ object ExtensionRegistrar {
         if (project != project.gradle.rootProject) return
         val allProjects = orderedAllProjects(project)
         for (subproject in allProjects) {
-            if (subproject == project || subproject.extensions.findByName(EasyExtension.name) != null) continue
+            if (subproject == project || subproject.hasEasyExtension()) continue
             createExtension(subproject as ExtensionAware, registry, parentExtension as ExtensionAware)
         }
-    }
-
-    private fun orderedAllProjects(project: Project): List<Project> {
-        val root = project.gradle.rootProject
-        return listOf(root) + root.subprojects.sortedBy { it.path }
     }
 
     /**
@@ -98,21 +98,34 @@ object ExtensionRegistrar {
                 EasyExtension::class,
                 DefaultEasyExtension::class,
             )
+        attachContributedExtensions(extension, registry)
+        copyParentIfPresent(extension, parent)
+        return extension
+    }
+
+    private fun attachContributedExtensions(
+        extension: EasyExtension,
+        registry: PluginRegistry,
+    ) {
         registry.getRegisteredExtensions().forEach { extClass ->
             createExtension(extension.extensions, extClass)
         }
-        if (parent != null) {
-            val source =
-                if (parent is CanBeCopied) {
-                    parent
-                } else {
-                    parent.extensions.findByName(EasyExtension.name) as? CanBeCopied
-                }
-            if (source != null) {
-                ExtensionCopier.copy(source, extension)
+    }
+
+    private fun copyParentIfPresent(
+        extension: EasyExtension,
+        parent: ExtensionAware?,
+    ) {
+        if (parent == null) return
+        val source =
+            if (parent is CanBeCopied) {
+                parent
+            } else {
+                parent.extensions.findByType(EasyExtension::class.java) as? CanBeCopied
             }
+        if (source != null) {
+            ExtensionCopier.copy(source, extension)
         }
-        return extension
     }
 
     /**
@@ -126,14 +139,14 @@ object ExtensionRegistrar {
      * @param instanceType The concrete Kotlin class implementation.
      * @return The instantiated extension of type [P].
      */
-    fun <P : Any, I : P> createExtension(
+    private fun <P : Any, I : P> createExtension(
         extensions: ExtensionContainer,
         publicType: KClass<P>,
         instanceType: KClass<I>,
     ): P =
         extensions.create(
             publicType.java,
-            Named.extensionName(publicType),
+            publicType.extensionName(),
             instanceType.java,
         )
 
@@ -144,12 +157,12 @@ object ExtensionRegistrar {
      * @param extensions The target [ExtensionContainer].
      * @param extensionClass The concrete Kotlin class of the extension to instantiate and register.
      */
-    fun createExtension(
+    private fun createExtension(
         extensions: ExtensionContainer,
         extensionClass: KClass<out Any>,
     ) {
         extensions.create(
-            Named.extensionName(extensionClass),
+            extensionClass.extensionName(),
             extensionClass.java,
         )
     }

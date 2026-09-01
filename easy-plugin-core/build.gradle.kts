@@ -8,8 +8,8 @@ plugins {
 repositories { mavenCentral() }
 
 dependencies {
-    implementation(project(":gradle-plugin-tools-api"))
-    implementation(project(":gradle-plugin-tools"))
+    implementation(project(":easy-contributor-api"))
+    implementation(project(":easy-contributor-support"))
     compileOnly(gradleApi())
     testImplementation(gradleTestKit())
 }
