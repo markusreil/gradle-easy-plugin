@@ -2,7 +2,7 @@ package com.mreil.easy
 
 import com.mreil.easy.fixtures.DummyPlugin
 import com.mreil.easy.fixtures.OtherDummyPlugin
-import com.mreil.easy.publish.EasyPublishExtension
+import com.mreil.easy.publish.DefaultEasyPublishExtension
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
@@ -33,9 +33,9 @@ class PluginRegistryServiceTest {
         val service = provider.service.get() as PluginRegistry
         assertSoftly { softly ->
             softly.assertThat(provider.name).isEqualTo(PluginRegistry.NAME)
-            // ServiceLoader auto-discovers EasyPublishPlugin from publish-plugin
+            // ServiceLoader auto-discovers EasyPublishPlugin from publish-plugin (impl via @PublicType)
             softly.assertThat(service.getProjectPlugins()).isNotEmpty()
-            softly.assertThat(service.getRegisteredExtensions()).contains(EasyPublishExtension::class)
+            softly.assertThat(service.getRegisteredExtensions()).contains(DefaultEasyPublishExtension::class)
         }
     }
 

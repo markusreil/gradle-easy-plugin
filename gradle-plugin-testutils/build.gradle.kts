@@ -5,12 +5,11 @@ plugins {
     alias(libs.plugins.detekt)
 }
 
-repositories { mavenCentral() }
+repositories {
+    mavenCentral()
+}
 
 dependencies {
-    implementation(project(":easy-contributor-api"))
-    implementation(project(":easy-contributor-support"))
-    testImplementation(project(":gradle-plugin-testutils"))
     compileOnly(gradleApi())
     testImplementation(gradleTestKit())
 }

@@ -12,6 +12,7 @@ import kotlin.reflect.KClass
 /**
  * Shared build service implementing [PluginRegistry] via ServiceLoader discovery.
  */
+@Suppress("TooManyFunctions")
 abstract class PluginRegistryService :
     BuildService<BuildServiceParameters.None>,
     PluginRegistry {
@@ -46,10 +47,6 @@ abstract class PluginRegistryService :
 
     /** Returns the contributor that provided [pluginClass], or null if unknown. */
     fun getContributorFor(pluginClass: KClass<out Plugin<*>>): EasyPluginContributor? = pluginToContributor[pluginClass]
-
-    /** Returns the contributor that provided [extensionClass], or null if unknown. */
-    fun getContributorForExtension(extensionClass: KClass<out EasyPluginExtension>): EasyPluginContributor? =
-        extensionToContributor[extensionClass]
 
     /** Loads contributors via ServiceLoader using [classLoader]. */
     fun loadFromServiceLoader(classLoader: ClassLoader) {

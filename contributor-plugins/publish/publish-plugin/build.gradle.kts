@@ -8,6 +8,7 @@ plugins {
 repositories { mavenCentral() }
 
 dependencies {
+    api(project(":contributor-plugins:publish:publish-plugin-api"))
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
     compileOnly(gradleApi())

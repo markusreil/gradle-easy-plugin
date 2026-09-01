@@ -25,7 +25,6 @@ object ExtensionCopier {
         @Suppress("UNCHECKED_CAST")
         (from::class as KClass<Any>)
             .memberProperties
-            .filterIsInstance<KProperty1<Any, *>>()
             .forEach { prop -> copyMember(prop, from, to) }
 
         if (from is ExtensionAware && to is ExtensionAware) {

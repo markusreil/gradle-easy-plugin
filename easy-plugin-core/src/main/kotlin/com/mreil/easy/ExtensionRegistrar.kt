@@ -93,7 +93,7 @@ object ExtensionRegistrar {
         parent: ExtensionAware? = null,
     ): EasyExtension {
         val extension =
-            createExtension(
+            createExtensionAs(
                 extensions,
                 EasyExtension::class,
                 DefaultEasyExtension::class,
@@ -107,9 +107,24 @@ object ExtensionRegistrar {
         extension: EasyExtension,
         registry: PluginRegistry,
     ) {
-        registry.getRegisteredExtensions().forEach { extClass ->
-            createExtension(extension.extensions, extClass)
+        registry.getRegisteredExtensions().forEach { implClass ->
+            val publicType = implClass.resolvePublicType()
+            @Suppress("UNCHECKED_CAST")
+            createExtensionAs(
+                extension.extensions,
+                publicType as KClass<Any>,
+                implClass as KClass<Any>,
+            )
         }
+    }
+
+    private fun KClass<out EasyPluginExtension>.resolvePublicType(): KClass<out EasyPluginExtension> {
+        val annotation = this.annotations.filterIsInstance<PublicType>().firstOrNull() ?: return this
+        val publicType = annotation.value
+        require(publicType.java.isAssignableFrom(this.java)) {
+            "Implementation ${this.qualifiedName} annotated with @PublicType(${publicType.qualifiedName}) must implement that type"
+        }
+        return publicType
     }
 
     private fun copyParentIfPresent(
@@ -129,8 +144,11 @@ object ExtensionRegistrar {
     }
 
     /**
-     * Creates and registers a polymorphic extension pair on the given [extensions] container using the name
-     * defined in the [publicType]'s [Named] companion object.
+     * Registers an extension under its public API type while instantiating the implementation type.
+     *
+     * Uses the [Named] companion of [publicType] for the extension name and creates the instance as [instanceType].
+     * For `@PublicType`-aliased extensions the public type is the interface from the `-api` module and the instance
+     * is the implementation; for plain extensions both are the same and this call is equivalent to a direct creation.
      *
      * @param P The public extension interface type.
      * @param I The implementation class type extending [P].
@@ -139,7 +157,7 @@ object ExtensionRegistrar {
      * @param instanceType The concrete Kotlin class implementation.
      * @return The instantiated extension of type [P].
      */
-    private fun <P : Any, I : P> createExtension(
+    private fun <P : Any, I : P> createExtensionAs(
         extensions: ExtensionContainer,
         publicType: KClass<P>,
         instanceType: KClass<I>,
@@ -149,21 +167,4 @@ object ExtensionRegistrar {
             publicType.extensionName(),
             instanceType.java,
         )
-
-    /**
-     * Creates and registers a concrete extension class on the given [extensions] container using the name
-     * defined in its [Named] companion object.
-     *
-     * @param extensions The target [ExtensionContainer].
-     * @param extensionClass The concrete Kotlin class of the extension to instantiate and register.
-     */
-    private fun createExtension(
-        extensions: ExtensionContainer,
-        extensionClass: KClass<out Any>,
-    ) {
-        extensions.create(
-            extensionClass.extensionName(),
-            extensionClass.java,
-        )
-    }
 }

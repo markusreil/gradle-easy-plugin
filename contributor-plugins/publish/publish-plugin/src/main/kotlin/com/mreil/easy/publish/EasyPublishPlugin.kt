@@ -50,6 +50,9 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
      * Every publication is normalised by [configureMavenPublication] (live via
      * `configureEach`), and repositories declared in the extension are attached by
      * [configureMavenRepositories].
+     *
+     * The container `mavenRepos` lives on the internal [DefaultEasyPublishExtension] implementation
+     * and is not part of the public [EasyPublishExtension] API.
      */
     private fun withMavenPublish(target: Project) {
         val publishing = target.extensions.getByType(PublishingExtension::class.java)
@@ -75,7 +78,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     }
 
     /**
-     * Attaches every [MavenRepoSpec] declared in [EasyPublishExtension.mavenRepos]
+     * Attaches every [MavenRepoSpec] declared in the internal [DefaultEasyPublishExtension.mavenRepos]
      * to [PublishingExtension.repositories] as a `maven` repository.
      *
      * Credentials are only configured when [MavenRepoSpec.passwordCredentials] is
@@ -87,7 +90,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         publishing: PublishingExtension,
     ) {
         val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
-        val publishExt = easy.extensions.findByType(EasyPublishExtension::class.java) ?: return
+        val publishExt = easy.extensions.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension ?: return
         publishExt.mavenRepos.forEach { spec ->
             publishing.repositories.maven { repo -> spec.configure(target, repo) }
         }

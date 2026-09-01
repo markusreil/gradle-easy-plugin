@@ -10,8 +10,8 @@ import javax.inject.Inject
 /**
  * Spec for a single Maven repository declared via [EasyPublishExtension.mavenRepo].
  *
- * Implements [Named] so it can live in a [NamedDomainObjectContainer]; the container
- * element name is fixed at construction time and returned by [getName].
+ * Implements [Named] so it can live in a [NamedDomainObjectContainer][org.gradle.api.NamedDomainObjectContainer];
+ * the container element name is fixed at construction time and returned by [getName].
  */
 abstract class MavenRepoSpec
     @Inject
@@ -20,7 +20,7 @@ abstract class MavenRepoSpec
     ) : Named {
         override fun getName(): String = repoName
 
-        /** The repository URL. [EasyPublishPlugin.configureMavenRepositories] resolves it against the project. */
+        /** The repository URL. [com.mreil.easy.publish.EasyPublishPlugin.configureMavenRepositories] resolves it against the project. */
         abstract val url: Property<String>
 
         /**
@@ -37,7 +37,7 @@ abstract class MavenRepoSpec
          * Configures [repo] from this spec (name, URL, and optional password credentials).
          *
          * Centralizes the `publishing.repositories.maven {}` wiring so
-         * [EasyPublishPlugin] stays thin.
+         * [com.mreil.easy.publish.EasyPublishPlugin] stays thin.
          */
         fun configure(
             target: Project,

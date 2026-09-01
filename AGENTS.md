@@ -7,25 +7,26 @@ Kotlin multi-load warning and configures aggregated reporting (`jacoco-report-ag
 `test-report-aggregation`) + centralized Spotless. Plugins:
 - `com.mreil.easy.project` → `com.mreil.easy.ProjectPlugin` (Project, in `easy-plugin-core`, published via `easy-plugin`)
 - `com.mreil.easy.settings` → `com.mreil.easy.SettingsPlugin` (Settings, in `easy-plugin-core`, published via `easy-plugin`)
-- Contributor plugins (internal, via SPI — not applied by ID): `contributor-plugins/publish/publish-plugin` → `com.mreil.easy.publish.EasyPublishContributor` / `EasyPublishPlugin`, `contributor-plugins/jvm-defaults/jvm-defaults-plugin` → `com.mreil.easy.jvm.EasyJvmDefaultsContributor` / `EasyJvmDefaultsPlugin` (+ `publish-test-plugin` / `jvm-defaults-test-plugin` harnesses `com.mreil.easy.test.publish` / `com.mreil.easy.test.jvm` that apply `ProjectPlugin` for `withPluginClasspath` functional tests)
+- Contributor plugins (internal, via SPI — not applied by ID): `contributor-plugins/publish/publish-plugin-api` (public `EasyPublishExtension` interface + `MavenRepoSpec`) + `contributor-plugins/publish/publish-plugin` → `com.mreil.easy.publish.EasyPublishContributor` / `EasyPublishPlugin` / `DefaultEasyPublishExtension` (`@PublicType(EasyPublishExtension::class)`), `contributor-plugins/jvm-defaults/jvm-defaults-plugin` → `com.mreil.easy.jvm.EasyJvmDefaultsContributor` / `EasyJvmDefaultsPlugin` (+ `publish-test-plugin` / `jvm-defaults-test-plugin` harnesses `com.mreil.easy.test.publish` / `com.mreil.easy.test.jvm` that apply `ProjectPlugin` for `withPluginClasspath` functional tests)
 
 Shared discovery via `PluginRegistry`/`PluginRegistryService` (BuildService) +
 `EasyPluginContributor` SPI (ServiceLoader,
-`META-INF/services/com.mreil.easy.EasyPluginContributor`). `EasyExtension` (`easy { }`) aggregates per-contributor extensions (`EasyPublishExtension`, `EasyJvmDefaultsExtension`, ...).
+`META-INF/services/com.mreil.easy.EasyPluginContributor`). `EasyExtension` (`easy { }`) aggregates per-contributor extensions (`EasyPublishExtension`, `EasyJvmDefaultsExtension`, ...). Extensions can expose a public API via `@PublicType` on the implementation — `ExtensionRegistrar.createExtensionAs` registers the extension under the public type (its `Named` companion) and instantiates the implementation (resolved via `resolvePublicType()`).
 
 ## Structure
 ```
-settings.gradle.kts          # includes :easy-plugin, :easy-plugin-core, :easy-contributor-api, :easy-contributor-support, :test-fixtures, :contributor-plugins:publish:publish-plugin, :contributor-plugins:publish:publish-test-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-test-plugin
+settings.gradle.kts          # includes :easy-plugin, :easy-plugin-core, :easy-contributor-api, :easy-contributor-support, :test-fixtures, :contributor-plugins:publish:publish-plugin-api, :contributor-plugins:publish:publish-plugin, :contributor-plugins:publish:publish-test-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-test-plugin
 build.gradle.kts             # root: lifecycle-base/jacoco-report-aggregation/test-report-aggregation + kotlin-jvm/detekt/spotless apply false; centralized Spotless (ktlint) for leaf projects; aggregated testCodeCoverageReport/testAggregateTestReport
 gradle.properties            # CC/parallel/caching/warning.mode=all + plugin.project/settings IDs (single source; runtime mirror in PluginIds.kt)
 gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 1.23.7, spotless 7.0.2)
 config/detekt/detekt.yml     # detekt config (maxLineLength 140, EmptyFunctionBlock off)
 easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella: registers com.mreil.easy.project/settings via providers.gradleProperty, aggregates easy-plugin-core + contributor libs + test-fixtures; test suites + pluginUnderTestMetadata + detekt
 easy-plugin-core/build.gradle.kts      # java-library: ProjectPlugin, SettingsPlugin, PluginRegistryService, PluginRegistrar, ExtensionRegistrar, EasyExtension
-easy-contributor-api/src/main/kotlin/com/mreil/easy/ # PluginIds, PluginRegistry, EasyPluginContributor, ApplyToSubprojects, EnabledBy, Named, EasyPluginExtension, CanBeEnabled
+easy-contributor-api/src/main/kotlin/com/mreil/easy/ # PluginIds, PluginRegistry, EasyPluginContributor, ApplyToSubprojects, EnabledBy, Named, EasyPluginExtension, CanBeEnabled, PublicType
 easy-contributor-support/build.gradle.kts   # plain Kotlin lib (no plugin): AbstractEasyProjectPlugin, AbstractEasySettingsPlugin, PluginLifecycle
 test-fixtures/build.gradle.kts         # java-library fixtures shared for TestKit classpath (Dummy*Plugin, etc.)
-contributor-plugins/publish/publish-plugin/           # java-library: EasyPublishPlugin + EasyPublishContributor + EasyPublishExtension + META-INF/services; unit tests only
+contributor-plugins/publish/publish-plugin-api/       # java-library: public EasyPublishExtension interface + MavenRepoSpec (used by consumers, no publish logic)
+contributor-plugins/publish/publish-plugin/           # java-library: EasyPublishPlugin + EasyPublishContributor + DefaultEasyPublishExtension (@PublicType) + META-INF/services; unit tests only
 contributor-plugins/publish/publish-test-plugin/      # java-gradle-plugin harness: com.mreil.easy.test.publish → PublishTestHarnessPlugin (applies ProjectPlugin) + functionalTest via withPluginClasspath
 contributor-plugins/jvm-defaults/jvm-defaults-plugin/ # java-library: EasyJvmDefaultsPlugin + EasyJvmDefaultsContributor + META-INF/services; unit tests only
 contributor-plugins/jvm-defaults/jvm-defaults-test-plugin/ # java-gradle-plugin harness: com.mreil.easy.test.jvm → JvmDefaultsTestHarnessPlugin (applies ProjectPlugin) + functionalTest via withPluginClasspath
@@ -73,7 +74,7 @@ defer extra-plugin application via
 `project.plugins.withType(ProjectPlugin::class.java) { apply }` /
 `settings.pluginManager.withPlugin(PluginIds.SETTINGS) { apply }` +
 `pluginManager.apply(kclass.java)` (no manual instantiation, never
-`newInstance().apply()`). Ordering is `orderedAllProjects` (root + subprojects sorted by path); `@ApplyToSubprojects` on the contributor controls fan-out, `@EnabledBy(Extension::class)` + `AbstractEasyProjectPlugin`/`afterEvaluate` + `CanBeEnabled` controls lazy enabling via `easy { ... }`.
+`newInstance().apply()`). Ordering is `orderedAllProjects` (root + subprojects sorted by path); `@ApplyToSubprojects` on the contributor controls fan-out, `@EnabledBy(Extension::class)` + `AbstractEasyProjectPlugin`/`afterEvaluate` + `CanBeEnabled` controls lazy enabling via `easy { ... }`. Extensions can expose a public API via `@PublicType` on the implementation — `ExtensionRegistrar.createExtensionAs` registers the extension under the public type (its `Named` companion) and instantiates the implementation (resolved via `resolvePublicType()`).
 
 ## Testing
 - Unit: `easy-plugin/src/test`, `easy-plugin-core/src/test`, `easy-contributor-support/src/test`, `contributor-plugins/*/src/test` — JUnit Jupiter 5.11.3 + AssertJ SoftAssertions, `ProjectBuilder` for `PluginRegistryService`/`ExtensionRegistrar`/`PluginRegistrar` (fast). Shared fixtures in `test-fixtures` (also `easy-plugin` `fixtures` configuration for TestKit classpath).

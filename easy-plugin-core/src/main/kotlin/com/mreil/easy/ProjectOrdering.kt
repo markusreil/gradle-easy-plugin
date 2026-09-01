@@ -33,5 +33,3 @@ internal fun Settings.getPluginRegistry(): PluginRegistryService =
     gradle.sharedServices.registerIfAbsent(PluginRegistry.NAME, PluginRegistryService::class.java).get()
 
 internal fun Project.hasEasyExtension(): Boolean = extensions.findByType(EasyExtension::class.java) != null
-
-internal fun org.gradle.api.plugins.ExtensionAware.hasEasyExtension(): Boolean = extensions.findByType(EasyExtension::class.java) != null

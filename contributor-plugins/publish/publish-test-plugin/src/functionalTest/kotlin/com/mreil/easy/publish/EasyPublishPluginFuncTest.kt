@@ -234,7 +234,7 @@ class EasyPublishPluginFuncTest {
         // marker: group = plugin id, artifact = plugin id + ".gradle.plugin"
         val markerDir = File(repoDir, "${pluginId.replace('.', '/')}/$pluginId.gradle.plugin/$pluginVersion")
         val markerPom = File(markerDir, "$pluginId.gradle.plugin-$pluginVersion.pom")
-        softly@ assertSoftly { softly ->
+        assertSoftly { softly ->
             softly.assertThat(markerPom).exists()
             val pomText = markerPom.readText()
             // artifactId must stay as plugin marker, not overwritten to project name

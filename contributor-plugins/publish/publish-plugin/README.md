@@ -6,7 +6,8 @@ to publish a project's artifacts to Maven repositories with minimal configuratio
 It is a *contributor plugin*: it is discovered via the `EasyPluginContributor`
 ServiceLoader SPI (see `EasyPublishContributor`) and applied through the shared easy
 plugin infrastructure. It only activates on projects that enable the `easy.publish`
-extension.
+extension. The public extension API (`EasyPublishExtension` + `MavenRepoSpec`) lives in `publish-plugin-api`; the implementation
+(`DefaultEasyPublishExtension` with `@PublicType`) and wiring (`EasyPublishPlugin`) live here.
 
 ## Features
 
@@ -71,15 +72,20 @@ easy {
 
 ### `easy.publish`
 
-The `EasyPublishExtension` backs the `easy { publish { ... } }` block and gates the
-plugin's activation.
+The public `EasyPublishExtension` interface (in `publish-plugin-api`) backs the `easy { publish { ... } }` block and gates the
+plugin's activation. The implementation is `DefaultEasyPublishExtension` (in `publish-plugin`), annotated with
+`@PublicType(EasyPublishExtension::class)` so `ExtensionRegistrar.createExtensionAs` registers the extension under the
+interface's `Named` companion (`"publish"`) while instantiating the implementation. `mavenRepos` is intentionally internal to the
+implementation and not part of the public API – consumers use `mavenRepo(name) { ... }`.
 
 | Member | Description |
 | ------ | ----------- |
-| `mavenRepos` | `NamedDomainObjectContainer<MavenRepoSpec>` of declared repositories. |
-| `mavenRepo(name) { ... }` | Declares a named Maven repository and configures a `MavenRepoSpec`. |
+| `mavenRepo(name) { ... }` | Declares a named Maven repository and configures a `MavenRepoSpec` (public API). |
+| `mavenRepos` | `NamedDomainObjectContainer<MavenRepoSpec>` of declared repositories (internal, on `DefaultEasyPublishExtension`). |
 
 ### `MavenRepoSpec`
+
+Public spec type (in `publish-plugin-api`) for a single repository.
 
 | Property | Description |
 | -------- | ----------- |
@@ -105,13 +111,15 @@ Example for a repository named `releases`:
 ## How it works
 
 `EasyPublishPlugin` (in
-`contributor-plugins/publish-plugin/src/main/kotlin/com/mreil/easy/publish/EasyPublishPlugin.kt`):
+`contributor-plugins/publish-plugin/src/main/kotlin/com/mreil/easy/publish/EasyPublishPlugin.kt`) +
+`DefaultEasyPublishExtension` (`@PublicType(EasyPublishExtension::class)`, discovered via `EasyPublishContributor`):
 
-1. When applied to a project with the `java` plugin, applies `maven-publish`.
-2. Creates the default `maven` publication from the `java` component — unless the
+1. `EasyPublishContributor` contributes `DefaultEasyPublishExtension::class` via `pluginExtensions()`; `ExtensionRegistrar` resolves the public type via `@PublicType` and calls `createExtensionAs(publicType, implType)` so the extension is reachable as `easy.publish` (public interface) but instantiated as the implementation.
+2. When applied to a project with the `java` plugin, applies `maven-publish`.
+3. Creates the default `maven` publication from the `java` component — unless the
    `java-gradle-plugin` plugin is present (it manages its own publications and plugin
    markers).
-3. Normalizes every publication (regular and plugin marker): fills in missing
+4. Normalizes every publication (regular and plugin marker): fills in missing
    coordinates/version, populates the POM, and configures version mapping.
-4. Attaches every `mavenRepo` from the extension to `publishing.repositories`,
+5. Attaches every `mavenRepo` from the internal `DefaultEasyPublishExtension.mavenRepos` container to `publishing.repositories`,
    enabling `PasswordCredentials` when requested.

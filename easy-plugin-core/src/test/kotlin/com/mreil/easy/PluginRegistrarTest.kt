@@ -1,5 +1,6 @@
 package com.mreil.easy
 
+import com.mreil.easy.test.loadSettingsPluginId
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -11,6 +12,8 @@ import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import java.lang.reflect.Proxy
 import kotlin.reflect.KClass
+
+private val SETTINGS_PLUGIN_ID: String by lazy { loadSettingsPluginId() }
 
 class PluginRegistrarTest {
     class TestProjectPlugin : Plugin<Project> {
@@ -170,7 +173,7 @@ class PluginRegistrarTest {
 
                         @Suppress("UNCHECKED_CAST")
                         val action = args[1] as Action<AppliedPlugin>
-                        if (id == PluginIds.SETTINGS) {
+                        if (id == SETTINGS_PLUGIN_ID) {
                             val appliedPlugin =
                                 Proxy.newProxyInstance(
                                     AppliedPlugin::class.java.classLoader,
@@ -229,7 +232,7 @@ class PluginRegistrarTest {
 
                         @Suppress("UNCHECKED_CAST")
                         val action = args[1] as Action<AppliedPlugin>
-                        if (id == PluginIds.SETTINGS) {
+                        if (id == SETTINGS_PLUGIN_ID) {
                             val appliedPlugin =
                                 Proxy.newProxyInstance(
                                     AppliedPlugin::class.java.classLoader,

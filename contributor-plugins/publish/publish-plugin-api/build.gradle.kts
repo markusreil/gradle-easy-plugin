@@ -9,23 +9,7 @@ repositories { mavenCentral() }
 
 dependencies {
     implementation(project(":easy-contributor-api"))
-    implementation(project(":easy-contributor-support"))
-    testImplementation(project(":gradle-plugin-testutils"))
     compileOnly(gradleApi())
-    testImplementation(gradleTestKit())
-}
-
-tasks.withType<Test>().configureEach {
-    jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
-}
-
-testing {
-    suites {
-        val test by getting(JvmTestSuite::class) {
-            useJUnitJupiter()
-            dependencies { implementation(libs.assertj.core) }
-        }
-    }
 }
 
 detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml")) }
