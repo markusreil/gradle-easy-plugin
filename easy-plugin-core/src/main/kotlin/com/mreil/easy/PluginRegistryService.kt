@@ -15,29 +15,34 @@ import kotlin.reflect.KClass
 abstract class PluginRegistryService :
     BuildService<BuildServiceParameters.None>,
     PluginRegistry {
-    private val projectPlugins = mutableSetOf<KClass<out Plugin<Project>>>()
-    private val settingsPlugins = mutableSetOf<KClass<out Plugin<Settings>>>()
-    private val pluginToContributor = mutableMapOf<KClass<out Plugin<*>>, EasyPluginContributor>()
-    private val extensions = mutableSetOf<KClass<out EasyPluginExtension>>()
-    private val extensionToContributor = mutableMapOf<KClass<out EasyPluginExtension>, EasyPluginContributor>()
+    private val projectPlugins =
+        java.util.Collections.synchronizedSet(mutableSetOf<KClass<out Plugin<Project>>>())
+    private val settingsPlugins =
+        java.util.Collections.synchronizedSet(mutableSetOf<KClass<out Plugin<Settings>>>())
+    private val pluginToContributor =
+        java.util.Collections.synchronizedMap(mutableMapOf<KClass<out Plugin<*>>, EasyPluginContributor>())
+    private val extensions =
+        java.util.Collections.synchronizedSet(mutableSetOf<KClass<out EasyPluginExtension>>())
+    private val extensionToContributor =
+        java.util.Collections.synchronizedMap(mutableMapOf<KClass<out EasyPluginExtension>, EasyPluginContributor>())
 
     override fun registerProjectPlugin(pluginClass: KClass<out Plugin<Project>>) {
         projectPlugins.add(pluginClass)
     }
 
-    override fun getProjectPlugins(): Set<KClass<out Plugin<Project>>> = projectPlugins.toSet()
+    override fun getProjectPlugins(): Set<KClass<out Plugin<Project>>> = synchronized(projectPlugins) { projectPlugins.toSet() }
 
     override fun registerSettingsPlugin(pluginClass: KClass<out Plugin<Settings>>) {
         settingsPlugins.add(pluginClass)
     }
 
-    override fun getSettingsPlugins(): Set<KClass<out Plugin<Settings>>> = settingsPlugins.toSet()
+    override fun getSettingsPlugins(): Set<KClass<out Plugin<Settings>>> = synchronized(settingsPlugins) { settingsPlugins.toSet() }
 
     override fun registerExtension(extensionClass: KClass<out EasyPluginExtension>) {
         extensions.add(extensionClass)
     }
 
-    override fun getRegisteredExtensions(): Set<KClass<out EasyPluginExtension>> = extensions.toSet()
+    override fun getRegisteredExtensions(): Set<KClass<out EasyPluginExtension>> = synchronized(extensions) { extensions.toSet() }
 
     /** Returns the contributor that provided [pluginClass], or null if unknown. */
     fun getContributorFor(pluginClass: KClass<out Plugin<*>>): EasyPluginContributor? = pluginToContributor[pluginClass]
@@ -48,25 +53,27 @@ abstract class PluginRegistryService :
 
     /** Loads contributors via ServiceLoader using [classLoader]. */
     fun loadFromServiceLoader(classLoader: ClassLoader) {
-        try {
-            ServiceLoader
-                .load(EasyPluginContributor::class.java, classLoader)
-                .forEach { contributor ->
-                    contributor.projectPlugins().forEach {
-                        registerProjectPlugin(it)
-                        pluginToContributor[it] = contributor
+        synchronized(this) {
+            try {
+                ServiceLoader
+                    .load(EasyPluginContributor::class.java, classLoader)
+                    .forEach { contributor ->
+                        contributor.projectPlugins().forEach {
+                            registerProjectPlugin(it)
+                            pluginToContributor[it] = contributor
+                        }
+                        contributor.settingsPlugins().forEach {
+                            registerSettingsPlugin(it)
+                            pluginToContributor[it] = contributor
+                        }
+                        contributor.pluginExtensions().forEach {
+                            registerExtension(it)
+                            extensionToContributor[it] = contributor
+                        }
                     }
-                    contributor.settingsPlugins().forEach {
-                        registerSettingsPlugin(it)
-                        pluginToContributor[it] = contributor
-                    }
-                    contributor.pluginExtensions().forEach {
-                        registerExtension(it)
-                        extensionToContributor[it] = contributor
-                    }
-                }
-        } catch (e: ServiceConfigurationError) {
-            error { "Failed to load EasyPluginContributor services: ${e.message}" }
+            } catch (e: ServiceConfigurationError) {
+                throw IllegalStateException("Failed to load EasyPluginContributor services: ${e.message}", e)
+            }
         }
     }
 }

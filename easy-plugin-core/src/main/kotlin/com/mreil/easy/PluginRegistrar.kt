@@ -68,11 +68,6 @@ object PluginRegistrar {
         }
     }
 
-    private fun orderedAllProjects(project: Project): List<Project> {
-        val root = project.gradle.rootProject
-        return listOf(root) + root.subprojects.sortedBy { it.path }
-    }
-
     /**
      * Determines the target projects to which a given plugin should be applied.
      *
@@ -92,11 +87,7 @@ object PluginRegistrar {
         allProjects: List<Project>,
         registry: PluginRegistry,
     ): List<Project> {
-        val contributor = (registry as? PluginRegistryService)?.getContributorFor(kclass)
-        val toSubprojects =
-            contributor?.let {
-                it::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)
-            } ?: false
+        val toSubprojects = registry.shouldApplyToSubprojects(kclass)
         return if (toSubprojects) allProjects else listOf(project)
     }
 }

@@ -28,9 +28,9 @@ val fixtures by configurations.creating {
 
 dependencies {
     implementation(project(":easy-plugin-core"))
-    implementation(project(":gradle-plugin-tools-api"))
-    implementation(project(":contributor-plugins:publish-plugin"))
-    implementation(project(":contributor-plugins:jvm-defaults"))
+    implementation(project(":easy-contributor-api"))
+    implementation(project(":contributor-plugins:publish:publish-plugin"))
+    implementation(project(":contributor-plugins:jvm-defaults:jvm-defaults-plugin"))
     fixtures(project(":test-fixtures"))
 }
 

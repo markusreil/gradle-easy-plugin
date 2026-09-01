@@ -6,12 +6,7 @@ import org.gradle.api.initialization.Settings
 /** Settings plugin that discovers and applies contributed settings plugins. */
 class SettingsPlugin : Plugin<Settings> {
     override fun apply(settings: Settings) {
-        val provider =
-            settings.gradle.sharedServices.registerIfAbsent(
-                PluginRegistry.NAME,
-                PluginRegistryService::class.java,
-            )
-        val registry = provider.get()
+        val registry = settings.getPluginRegistry()
         registry.loadFromServiceLoader(javaClass.classLoader)
 
         val extension =
@@ -26,7 +21,7 @@ class SettingsPlugin : Plugin<Settings> {
         // been applied, so the copy receives the configured values.
         settings.gradle.beforeProject {
             if (it == it.rootProject) {
-                if (it.extensions.findByName(EasyExtension.name) == null) {
+                if (!it.hasEasyExtension()) {
                     ExtensionRegistrar.createExtension(
                         target = it,
                         registry = registry,

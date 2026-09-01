@@ -21,6 +21,10 @@ class ProjectPluginFuncTest {
                 id("com.mreil.easy.project")
             }
 
+            easy {
+                publish {}
+            }
+
             tasks.register("verifyExtension") {
                 doLast {
                     val ext = project.extensions.findByName("easy")
