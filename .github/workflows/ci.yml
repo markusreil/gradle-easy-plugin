@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,8 +18,8 @@ jobs:
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
       - name: Build
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         run: ./gradlew build --build-cache
       - name: Check (PR)
-        if: github.event_name == 'pull-request'
+        if: github.event_name == 'pull_request'
         run: ./gradlew check --build-cache
