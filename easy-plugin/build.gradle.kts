@@ -71,6 +71,11 @@ testing {
 }
 
 gradlePlugin {
+    // NOTE: impl classes live in :easy-plugin-core, so :easy-plugin:jar warns
+    // "implementation class ... was not found in the jar". Expected and benign: the
+    // classes resolve from :easy-plugin-core on the runtime classpath. Do not move
+    // declarations to core (markers would lose contributor deps) or classes here
+    // (core references ProjectPlugin — dependency cycle).
     // Define the plugin
     val easyProject by plugins.creating {
         id = providers.gradleProperty("plugin.project").get()

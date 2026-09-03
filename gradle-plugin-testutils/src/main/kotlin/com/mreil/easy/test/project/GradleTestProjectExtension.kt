@@ -46,6 +46,7 @@ class GradleTestProjectExtension :
             }
         }
         // cleanup parameter-injected projects
+        @Suppress("UNCHECKED_CAST")
         val paramProjects = store.get(PARAM_KEY, MutableList::class.java) as? MutableList<GradleTestProject>
         paramProjects?.forEach { it.cleanup() }
         store.remove(PARAM_KEY)

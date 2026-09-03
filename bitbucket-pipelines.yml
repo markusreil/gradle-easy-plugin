@@ -8,6 +8,7 @@ pipelines:
   default:
     - step:
         name: Build and check
+        size: 4x
         caches:
           - gradle
         script:
@@ -21,6 +22,7 @@ pipelines:
     "**":
       - step:
           name: Build and check (PR)
+          size: 4x
           caches:
             - gradle
           script:

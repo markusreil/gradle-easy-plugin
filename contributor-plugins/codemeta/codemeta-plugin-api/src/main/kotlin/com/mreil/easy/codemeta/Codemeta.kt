@@ -11,9 +11,9 @@ import com.fasterxml.jackson.annotation.JsonProperty
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class Codemeta(
-    @JsonProperty("@context")
+    @param:JsonProperty("@context")
     val context: String = "https://doi.org/10.5063/schema/codemeta-2.0",
-    @JsonProperty("@type")
+    @param:JsonProperty("@type")
     val type: String = "SoftwareSourceCode",
     val name: String,
     val description: String,
@@ -27,7 +27,7 @@ data class Codemeta(
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class Person(
-    @JsonProperty("@type")
+    @param:JsonProperty("@type")
     val type: String = "Person",
     val givenName: String? = null,
     val familyName: String? = null,
