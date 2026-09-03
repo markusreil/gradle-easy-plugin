@@ -99,6 +99,7 @@ object ExtensionRegistrar {
                 DefaultEasyExtension::class,
             )
         attachContributedExtensions(extension, registry)
+        applyEnabledDefaults(extension)
         copyParentIfPresent(extension, parent)
         return extension
     }
@@ -125,6 +126,27 @@ object ExtensionRegistrar {
             "Implementation ${this.qualifiedName} annotated with @PublicType(${publicType.qualifiedName}) must implement that type"
         }
         return publicType
+    }
+
+    private fun applyEnabledDefaults(extension: EasyExtension) {
+        extension.extensions.extensionsSchema.forEach { schema ->
+            val ext = extension.extensions.findByName(schema.name)
+            if (ext is CanBeEnabled) {
+                check(ext.enabled.orNull != null) {
+                    "Extension '${schema.name}' (${ext::class.qualifiedName}) must provide a convention for 'enabled' " +
+                        "during initialization (e.g. enabled.convention(true) in init block)."
+                }
+            }
+        }
+        val disable = System.getProperty("easy.disableAllPlugins")?.toBoolean() == true
+        if (disable) {
+            extension.extensions.extensionsSchema.forEach { schema ->
+                val ext = extension.extensions.findByName(schema.name)
+                if (ext is CanBeEnabled) {
+                    ext.enabled.convention(false)
+                }
+            }
+        }
     }
 
     private fun copyParentIfPresent(

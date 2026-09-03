@@ -1,6 +1,5 @@
 package com.mreil.easy
 
-import com.mreil.easy.fixtures.SubprojectPlugin
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -9,20 +8,28 @@ import org.junit.jupiter.api.Test
 import kotlin.reflect.KClass
 
 @ApplyToSubprojects
+class AnnotatedPlugin : Plugin<Project> {
+    override fun apply(target: Project) {}
+}
+
+class NonAnnotatedPlugin : Plugin<Project> {
+    override fun apply(target: Project) {}
+}
+
 class AnnotatedContributor : EasyPluginContributor {
-    override fun projectPlugins(): Set<KClass<out Plugin<Project>>> = setOf(SubprojectPlugin::class)
+    override fun projectPlugins(): Set<KClass<out Plugin<Project>>> = setOf(AnnotatedPlugin::class)
 }
 
 class NonAnnotatedContributor : EasyPluginContributor {
-    override fun projectPlugins(): Set<KClass<out Plugin<Project>>> = setOf(SubprojectPlugin::class)
+    override fun projectPlugins(): Set<KClass<out Plugin<Project>>> = setOf(NonAnnotatedPlugin::class)
 }
 
 class ApplyToSubprojectsTest {
     @Test
-    fun `annotation is present on annotated contributor`() {
+    fun `annotation is present on annotated plugin`() {
         assertSoftly { softly ->
-            softly.assertThat(AnnotatedContributor::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)).isTrue()
-            softly.assertThat(NonAnnotatedContributor::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)).isFalse()
+            softly.assertThat(AnnotatedPlugin::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)).isTrue()
+            softly.assertThat(NonAnnotatedPlugin::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)).isFalse()
         }
     }
 
@@ -48,24 +55,22 @@ class ApplyToSubprojectsTest {
         }
 
         assertSoftly { softly ->
-            softly.assertThat(service.getContributorFor(SubprojectPlugin::class)).isEqualTo(contributor)
+            softly.assertThat(service.getContributorFor(AnnotatedPlugin::class)).isEqualTo(contributor)
         }
     }
 
     @Test
-    fun `annotated contributor triggers allprojects logic`() {
+    fun `annotated plugin triggers allprojects logic`() {
         // verifies the branching logic in ProjectPlugin without relying on deferred withType
-        val contributor = AnnotatedContributor()
-        val isAnnotated = contributor::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)
+        val isAnnotated = AnnotatedPlugin::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)
         assertSoftly { softly ->
             softly.assertThat(isAnnotated).isTrue()
         }
     }
 
     @Test
-    fun `non-annotated contributor triggers single-project logic`() {
-        val contributor = NonAnnotatedContributor()
-        val isAnnotated = contributor::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)
+    fun `non-annotated plugin triggers single-project logic`() {
+        val isAnnotated = NonAnnotatedPlugin::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)
         assertSoftly { softly ->
             softly.assertThat(isAnnotated).isFalse()
         }

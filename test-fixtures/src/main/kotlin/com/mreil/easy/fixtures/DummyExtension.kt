@@ -9,6 +9,10 @@ import org.gradle.api.provider.Property
 abstract class DummyExtension :
     EasyPluginExtension,
     CanBeEnabled {
+    init {
+        enabled.convention(true)
+    }
+
     abstract val message: Property<String>
 
     companion object : Named {

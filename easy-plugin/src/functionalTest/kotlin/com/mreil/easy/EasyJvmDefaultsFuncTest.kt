@@ -1,39 +1,32 @@
 package com.mreil.easy
 
+import com.mreil.easy.test.project.GradleTestProject
+import com.mreil.easy.test.project.GradleTestProjectExtension
 import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.gradle.testkit.runner.GradleRunner
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.io.File
+import org.junit.jupiter.api.extension.ExtendWith
 
+@ExtendWith(GradleTestProjectExtension::class)
 class EasyJvmDefaultsFuncTest {
-    @field:TempDir
-    lateinit var projectDir: File
+    lateinit var project: GradleTestProject
 
     @Test
     fun `sources and javadoc jars via main plugin + jvm-defaults contributor`() {
-        File(projectDir, "settings.gradle.kts").writeText("")
-        File(projectDir, "build.gradle.kts").writeText(
-            """
-            plugins {
-                `java-library`
-                id("com.mreil.easy.project")
-            }
-            group = "com.example"
-            version = "1.0.0"
-            """.trimIndent(),
-        )
+        project.configure {
+            buildGradle(
+                """
+                plugins {
+                    `java-library`
+                    id("com.mreil.easy.project")
+                }
+                """.trimIndent(),
+            )
+        }
 
         val result =
-            GradleRunner
-                .create()
-                .withProjectDir(projectDir)
-                .withPluginClasspath()
-                .withArguments("sourcesJar", "javadocJar")
-                .forwardOutput()
-                .build()
+            project.build("sourcesJar", "javadocJar")
 
-        val libs = File(projectDir, "build/libs").listFiles()?.map { it.name } ?: emptyList()
+        val libs = project.file("build/libs").listFiles()?.map { it.name } ?: emptyList()
         assertSoftly { softly ->
             softly.assertThat(result.output).contains("sourcesJar")
             softly.assertThat(libs.any { it.contains("sources") }).isTrue()

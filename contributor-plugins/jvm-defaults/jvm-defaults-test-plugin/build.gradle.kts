@@ -34,6 +34,7 @@ testing {
             dependencies {
                 implementation(project())
                 implementation(gradleTestKit())
+                implementation(project(":gradle-plugin-testutils"))
                 implementation(libs.assertj.core)
             }
             targets { all { testTask.configure { shouldRunAfter(test) } } }

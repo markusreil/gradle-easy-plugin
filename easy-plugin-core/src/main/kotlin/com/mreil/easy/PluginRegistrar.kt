@@ -71,7 +71,7 @@ object PluginRegistrar {
     /**
      * Determines the target projects to which a given plugin should be applied.
      *
-     * If the plugin's contributor is annotated with [ApplyToSubprojects], the plugin
+     * If the plugin is annotated with [ApplyToSubprojects], the plugin
      * will be applied to all projects in the build (root and subprojects). Otherwise,
      * it will only be applied to the current project.
      *

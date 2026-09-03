@@ -22,6 +22,7 @@ class PluginRegistrarTest {
         }
     }
 
+    @ApplyToSubprojects
     class TestSubprojectPlugin : Plugin<Project> {
         override fun apply(project: Project) {
             project.extensions.extraProperties.set("testSubprojectPluginApplied", true)
@@ -34,7 +35,6 @@ class PluginRegistrarTest {
         }
     }
 
-    @ApplyToSubprojects
     class SubprojectContributor : EasyPluginContributor {
         override fun projectPlugins(): Set<KClass<out Plugin<Project>>> = setOf(TestSubprojectPlugin::class)
     }
@@ -86,7 +86,7 @@ class PluginRegistrarTest {
     }
 
     @Test
-    fun `applies to subprojects when contributor is annotated with ApplyToSubprojects`() {
+    fun `applies to subprojects when plugin is annotated with ApplyToSubprojects`() {
         val root = ProjectBuilder.builder().withName("root").build()
         val sub1 =
             ProjectBuilder
@@ -126,7 +126,7 @@ class PluginRegistrarTest {
     }
 
     @Test
-    fun `does not apply to subprojects when contributor is not annotated with ApplyToSubprojects`() {
+    fun `does not apply to subprojects when plugin is not annotated with ApplyToSubprojects`() {
         val root = ProjectBuilder.builder().withName("root").build()
         val sub =
             ProjectBuilder

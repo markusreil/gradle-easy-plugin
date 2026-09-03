@@ -17,19 +17,18 @@ fun loadGradleProperty(propertyName: String): String {
             ).canonicalFile,
         )
     for (root in searchRoots) {
-        var dir: File? = root.canonicalFile
-        while (dir != null) {
-            val file = File(dir, "gradle.properties")
-            if (file.exists()) {
-                file.inputStream().use { properties.load(it) }
-                properties
-                    .getProperty(propertyName)
-                    ?.trim()
-                    ?.takeIf { it.isNotEmpty() }
-                    ?.let { return it }
+        generateSequence(root.canonicalFile) { it.parentFile }
+            .forEach { dir ->
+                val file = File(dir, "gradle.properties")
+                if (file.exists()) {
+                    file.inputStream().use { properties.load(it) }
+                    properties
+                        .getProperty(propertyName)
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.let { return it }
+                }
             }
-            dir = dir.parentFile
-        }
     }
     error("Failed to load property $propertyName")
 }

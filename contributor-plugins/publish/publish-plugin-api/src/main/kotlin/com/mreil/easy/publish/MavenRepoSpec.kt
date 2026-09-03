@@ -44,7 +44,7 @@ abstract class MavenRepoSpec
             repo: MavenArtifactRepository,
         ) {
             repo.name = name
-            repo.setUrl(target.uri(url.get()))
+            repo.url = target.uri(url.get())
             if (passwordCredentials.get()) {
                 repo.credentials(PasswordCredentials::class.java)
             }

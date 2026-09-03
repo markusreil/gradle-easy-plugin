@@ -43,9 +43,14 @@ tasks.named("check") {
     dependsOn("testAggregateTestReport")
 }
 
-// Centralized Spotless config — single source for Kotlin formatting
+// Centralized Spotless config — single source for Kotlin formatting (leaf projects only;
+// intermediate containers like :contributor-plugins have no build file/repositories,
+// so Spotless can't resolve ktlint there)
 subprojects {
     if (childProjects.isNotEmpty()) return@subprojects
+    if (project.path != ":test-fixtures") {
+        apply(plugin = "maven-publish")
+    }
     apply(plugin = "com.diffplug.spotless")
     configure<SpotlessExtension> {
         kotlin {

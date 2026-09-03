@@ -1,5 +1,6 @@
 package com.mreil.easy
 
+import com.mreil.utils.PropertyResolver
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -14,7 +15,11 @@ import org.gradle.api.Project
 abstract class AbstractEasyProjectPlugin :
     Plugin<Project>,
     PluginLifecycle<Project> {
+    protected lateinit var propertyResolver: PropertyResolver
+        private set
+
     final override fun apply(target: Project) {
+        propertyResolver = PropertyResolver(target.providers)
         init(target)
         val enabledBy = this::class.java.getAnnotation(EnabledBy::class.java)
         if (enabledBy == null) {

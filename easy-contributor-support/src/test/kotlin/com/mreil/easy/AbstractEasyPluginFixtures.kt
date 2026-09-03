@@ -25,6 +25,10 @@ abstract class SimpleEasyExtension : EasyExtension {
 abstract class TestEnabledExtension :
     EasyPluginExtension,
     CanBeEnabled {
+    init {
+        enabled.convention(true)
+    }
+
     companion object : Named {
         override val name: String = "testEnabled"
     }
@@ -96,6 +100,48 @@ class NoAnnotationSettingsPlugin : AbstractEasySettingsPlugin() {
 @EnabledBy(OtherExtension::class)
 class BadSettingsPlugin : AbstractEasySettingsPlugin()
 
+class ResolverProjectPlugin : AbstractEasyProjectPlugin() {
+    var resolvedValue: String? = null
+    var decodedValue: String? = null
+    var viaResolverGet: String? = null
+
+    override fun init(target: Project) {
+        resolvedValue = propertyResolver.get("my.property").getOrNull()
+        decodedValue = propertyResolver.get("my.secret").base64Decode().getOrNull()
+        viaResolverGet = propertyResolver.get("my.property").getOrNull()
+    }
+}
+
+class ResolverSettingsPlugin : AbstractEasySettingsPlugin() {
+    var resolvedValue: String? = null
+    var decodedValue: String? = null
+    var viaResolverGet: String? = null
+
+    override fun init(target: Settings) {
+        resolvedValue = propertyResolver.get("my.property").getOrNull()
+        decodedValue = propertyResolver.get("my.secret").base64Decode().getOrNull()
+        viaResolverGet = propertyResolver.get("my.property").getOrNull()
+    }
+}
+
+@EnabledBy(TestEnabledExtension::class)
+class ResolverAfterEnabledProjectPlugin : AbstractEasyProjectPlugin() {
+    var afterEnabledValue: String? = null
+
+    override fun afterEnabled(target: Project) {
+        afterEnabledValue = propertyResolver.get("my.property").getOrNull()
+    }
+}
+
+@EnabledBy(TestEnabledExtension::class)
+class ResolverAfterEnabledSettingsPlugin : AbstractEasySettingsPlugin() {
+    var afterEnabledValue: String? = null
+
+    override fun afterEnabled(target: Settings) {
+        afterEnabledValue = propertyResolver.get("my.property").getOrNull()
+    }
+}
+
 internal fun createEasy(
     holder: Project,
     vararg extClasses: KClass<out EasyPluginExtension>,
@@ -103,7 +149,8 @@ internal fun createEasy(
     holder.extensions.create(EasyExtension::class.java, EasyExtension.name, SimpleEasyExtension::class.java)
     val easy = holder.extensions.getByName(EasyExtension.name) as ExtensionAware
     for (kClass in extClasses) {
-        easy.extensions.create(Named.extensionName(kClass), kClass.java)
+        val created = easy.extensions.create(Named.extensionName(kClass), kClass.java)
+        (created as? CanBeEnabled)?.enabled?.convention(true)
     }
     return easy
 }
@@ -118,6 +165,7 @@ internal fun newProjectProxy(
     ) { _, method, args ->
         when (method.name) {
             "getExtensions" -> holder.extensions
+            "getProviders" -> holder.providers
             "afterEvaluate" -> {
                 @Suppress("UNCHECKED_CAST")
                 captured.add(args[0] as Action<Project>)
@@ -138,6 +186,7 @@ internal fun newSettingsProxy(
     ) { _, method, args ->
         when (method.name) {
             "getExtensions" -> holder.extensions
+            "getProviders" -> holder.providers
             "getGradle" -> newGradleProxy(captured)
             else -> null
         }
@@ -150,6 +199,7 @@ internal fun newThrowingSettingsProxy(holder: Project): Settings =
     ) { _, method, _ ->
         when (method.name) {
             "getExtensions" -> holder.extensions
+            "getProviders" -> holder.providers
             "getGradle" -> error("gradle unavailable")
             else -> null
         }

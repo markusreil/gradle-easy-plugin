@@ -1,8 +1,12 @@
 package com.mreil.easy.publish
 
 import com.mreil.easy.AbstractEasyProjectPlugin
+import com.mreil.easy.ApplyToSubprojects
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.EnabledBy
+import com.mreil.easy.isExtensionEnabled
+import com.mreil.easy.semver.EasySemver
+import com.mreil.easy.semver.EasySemverExtension
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.Publication
@@ -25,7 +29,9 @@ import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
  * plugin markers), applies consistent POM metadata and version mapping, and wires
  * up any Maven repositories declared via [EasyPublishExtension.mavenRepo].
  */
+@Suppress("TooManyFunctions")
 @EnabledBy(EasyPublishExtension::class)
+@ApplyToSubprojects
 class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     /** Applies `maven-publish` once the project has the `java` plugin. */
     override fun afterEnabled(target: Project) {
@@ -75,6 +81,65 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             configureMavenPublication(target, it)
         }
         configureMavenRepositories(target, publishing)
+        wirePublishToMavenLocal(target)
+        wireJreleaserConfig(target)
+    }
+
+    private fun wirePublishToMavenLocal(target: Project) {
+        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
+        val publishExt = easy.extensions.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension ?: return
+
+        fun wire() {
+            if (!publishExt.toMavenLocal.get()) return
+            target.tasks.named("publish").configure { it.dependsOn("publishToMavenLocal") }
+        }
+        target.afterEvaluate { wire() }
+        if (target.state.executed) wire()
+    }
+
+    private fun wireJreleaserConfig(target: Project) {
+        if (target != target.rootProject) return
+        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware
+        val publishExt = easy?.extensions?.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension
+        if (easy == null || publishExt == null) return
+
+        // Register lazily on root only; disabled until toMavenCentral is true. Uses convention defaults.
+        val taskProvider =
+            target.tasks.register(
+                "generateJreleaserConfig",
+                GenerateJreleaserConfigTask::class.java,
+            ) { task ->
+                task.outputFile.convention(
+                    target.layout.buildDirectory.file("jreleaser/jreleaser.yml"),
+                )
+                // Default staging path is "stagingRepo" when central is enabled without explicit staging
+                val stagingDirProvider =
+                    publishExt.stagingPath
+                        .orElse("stagingRepo")
+                        .map { path ->
+                            target.rootProject.layout.buildDirectory
+                                .dir(path)
+                                .get()
+                                .asFile.invariantSeparatorsPath
+                        }
+                task.stagingDirectory.convention(stagingDirProvider)
+                task.gpgPublicKey.convention(propertyResolver.get("jreleaser.gpg.publicKey").orElse("dummy-gpg-public-key"))
+                task.gpgPrivateKey.convention(propertyResolver.get("jreleaser.gpg.privateKey").orElse("dummy-gpg-private-key"))
+                task.gpgPassphrase.convention(propertyResolver.get("jreleaser.gpg.passphrase").orElse("dummy-gpg-passphrase"))
+                task.mavenCentralUsername.convention(
+                    propertyResolver.get("jreleaser.mavencentral.username").orElse("dummy-mavencentral-username"),
+                )
+                task.mavenCentralPassword.convention(
+                    propertyResolver.get("jreleaser.mavencentral.password").orElse("dummy-mavencentral-password"),
+                )
+                task.onlyIf { publishExt.toMavenCentral.get() }
+            }
+
+        fun syncEnabled() {
+            taskProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
+        }
+        target.afterEvaluate { syncEnabled() }
+        if (target.state.executed) syncEnabled()
     }
 
     /**
@@ -91,8 +156,48 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     ) {
         val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
         val publishExt = easy.extensions.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension ?: return
+        addStagingRepository(publishExt, target)
+        val isSnapshot = resolveIsSnapshot(target)
         publishExt.mavenRepos.forEach { spec ->
+            if (!shouldPublishToRepo(spec.name, isSnapshot)) return@forEach
             publishing.repositories.maven { repo -> spec.configure(target, repo) }
+        }
+    }
+
+    private fun addStagingRepository(
+        publishExt: DefaultEasyPublishExtension,
+        target: Project,
+    ) {
+        if (target != target.rootProject) return
+        publishExt.stagingPath.orNull?.let { path ->
+            val url =
+                target.rootProject.layout.buildDirectory
+                    .dir(path)
+                    .get()
+                    .asFile.invariantSeparatorsPath
+            publishExt.mavenRepo("mavenStaging", url)
+        }
+    }
+
+    private fun resolveIsSnapshot(target: Project): Boolean? {
+        val semver =
+            runCatching {
+                if (!target.isExtensionEnabled(EasySemverExtension::class)) null else EasySemver.of(target).orNull
+            }.getOrNull()
+        return semver?.let { !it.isStable }
+    }
+
+    private fun shouldPublishToRepo(
+        repoName: String,
+        isSnapshot: Boolean?,
+    ): Boolean {
+        if (isSnapshot == null) return true
+        val lower = repoName.lowercase()
+        val isReleaseRepo = lower.contains("release")
+        val isSnapshotRepo = lower.contains("snapshot")
+        return when {
+            isSnapshot -> !isReleaseRepo
+            else -> !isSnapshotRepo
         }
     }
 

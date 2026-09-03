@@ -5,20 +5,22 @@ import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 
 /**
- * Tests for [CanBeEnabled.isEnabled] defaulting and value propagation.
+ * Tests for [CanBeEnabled.isEnabled] value propagation.
  *
- * Verifies the `Property<Boolean>` `enabled` defaults to `true` via `getOrElse(true)`
- * and reflects explicit `set` calls — the predicate used by `AbstractEasy*Plugin` to decide
+ * Verifies the `Property<Boolean>` `enabled` is materialized via convention and
+ * `isEnabled` delegates to `enabled.get()` — the predicate used by `AbstractEasy*Plugin` to decide
  * `afterEnabled`.
  */
 class CanBeEnabledTest {
     @Test
-    fun `isEnabled defaults to true when not set`() {
+    fun `isEnabled reflects convention true`() {
         val holder = ProjectBuilder.builder().build()
         val easy = createEasy(holder, TestEnabledExtension::class)
         val ext = easy.extensions.getByType(TestEnabledExtension::class.java)
+        ext.enabled.convention(true)
 
         assertSoftly { softly ->
+            softly.assertThat(ext.enabled.get()).isTrue()
             softly.assertThat(ext.isEnabled()).isTrue()
         }
     }

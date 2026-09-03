@@ -1,52 +1,46 @@
 package com.mreil.easy
 
-import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.gradle.testkit.runner.GradleRunner
+import com.mreil.easy.test.project.GradleTestProject
+import com.mreil.easy.test.project.GradleTestProjectExtension
+import com.mreil.easy.test.project.assertj.assertSoftly
+import com.mreil.easy.test.project.probeTask
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.io.File
+import org.junit.jupiter.api.extension.ExtendWith
 
+@ExtendWith(GradleTestProjectExtension::class)
 class ProjectPluginFuncTest {
-    @field:TempDir
-    lateinit var projectDir: File
+    lateinit var project: GradleTestProject
 
     @Test
     fun `project plugin creates easy extension on project`() {
-        File(projectDir, "settings.gradle.kts").writeText("")
-        File(projectDir, "build.gradle.kts").writeText(
-            """
-            import com.mreil.easy.EasyExtension
-
-            plugins {
-                id("com.mreil.easy.project")
+        val extensionProbe =
+            probeTask("verifyExtension") {
+                extensionExists("HAS_EXTENSION", "easy")
+                expect("IS_EASY_EXTENSION", "project.extensions.findByName(\"easy\") is EasyExtension", "true")
             }
+        project.configure {
+            buildGradle(
+                """
+                import com.mreil.easy.EasyExtension
 
-            easy {
-                publish {}
-            }
-
-            tasks.register("verifyExtension") {
-                doLast {
-                    val ext = project.extensions.findByName("easy")
-                    println("HAS_EXTENSION=" + (ext != null))
-                    println("IS_EASY_EXTENSION=" + (ext is EasyExtension))
+                plugins {
+                    id("com.mreil.easy.project")
                 }
-            }
-            """.trimIndent(),
-        )
+
+                easy {
+                    publish {}
+                }
+
+                ${extensionProbe.script()}
+                """.trimIndent(),
+            )
+        }
 
         val result =
-            GradleRunner
-                .create()
-                .withProjectDir(projectDir)
-                .withPluginClasspath()
-                .withArguments("verifyExtension")
-                .forwardOutput()
-                .build()
+            project.build("verifyExtension")
 
         assertSoftly { softly ->
-            softly.assertThat(result.output).contains("HAS_EXTENSION=true")
-            softly.assertThat(result.output).contains("IS_EASY_EXTENSION=true")
+            extensionProbe.assertOutput(softly, result.output)
         }
     }
 }

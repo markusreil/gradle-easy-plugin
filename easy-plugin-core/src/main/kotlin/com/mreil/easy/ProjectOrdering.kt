@@ -17,14 +17,13 @@ internal fun orderedAllProjects(project: Project): List<Project> {
 }
 
 /**
- * Checks whether the contributor for [pluginClass] is annotated with [ApplyToSubprojects].
+ * Checks whether [pluginClass] is annotated with [ApplyToSubprojects].
  *
  * Centralizes the `isAnnotationPresent` check duplicated in [ProjectPlugin] and [PluginRegistrar].
+ * Only the annotation on the plugin itself determines subproject fan-out.
  */
-internal fun PluginRegistry.shouldApplyToSubprojects(pluginClass: KClass<out Plugin<Project>>): Boolean {
-    val contributor = (this as? PluginRegistryService)?.getContributorFor(pluginClass) ?: return false
-    return contributor::class.java.isAnnotationPresent(ApplyToSubprojects::class.java)
-}
+internal fun PluginRegistry.shouldApplyToSubprojects(pluginClass: KClass<out Plugin<Project>>): Boolean =
+    pluginClass.java.isAnnotationPresent(ApplyToSubprojects::class.java)
 
 internal fun Project.getPluginRegistry(): PluginRegistryService =
     gradle.sharedServices.registerIfAbsent(PluginRegistry.NAME, PluginRegistryService::class.java).get()

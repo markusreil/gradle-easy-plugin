@@ -1,5 +1,6 @@
 package com.mreil.easy
 
+import com.mreil.utils.PropertyResolver
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
 import org.gradle.api.plugins.ExtensionAware
@@ -13,7 +14,11 @@ import org.gradle.api.plugins.ExtensionAware
 abstract class AbstractEasySettingsPlugin :
     Plugin<Settings>,
     PluginLifecycle<Settings> {
+    protected lateinit var propertyResolver: PropertyResolver
+        private set
+
     final override fun apply(target: Settings) {
+        propertyResolver = PropertyResolver(target.providers)
         init(target)
         val enabledBy = this::class.java.getAnnotation(EnabledBy::class.java)
         if (enabledBy == null) {

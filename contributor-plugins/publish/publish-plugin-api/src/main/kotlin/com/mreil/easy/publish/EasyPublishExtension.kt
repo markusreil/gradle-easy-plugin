@@ -10,7 +10,8 @@ import org.gradle.api.Action
  *
  * Declared under the `easy` extension and gated by [CanBeEnabled], so the
  * [EasyPublishPlugin][com.mreil.easy.publish.EasyPublishPlugin] only activates when this extension is
- * explicitly created/enabled.
+ * explicitly enabled via `enabled.set(true)` — it is **disabled by default**
+ * (`DefaultEasyPublishExtension` conventions `enabled` to `false`).
  *
  * Use [mavenRepo] to declare named Maven repositories to publish to. The underlying
  * [NamedDomainObjectContainer][org.gradle.api.NamedDomainObjectContainer] of [MavenRepoSpec] is
@@ -20,6 +21,15 @@ interface EasyPublishExtension :
     EasyPluginExtension,
     CanBeEnabled {
     /**
+     * Enable maven publishing to a repository relative to the current project's build directory.
+     */
+    fun toMavenStaging(path: String = "stagingRepo")
+
+    fun toMavenLocal()
+
+    fun toMavenCentral()
+
+    /**
      * Declares a named Maven repository to publish to.
      *
      * @param name the repository name (also used as the Gradle repository `name`).
@@ -28,6 +38,22 @@ interface EasyPublishExtension :
     fun mavenRepo(
         name: String,
         action: Action<MavenRepoSpec>,
+    )
+
+    /**
+     * Convenience overload for declaring a Maven repository.
+     *
+     * Builds the underlying [MavenRepoSpec] in the extension, setting [MavenRepoSpec.url]
+     * and optionally [MavenRepoSpec.passwordCredentials] without exposing the spec type.
+     *
+     * @param name the repository name.
+     * @param url the repository URL.
+     * @param withPasswordCredentials whether to enable password credentials (default `false`).
+     */
+    fun mavenRepo(
+        name: String,
+        url: String,
+        withPasswordCredentials: Boolean = false,
     )
 
     companion object : Named {

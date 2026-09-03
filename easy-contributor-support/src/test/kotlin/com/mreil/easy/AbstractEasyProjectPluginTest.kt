@@ -5,6 +5,8 @@ import org.gradle.api.Action
 import org.gradle.api.Project
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
+import org.junitpioneer.jupiter.SetEnvironmentVariable
+import org.junitpioneer.jupiter.SetSystemProperty
 
 /**
  * Tests for [AbstractEasyProjectPlugin] lifecycle `init` vs `afterEnabled`.
@@ -112,6 +114,44 @@ class AbstractEasyProjectPluginTest {
         assertSoftly { softly ->
             softly.assertThat(thrown).isInstanceOf(IllegalStateException::class.java)
             softly.assertThat(thrown?.message).contains("must implement CanBeEnabled")
+        }
+    }
+
+    @Test
+    @SetSystemProperty(key = "my.property", value = "fromSys")
+    @SetEnvironmentVariable(key = "MY_SECRET", value = "aGVsbG8gd29ybGQ=")
+    fun `property resolver works in project plugin`() {
+        val project = ProjectBuilder.builder().build()
+        val plugin = ResolverProjectPlugin()
+
+        plugin.apply(project)
+
+        assertSoftly { softly ->
+            softly.assertThat(plugin.resolvedValue).isEqualTo("fromSys")
+            softly.assertThat(plugin.decodedValue).isEqualTo("hello world")
+            softly.assertThat(plugin.viaResolverGet).isEqualTo("fromSys")
+        }
+    }
+
+    @Test
+    @SetSystemProperty(key = "my.property", value = "fromAfterEnabled")
+    fun `property resolver lateinit is accessible in afterEnabled`() {
+        val holder = ProjectBuilder.builder().build()
+        createEasy(holder, TestEnabledExtension::class)
+        val captured = mutableListOf<Action<Project>>()
+        val projectProxy = newProjectProxy(holder, captured)
+
+        val plugin = ResolverAfterEnabledProjectPlugin()
+        plugin.apply(projectProxy)
+        // init does not set afterEnabledValue
+        assertSoftly { softly ->
+            softly.assertThat(plugin.afterEnabledValue).isNull()
+        }
+
+        captured.single().execute(projectProxy)
+
+        assertSoftly { softly ->
+            softly.assertThat(plugin.afterEnabledValue).isEqualTo("fromAfterEnabled")
         }
     }
 }

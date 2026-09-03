@@ -1,3 +1,6 @@
+import org.gradle.api.artifacts.repositories.PasswordCredentials
+import org.gradle.api.publish.maven.MavenPublication
+
 plugins {
     `java-library`
     jacoco
@@ -9,8 +12,10 @@ repositories { mavenCentral() }
 
 dependencies {
     api(project(":contributor-plugins:publish:publish-plugin-api"))
+    implementation(project(":contributor-plugins:semver:semver-plugin-api"))
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
+    implementation(project(":gradle-plugin-utils"))
     compileOnly(gradleApi())
 }
 
@@ -42,5 +47,20 @@ tasks.named<JacocoReport>("jacocoTestReport") {
     reports {
         xml.required.set(true)
         html.required.set(true)
+    }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+        }
+    }
+    repositories {
+        maven {
+            name = "mreilComGradlePluginsSnapshots"
+            url = uri("https://repo.mreil.com/gradle-plugins-snapshots")
+            credentials(PasswordCredentials::class)
+        }
     }
 }

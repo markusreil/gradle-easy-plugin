@@ -8,6 +8,7 @@ import org.gradle.api.provider.Property
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.KProperty1
+import kotlin.reflect.KVisibility
 import kotlin.reflect.full.allSupertypes
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
@@ -52,6 +53,8 @@ object ExtensionCopier {
         from: CanBeCopied,
         to: CanBeCopied,
     ) {
+        if (prop.visibility == KVisibility.PRIVATE) return
+        if (prop.getter.visibility == KVisibility.PRIVATE) return
         if (prop.isExtensionsProperty()) return
         val mode = modeOf(prop, from) ?: CopyMode.Mode.DEEP
         if (mode == CopyMode.Mode.NONE) return

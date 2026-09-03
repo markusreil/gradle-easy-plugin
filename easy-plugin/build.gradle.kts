@@ -42,6 +42,7 @@ testing {
             useJUnitJupiter()
             dependencies {
                 implementation(libs.assertj.core)
+                implementation(libs.junit.pioneer)
             }
         }
 
@@ -53,7 +54,10 @@ testing {
                 // functionalTest test suite depends on the production code in tests
                 implementation(project())
                 implementation(project(":test-fixtures"))
+                implementation(project(":gradle-plugin-testutils"))
+                implementation(gradleTestKit())
                 implementation(libs.assertj.core)
+                implementation(libs.junit.pioneer)
             }
 
             targets {

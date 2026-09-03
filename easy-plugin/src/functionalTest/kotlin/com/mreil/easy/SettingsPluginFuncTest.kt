@@ -1,57 +1,55 @@
 package com.mreil.easy
 
-import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.gradle.testkit.runner.GradleRunner
+import com.mreil.easy.test.project.GradleTestProject
+import com.mreil.easy.test.project.GradleTestProjectExtension
+import com.mreil.easy.test.project.assertj.assertSoftly
+import com.mreil.easy.test.project.probeTask
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.io.File
+import org.junit.jupiter.api.extension.ExtendWith
 
+@ExtendWith(GradleTestProjectExtension::class)
 class SettingsPluginFuncTest {
-    @field:TempDir
-    lateinit var projectDir: File
+    lateinit var project: GradleTestProject
 
     @Test
     fun `settings plugin creates easy extension on settings and copies to root project`() {
-        File(projectDir, "settings.gradle.kts").writeText(
-            """
-            plugins {
-                id("com.mreil.easy.settings")
+        val extensionProbe =
+            probeTask("verifyExtension") {
+                prelude(
+                    "val ext = project.extensions.findByName(\"easy\") as? EasyExtension",
+                    "val dummy = ext?.extensions?.findByName(\"dummy\") as? DummyExtension",
+                )
+                expect("HAS_ROOT_EXTENSION", "ext != null", "true")
+                expect("DUMMY_MESSAGE", "dummy?.message?.get()", "fromSettings")
             }
-            extensions.configure<com.mreil.easy.EasyExtension>("easy") {
-                extensions.configure<com.mreil.easy.fixtures.DummyExtension>("dummy") {
-                    message.set("fromSettings")
+        project.configure {
+            settings(
+                """
+                plugins {
+                    id("com.mreil.easy.settings")
                 }
-            }
-            """.trimIndent(),
-        )
-        File(projectDir, "build.gradle.kts").writeText(
-            """
-            import com.mreil.easy.EasyExtension
-            import com.mreil.easy.fixtures.DummyExtension
+                extensions.configure<com.mreil.easy.EasyExtension>("easy") {
+                    extensions.configure<com.mreil.easy.fixtures.DummyExtension>("dummy") {
+                        message.set("fromSettings")
+                    }
+                }
+                """.trimIndent(),
+            )
+            buildGradle(
+                """
+                import com.mreil.easy.EasyExtension
+                import com.mreil.easy.fixtures.DummyExtension
 
-            tasks.register("verifyExtension") {
-                doLast {
-                    val ext = project.extensions.findByName("easy") as? EasyExtension
-                    val dummy = ext?.extensions?.findByName("dummy") as? DummyExtension
-                    println("HAS_ROOT_EXTENSION=" + (ext != null))
-                    println("DUMMY_MESSAGE=" + dummy?.message?.get())
-                }
-            }
-            """.trimIndent(),
-        )
+                ${extensionProbe.script()}
+                """.trimIndent(),
+            )
+        }
 
         val result =
-            GradleRunner
-                .create()
-                .withProjectDir(projectDir)
-                .withPluginClasspath()
-                .withArguments("verifyExtension")
-                .forwardOutput()
-                .build()
+            project.build("verifyExtension")
 
         assertSoftly { softly ->
-            softly.assertThat(result.output).contains("HAS_ROOT_EXTENSION=true")
-            softly.assertThat(result.output).contains("DUMMY_MESSAGE=fromSettings")
+            extensionProbe.assertOutput(softly, result.output)
         }
     }
 }

@@ -5,13 +5,14 @@ import org.gradle.api.provider.Property
 /**
  * Marks an [EasyPluginExtension] as toggleable via `easy { <name> { enabled.set(...) } }`.
  *
- * The backing [enabled] property defaults to `true` via [isEnabled] (`getOrElse(true)`), so
- * extensions are active unless explicitly disabled. Registrar implementations should set
- * `enabled.convention(true)` on creation to make the default visible in Gradle properties.
+ * The backing [enabled] property is materialized by [com.mreil.easy.ExtensionRegistrar]
+ * after contributed extensions are attached via `enabled.convention(true)` (or
+ * `convention(false)` when `easy.disableAllPlugins=true`). It is therefore safe to call
+ * [isEnabled] / [enabled.get] after registration without a fallback.
  */
 interface CanBeEnabled {
     val enabled: Property<Boolean>
 }
 
-/** Returns `true` when the extension is enabled, defaulting to enabled if unset. */
-fun CanBeEnabled.isEnabled(): Boolean = enabled.getOrElse(true)
+/** Returns `true` when the extension is enabled. Requires that `enabled` has a convention/value. */
+fun CanBeEnabled.isEnabled(): Boolean = enabled.get()

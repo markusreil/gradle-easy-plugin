@@ -5,6 +5,8 @@ import org.gradle.api.Action
 import org.gradle.api.initialization.Settings
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
+import org.junitpioneer.jupiter.SetEnvironmentVariable
+import org.junitpioneer.jupiter.SetSystemProperty
 
 /**
  * Tests for [AbstractEasySettingsPlugin] lifecycle `init` vs `afterEnabled`.
@@ -104,6 +106,44 @@ class AbstractEasySettingsPluginTest {
 
         assertSoftly { softly ->
             softly.assertThat(plugin.afterEnabledCalled).isFalse()
+        }
+    }
+
+    @Test
+    @SetEnvironmentVariable(key = "MY_PROPERTY", value = "fromEnv")
+    @SetSystemProperty(key = "my.secret", value = "aGVsbG8gd29ybGQ=")
+    fun `property resolver works in settings plugin`() {
+        val holder = ProjectBuilder.builder().build()
+        val settings = newSettingsProxy(holder, mutableListOf())
+        val plugin = ResolverSettingsPlugin()
+
+        plugin.apply(settings)
+
+        assertSoftly { softly ->
+            softly.assertThat(plugin.resolvedValue).isEqualTo("fromEnv")
+            softly.assertThat(plugin.decodedValue).isEqualTo("hello world")
+            softly.assertThat(plugin.viaResolverGet).isEqualTo("fromEnv")
+        }
+    }
+
+    @Test
+    @SetEnvironmentVariable(key = "MY_PROPERTY", value = "fromAfterEnabled")
+    fun `property resolver lateinit is accessible in afterEnabled`() {
+        val holder = ProjectBuilder.builder().build()
+        createEasy(holder, TestEnabledExtension::class)
+        val captured = mutableListOf<Action<Settings>>()
+        val settings = newSettingsProxy(holder, captured)
+
+        val plugin = ResolverAfterEnabledSettingsPlugin()
+        plugin.apply(settings)
+        assertSoftly { softly ->
+            softly.assertThat(plugin.afterEnabledValue).isNull()
+        }
+
+        captured.single().execute(settings)
+
+        assertSoftly { softly ->
+            softly.assertThat(plugin.afterEnabledValue).isEqualTo("fromAfterEnabled")
         }
     }
 }

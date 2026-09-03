@@ -5,8 +5,7 @@ to publish a project's artifacts to Maven repositories with minimal configuratio
 
 It is a *contributor plugin*: it is discovered via the `EasyPluginContributor`
 ServiceLoader SPI (see `EasyPublishContributor`) and applied through the shared easy
-plugin infrastructure. It only activates on projects that enable the `easy.publish`
-extension. The public extension API (`EasyPublishExtension` + `MavenRepoSpec`) lives in `publish-plugin-api`; the implementation
+plugin infrastructure. It only activates when `easy.publish` is explicitly enabled (`enabled` defaults to `false` in `DefaultEasyPublishExtension`). The public extension API (`EasyPublishExtension` + `MavenRepoSpec`) lives in `publish-plugin-api`; the implementation
 (`DefaultEasyPublishExtension` with `@PublicType`) and wiring (`EasyPublishPlugin`) live here.
 
 ## Features
@@ -22,12 +21,15 @@ extension. The public extension API (`EasyPublishExtension` + `MavenRepoSpec`) l
 * **POM metadata** – every publication gets a POM with name, description, URL,
   MIT license and SCM metadata plus dependency version mapping.
 * **Declarative repositories** – the `easy.publish.mavenRepo(...)` DSL attaches
-  named Maven repositories to the `publishing` extension lazily.
-* **Password credentials** – opt-in per repository via `passwordCredentials`.
+  named Maven repositories to the `publishing` extension lazily (both `Action<MavenRepoSpec>` and convenience `mavenRepo(name, url, withPasswordCredentials)` overloads).
+* **Password credentials** – opt-in per repository via `passwordCredentials` (or `withPasswordCredentials = true`).
+* **Staging repository** – `toMavenStaging(path)` creates a `mavenStaging` file repo under `build/<path>` (default `build/stagingRepo`).
+* **Maven local wiring** – `toMavenLocal()` makes `publish` depend on `publishToMavenLocal`.
+* **Semver-aware routing** – when `easy.semver` is enabled (`easy { semver {} }`), the version is parsed via `semver4j` (`EasySemver.of(project)`). Snapshots (`!isStable`) skip `*release*` repos, releases skip `*snapshot*` repos; neutral names always publish. Without semver, all repos are used.
 
 ## Usage
 
-Apply the easy project plugin, then enable the `publish` extension:
+Apply the easy project plugin, then enable the `publish` extension (disabled by default):
 
 ```kotlin
 plugins {
@@ -41,6 +43,7 @@ version = "1.0.0"
 
 easy {
     publish {
+        enabled.set(true) // required — publish is disabled by default
         mavenRepo("releases") {
             url.set("https://repo.example.com/releases")
             passwordCredentials.set(true)   // optional
@@ -61,9 +64,29 @@ The plugin also works when you publish locally to a file repository:
 ```kotlin
 easy {
     publish {
-        mavenRepo("local") {
-            url.set("build/repo")
-        }
+        enabled.set(true)
+        mavenRepo("local", "build/repo")
+        // or with credentials: mavenRepo("releases", "https://repo.example.com/releases", true)
+    }
+}
+```
+
+Staging and mavenLocal helpers:
+
+```kotlin
+easy {
+    semver {} // enable semver for release/snapshot routing (optional)
+    publish {
+        enabled.set(true)             // required — disabled by default
+        toMavenStaging()              // -> file: build/stagingRepo as `mavenStaging`
+        toMavenStaging("custom")      // -> file: build/custom
+        toMavenLocal()                // publish -> publishToMavenLocal
+
+        mavenRepo("myRelease", "https://repo.example.com/releases")
+        mavenRepo("mySnapshot", "https://repo.example.com/snapshots")
+        mavenRepo("myNeutral", "https://repo.example.com/central") // always published
+        // version 1.0.0 -> publishes to myRelease + myNeutral
+        // version 1.0.0-SNAPSHOT -> publishes to mySnapshot + myNeutral
     }
 }
 ```
@@ -73,7 +96,7 @@ easy {
 ### `easy.publish`
 
 The public `EasyPublishExtension` interface (in `publish-plugin-api`) backs the `easy { publish { ... } }` block and gates the
-plugin's activation. The implementation is `DefaultEasyPublishExtension` (in `publish-plugin`), annotated with
+plugin's activation (`enabled` defaults to `false` — `enabled.set(true)` is required to activate publishing). The implementation is `DefaultEasyPublishExtension` (in `publish-plugin`), annotated with
 `@PublicType(EasyPublishExtension::class)` so `ExtensionRegistrar.createExtensionAs` registers the extension under the
 interface's `Named` companion (`"publish"`) while instantiating the implementation. `mavenRepos` is intentionally internal to the
 implementation and not part of the public API – consumers use `mavenRepo(name) { ... }`.
@@ -81,7 +104,11 @@ implementation and not part of the public API – consumers use `mavenRepo(name)
 | Member | Description |
 | ------ | ----------- |
 | `mavenRepo(name) { ... }` | Declares a named Maven repository and configures a `MavenRepoSpec` (public API). |
+| `mavenRepo(name, url, withPasswordCredentials = false)` | Convenience overload — creates `MavenRepoSpec` with `url`/`passwordCredentials` without exposing spec type. |
+| `toMavenStaging(path = "stagingRepo")` | Creates `mavenStaging` file repo under `build/<path>` via `Property<MavenRepoSpec>` (`stagingPath`) + helper `mavenRepo`. |
+| `toMavenLocal()` | One-shot flag (`Property<Boolean> toMavenLocal`) — makes `publish` depend on `publishToMavenLocal`. |
 | `mavenRepos` | `NamedDomainObjectContainer<MavenRepoSpec>` of declared repositories (internal, on `DefaultEasyPublishExtension`). |
+| `stagingPath` | `Property<MavenRepoSpec>` holding staging template (creates `mavenStaging` per-project via `buildDirectory`). |
 
 ### `MavenRepoSpec`
 
@@ -110,7 +137,7 @@ Example for a repository named `releases`:
 
 ## How it works
 
-`EasyPublishPlugin` (in
+ `EasyPublishPlugin` (in
 `contributor-plugins/publish-plugin/src/main/kotlin/com/mreil/easy/publish/EasyPublishPlugin.kt`) +
 `DefaultEasyPublishExtension` (`@PublicType(EasyPublishExtension::class)`, discovered via `EasyPublishContributor`):
 
@@ -121,5 +148,7 @@ Example for a repository named `releases`:
    markers).
 4. Normalizes every publication (regular and plugin marker): fills in missing
    coordinates/version, populates the POM, and configures version mapping.
-5. Attaches every `mavenRepo` from the internal `DefaultEasyPublishExtension.mavenRepos` container to `publishing.repositories`,
-   enabling `PasswordCredentials` when requested.
+5. If `stagingPath` is present (`toMavenStaging`), creates `mavenStaging` via helper `mavenRepo("mavenStaging", buildDirectory/dir(path))` per-project.
+6. Resolves semver lazily via `EasySemver.of(target).orNull` (`semver4j`, strict parse, `isExtensionEnabled(EasySemverExtension::class)` guard) — `null` → no filtering. Otherwise `isSnapshot = !semver.isStable`; `shouldPublishToRepo(name, isSnapshot)` skips `*release*` repos for snapshots and `*snapshot*` repos for releases (case-insensitive); neutral names always added.
+7. Attaches filtered `mavenRepos` to `publishing.repositories` (`spec.configure(target, repo)`), enabling `PasswordCredentials` when requested.
+8. If `toMavenLocal` is true, wires `publish -> publishToMavenLocal` via `afterEvaluate` + `tasks.named("publish").configure { dependsOn("publishToMavenLocal") }` (CC-safe, one-shot).
