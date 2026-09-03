@@ -23,3 +23,12 @@ jobs:
       - name: Check (PR)
         if: github.event_name == 'pull_request'
         run: ./gradlew check --build-cache
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ github.run_number }}
+          retention-days: 7
+          path: |
+            build/reports/**
+            **/build/test-results/**
