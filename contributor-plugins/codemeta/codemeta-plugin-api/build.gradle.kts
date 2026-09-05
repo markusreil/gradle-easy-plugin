@@ -19,6 +19,17 @@ dependencies {
     compileOnly(gradleApi())
 }
 
+testing {
+    suites {
+        val test by getting(JvmTestSuite::class) {
+            useJUnitJupiter()
+            dependencies {
+                implementation(libs.assertj.core)
+            }
+        }
+    }
+}
+
 detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml")) }
 
 tasks.named<Task>("check") {

@@ -1,13 +1,16 @@
 package com.mreil.easy
 
-import com.mreil.easy.test.project.GradleTestProject
-import com.mreil.easy.test.project.GradleTestProjectExtension
-import com.mreil.easy.test.project.assertj.assertSoftly
-import com.mreil.easy.test.project.probeTask
+import com.mreil.easy.test.support.DisableAllEasyPlugins
+import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
+import com.mreil.gradletest.project.GradleTestProject
+import com.mreil.gradletest.project.GradleTestProjectExtension
+import com.mreil.gradletest.project.assertj.assertSoftly
+import com.mreil.gradletest.project.probeTask
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
-@ExtendWith(GradleTestProjectExtension::class)
+@ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
+@DisableAllEasyPlugins
 class ProjectPluginFuncTest {
     lateinit var project: GradleTestProject
 
@@ -28,7 +31,7 @@ class ProjectPluginFuncTest {
                 }
 
                 easy {
-                    publish {}
+                    publish { enabled.set(true) }
                 }
 
                 ${extensionProbe.script()}

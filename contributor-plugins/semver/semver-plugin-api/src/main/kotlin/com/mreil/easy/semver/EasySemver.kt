@@ -1,6 +1,7 @@
 package com.mreil.easy.semver
 
 import com.mreil.easy.isExtensionEnabled
+import com.mreil.utils.isSpecified
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.semver4j.Semver
@@ -26,7 +27,7 @@ object EasySemver {
                 error("EasySemver plugin is not enabled - add `easy { semver {} }` to enable it")
             }
             val clean =
-                raw.takeIf { it.isNotEmpty() && it != "unspecified" }
+                raw.takeIf { it.isSpecified() }
                     ?: error("Project version must be set for semver lookup (e.g. version = \"1.0.0\")")
             try {
                 Semver.parse(clean) ?: error("Version '$clean' is not valid semver")

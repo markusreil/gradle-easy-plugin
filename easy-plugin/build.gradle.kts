@@ -6,6 +6,8 @@
  * This project uses @Incubating APIs which are subject to change.
  */
 
+import org.gradle.api.artifacts.repositories.PasswordCredentials
+
 plugins {
     // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
     `java-gradle-plugin`
@@ -29,10 +31,18 @@ val fixtures by configurations.creating {
 dependencies {
     implementation(project(":easy-plugin-core"))
     implementation(project(":easy-contributor-api"))
-    implementation(project(":contributor-plugins:publish:publish-plugin-api"))
-    implementation(project(":contributor-plugins:publish:publish-plugin"))
-    implementation(project(":contributor-plugins:jvm-defaults:jvm-defaults-plugin"))
-    fixtures(project(":test-fixtures"))
+    // auto-collect all contributor runtime plugins (APIs are pulled transitively via their plugin)
+    providers
+        .provider {
+            rootProject.subprojects
+                .map { it.path }
+                .filter { it.startsWith(":contributor-plugins:") }
+                .filter { it.endsWith("-plugin") }
+                .filterNot { it.endsWith("-test-plugin") }
+                .sorted()
+        }.get()
+        .forEach { implementation(project(it)) }
+    fixtures(project(":easy-test-support"))
 }
 
 testing {
@@ -53,7 +63,7 @@ testing {
             dependencies {
                 // functionalTest test suite depends on the production code in tests
                 implementation(project())
-                implementation(project(":test-fixtures"))
+                implementation(project(":easy-test-support"))
                 implementation(project(":gradle-plugin-testutils"))
                 implementation(gradleTestKit())
                 implementation(libs.assertj.core)
@@ -108,5 +118,15 @@ tasks.named<JacocoReport>("jacocoTestReport") {
     reports {
         xml.required.set(true)
         html.required.set(true)
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "mreilComGradlePluginsSnapshots"
+            url = uri("https://repo.mreil.com/gradle-plugins-snapshots")
+            credentials(PasswordCredentials::class)
+        }
     }
 }

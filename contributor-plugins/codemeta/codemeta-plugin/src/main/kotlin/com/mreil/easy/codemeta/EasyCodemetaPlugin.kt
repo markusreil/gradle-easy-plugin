@@ -15,8 +15,16 @@ import org.gradle.api.plugins.ExtensionAware
  */
 @EnabledBy(EasyCodemetaExtension::class)
 class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {
+    /**
+     * Registers the shared [CodemetaService] eagerly so other contributors
+     * (e.g. publish POM configuration) can resolve Codemeta during
+     * `afterEvaluate`, regardless of contributor application order.
+     *
+     * Only wiring — parameters stay lazy [org.gradle.api.provider.Provider]s and
+     * task registration remains in [afterEnabled] behind the enabled flag.
+     */
     @Suppress("ReturnCount")
-    override fun afterEnabled(target: Project) {
+    override fun init(target: Project) {
         if (target != target.rootProject) return
         val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
         val codemetaExt = easy.extensions.findByType(EasyCodemetaExtension::class.java) as? DefaultEasyCodemetaExtension ?: return
@@ -30,6 +38,19 @@ class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {
         target.gradle.sharedServices.registerIfAbsent("codemeta", CodemetaService::class.java) {
             it.parameters.codemetaFile.set(codemetaFile)
         }
+    }
+
+    @Suppress("ReturnCount")
+    override fun afterEnabled(target: Project) {
+        if (target != target.rootProject) return
+        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
+        val codemetaExt = easy.extensions.findByType(EasyCodemetaExtension::class.java) as? DefaultEasyCodemetaExtension ?: return
+
+        val codemetaFile =
+            codemetaExt.filename.map {
+                target.rootProject.layout.projectDirectory
+                    .file(it)
+            }
 
         val generateTask =
             target.tasks.register("generateCodemeta", GenerateCodemetaTask::class.java) { task ->

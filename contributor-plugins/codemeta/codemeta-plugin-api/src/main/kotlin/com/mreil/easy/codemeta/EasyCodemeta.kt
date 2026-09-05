@@ -11,15 +11,14 @@ import org.gradle.api.provider.Provider
  * and parsing are hidden inside the plugin's [CodemetaService].
  */
 object EasyCodemeta {
+    fun isEnabled(project: Project): Boolean = project.isExtensionEnabled(EasyCodemetaExtension::class)
+
     /**
      * Lazily reads `codemeta.json` from the root project directory.
      *
      * Fails if the plugin is not enabled (`easy { codemeta {} }`).
      */
     fun of(project: Project): Provider<Codemeta> {
-        if (!project.isExtensionEnabled(EasyCodemetaExtension::class)) {
-            error("EasyCodemeta plugin is not enabled - add `easy { codemeta {} }` to enable it")
-        }
         // Service is registered by EasyCodemetaPlugin; lookup is lazy via Provider
         val serviceProvider =
             project.gradle.sharedServices.registrations

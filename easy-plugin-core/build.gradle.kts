@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
     testImplementation(project(":gradle-plugin-testutils"))
+    testImplementation(project(":easy-test-support"))
     compileOnly(gradleApi())
     testImplementation(gradleTestKit())
 }

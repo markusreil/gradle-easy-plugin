@@ -29,11 +29,6 @@ abstract class GenerateCodemetaTask : DefaultTask() {
     @get:Input
     abstract val projectDescription: Property<String>
 
-    private val mapper: ObjectMapper =
-        jacksonObjectMapper().apply {
-            enable(SerializationFeature.INDENT_OUTPUT)
-        }
-
     @TaskAction
     fun generate() {
         val file = outputFile.get().asFile
@@ -44,9 +39,16 @@ abstract class GenerateCodemetaTask : DefaultTask() {
                 name = projectName.getOrElse("TODO: Add project name"),
                 description = projectDescription.getOrElse("TODO: Add description - replace with project description"),
                 version = projectVersion.getOrElse("TODO: Add version"),
-                license = "TODO: Add license - e.g. https://spdx.org/licenses/MIT",
+                license = "https://spdx.org/licenses/MIT",
                 codeRepository = "TODO: Add codeRepository - e.g. https://github.com/mreil/gradle-easy-plugin-new",
-                author = listOf(Person(name = "TODO: Add author")),
+                author =
+                    listOf(
+                        Person(
+                            givenName = "TODO",
+                            familyName = "TODO",
+                            email = "TODO@example.com",
+                        ),
+                    ),
                 programmingLanguage = "Kotlin",
             )
         mapper.writerWithDefaultPrettyPrinter().writeValue(file, codemeta)
@@ -54,5 +56,12 @@ abstract class GenerateCodemetaTask : DefaultTask() {
             "codemeta.json was not found - created initial file at ${file.absolutePath} " +
                 "with placeholder values. Please review, fill correct values, and re-run the build.",
         )
+    }
+
+    companion object {
+        private val mapper: ObjectMapper =
+            jacksonObjectMapper().apply {
+                enable(SerializationFeature.INDENT_OUTPUT)
+            }
     }
 }

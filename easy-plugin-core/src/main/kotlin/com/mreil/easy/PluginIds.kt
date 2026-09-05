@@ -4,4 +4,7 @@ package com.mreil.easy
 object PluginIds {
     /** Plugin ID for the settings plugin. */
     const val SETTINGS = "com.mreil.easy.settings"
+
+    /** Plugin ID for the project plugin. */
+    const val PROJECT = "com.mreil.easy.project"
 }

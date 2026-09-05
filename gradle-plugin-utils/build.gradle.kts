@@ -13,6 +13,7 @@ repositories {
 }
 
 dependencies {
+    implementation(libs.commons.configuration2)
     compileOnly(gradleApi())
     testImplementation(gradleTestKit())
 }

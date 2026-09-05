@@ -1,17 +1,27 @@
 package com.mreil.easy.publish
 
-import com.mreil.easy.test.project.GradleTestProject
-import com.mreil.easy.test.project.GradleTestProjectExtension
-import com.mreil.easy.test.project.assertj.MavenCoordinates
-import com.mreil.easy.test.project.assertj.assertSoftly
+import com.mreil.easy.test.support.DisableAllEasyPlugins
+import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
+import com.mreil.gradletest.project.GradleTestProject
+import com.mreil.gradletest.project.GradleTestProjectExtension
+import com.mreil.gradletest.project.assertj.MavenCoordinates
+import com.mreil.gradletest.project.assertj.assertSoftly
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.io.File
 
-@ExtendWith(GradleTestProjectExtension::class)
+/**
+ * Functional tests for publish routing (snapshot vs. release vs. neutral repositories).
+ *
+ * Covers version-based repository filtering (via semver). `toMavenLocal` wiring is covered by
+ * unit tests in `publish-plugin`.
+ */
+@ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
+@DisableAllEasyPlugins
 class EasyPublishRoutingFuncTest {
     lateinit var project: GradleTestProject
 
+    /** SNAPSHOT version is routed only to snapshot and neutral repositories. */
     @Test
     fun `snapshot version publishes only to snapshot and neutral repos`() {
         lateinit var releaseDir: File
@@ -29,7 +39,7 @@ class EasyPublishRoutingFuncTest {
                     id("com.mreil.easy.test.publish")
                 }
                 easy {
-                    semver {}
+                    semver { enabled.set(true) }
                     publish {
                         enabled.set(true)
                         mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
@@ -53,6 +63,7 @@ class EasyPublishRoutingFuncTest {
         }
     }
 
+    /** Release version is routed only to release and neutral repositories. */
     @Test
     fun `release version publishes only to release and neutral repos`() {
         lateinit var releaseDir: File
@@ -69,7 +80,7 @@ class EasyPublishRoutingFuncTest {
                     id("com.mreil.easy.test.publish")
                 }
                 easy {
-                    semver {}
+                    semver { enabled.set(true) }
                     publish {
                         enabled.set(true)
                         mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
@@ -92,11 +103,16 @@ class EasyPublishRoutingFuncTest {
         }
     }
 
+    /** Without semver, publishes to all repos (snapshot routing disabled). */
     @Test
-    fun `publish also publishes to mavenLocal when toMavenLocal is enabled`() {
-        lateinit var m2Repo: File
+    fun `publishes to all repos when semver is disabled`() {
+        lateinit var releaseDir: File
+        lateinit var snapshotDir: File
+        lateinit var neutralDir: File
         project.configure {
-            m2Repo = createDir("m2")
+            releaseDir = createDir("repoRelease")
+            snapshotDir = createDir("repoSnapshot")
+            neutralDir = createDir("repoNeutral")
             buildGradle(
                 """
                 plugins {
@@ -106,7 +122,9 @@ class EasyPublishRoutingFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
-                        toMavenLocal()
+                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
+                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}")
+                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}")
                     }
                 }
                 """.trimIndent(),
@@ -114,45 +132,13 @@ class EasyPublishRoutingFuncTest {
             javaSource()
         }
 
-        val result =
-            project.build("publish", "-Dmaven.repo.local=${m2Repo.invariantSeparatorsPath}", "--info")
+        project.build("publish", "--info")
 
         val coordinates = MavenCoordinates(name = project.projectDir.name)
         assertSoftly { softly ->
-            softly.assertThat(result.output).contains("publishToMavenLocal")
-            softly.assertThat(project).hasArtifact(m2Repo, coordinates)
-        }
-    }
-
-    @Test
-    fun `publishToMavenLocal publishes artifact`() {
-        lateinit var m2Repo: File
-        project.configure {
-            group = "com.example.local"
-            m2Repo = createDir("m2")
-            buildGradle(
-                """
-                plugins {
-                    `java-library`
-                    id("com.mreil.easy.test.publish")
-                }
-                easy {
-                    publish {
-                        enabled.set(true)
-                    }
-                }
-                """.trimIndent(),
-            )
-            javaSource()
-        }
-
-        val result =
-            project.build("publishToMavenLocal", "-Dmaven.repo.local=${m2Repo.invariantSeparatorsPath}")
-
-        val coordinates = MavenCoordinates(group = "com.example.local", name = project.projectDir.name)
-        assertSoftly { softly ->
-            softly.assertThat(result.output).contains("publishToMavenLocal")
-            softly.assertThat(project).hasArtifact(m2Repo, coordinates)
+            softly.assertThat(project).hasArtifact(releaseDir, coordinates)
+            softly.assertThat(project).hasArtifact(snapshotDir, coordinates)
+            softly.assertThat(project).hasArtifact(neutralDir, coordinates)
         }
     }
 }

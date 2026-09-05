@@ -13,9 +13,13 @@ repositories { mavenCentral() }
 dependencies {
     api(project(":contributor-plugins:publish:publish-plugin-api"))
     implementation(project(":contributor-plugins:semver:semver-plugin-api"))
+    implementation(project(":contributor-plugins:codemeta:codemeta-plugin-api"))
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
     implementation(project(":gradle-plugin-utils"))
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.dataformat.yaml)
+    implementation(libs.jackson.module.kotlin)
     compileOnly(gradleApi())
 }
 
