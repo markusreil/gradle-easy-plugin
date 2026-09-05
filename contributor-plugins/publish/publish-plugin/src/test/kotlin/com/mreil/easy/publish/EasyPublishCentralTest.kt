@@ -119,6 +119,130 @@ class EasyPublishCentralTest {
             softly.assertThat(deps.any { it.contains("generateJreleaserConfig") }).isFalse()
         }
     }
+
+    @Test
+    fun `checkCentralPoms is registered on root only and enabled with toMavenCentral`() {
+        val root = ProjectBuilderHelper.createRootWithChild("root")
+        val child = root.child
+        root.publish.enabled.set(true)
+        root.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(root.project)
+        ProjectBuilderHelper.evaluate(child.project)
+
+        val rootTask = root.project.tasks.findByName("checkCentralPoms") as CheckCentralPomsTask?
+        val childTask = child.project.tasks.findByName("checkCentralPoms")
+        assertSoftly { softly ->
+            softly.assertThat(rootTask).isNotNull()
+            softly.assertThat(childTask).isNull()
+            softly.assertThat(rootTask?.enabled).isTrue()
+        }
+    }
+
+    @Test
+    fun `checkCentralPoms is disabled without toMavenCentral`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenStaging()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val task = project.project.tasks.getByName("checkCentralPoms") as CheckCentralPomsTask
+        assertSoftly { softly ->
+            softly.assertThat(task.enabled).isFalse()
+        }
+    }
+
+    @Test
+    fun `checkCentralPoms depends on generatePom tasks`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val checker = project.project.tasks.getByName("checkCentralPoms")
+        val deps = checker.taskDependencies.getDependencies(checker).map { it.name }
+        assertSoftly { softly ->
+            softly.assertThat(deps).contains("generatePomFileForMavenPublication")
+        }
+    }
+
+    @Test
+    fun `publish repository tasks depend on checkCentralPoms`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+        project.publish.mavenRepo("testRepo", "file:///tmp/test-repo")
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val publishTask = project.project.tasks.getByName("publishMavenPublicationToTestRepoRepository")
+        val deps = publishTask.taskDependencies.getDependencies(publishTask).map { it.name }
+        assertSoftly { softly ->
+            softly.assertThat(deps).contains("checkCentralPoms")
+        }
+    }
+
+    @Test
+    fun `root publish aggregates child publish`() {
+        val root = ProjectBuilderHelper.createRootWithChild("root")
+        val child = root.child
+        root.publish.enabled.set(true)
+        root.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(root.project)
+        ProjectBuilderHelper.evaluate(child.project)
+
+        val rootPublish = root.project.tasks.getByName("publish")
+        val deps = rootPublish.taskDependencies.getDependencies(rootPublish).map { it.path }
+        assertSoftly { softly ->
+            softly.assertThat(deps).contains(
+                child.project.tasks
+                    .getByName("publish")
+                    .path,
+            )
+        }
+    }
+
+    @Test
+    fun `checkCentralPoms covers child generatePom tasks`() {
+        val root = ProjectBuilderHelper.createRootWithChild("root")
+        val child = root.child
+        root.publish.enabled.set(true)
+        root.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(root.project)
+        ProjectBuilderHelper.evaluate(child.project)
+
+        val checker = root.project.tasks.getByName("checkCentralPoms")
+        val deps = checker.taskDependencies.getDependencies(checker).map { it.path }
+        assertSoftly { softly ->
+            softly.assertThat(deps).contains(
+                root.project.tasks
+                    .getByName("generatePomFileForMavenPublication")
+                    .path,
+                child.project.tasks
+                    .getByName("generatePomFileForMavenPublication")
+                    .path,
+            )
+        }
+    }
+
+    @Test
+    fun `generateJreleaserConfig depends on checkCentralPoms`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val configTask = project.project.tasks.getByName("generateJreleaserConfig")
+        val deps = configTask.taskDependencies.getDependencies(configTask).map { it.name }
+        assertSoftly { softly ->
+            softly.assertThat(deps).contains("checkCentralPoms")
+        }
+    }
 }
 
 private object ProjectBuilderHelper {

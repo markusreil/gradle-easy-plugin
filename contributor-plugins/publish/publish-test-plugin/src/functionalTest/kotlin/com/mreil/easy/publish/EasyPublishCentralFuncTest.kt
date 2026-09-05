@@ -23,6 +23,22 @@ class EasyPublishCentralFuncTest {
     @Test
     fun `generateJreleaserConfig creates yaml with signing and staging and no release`() {
         project.configure {
+            // generateJreleaserConfig is gated on checkCentralPoms, so the fixture needs valid POM metadata.
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "demo",
+                  "description": "demo description",
+                  "version": "1.0.0",
+                  "license": "https://spdx.org/licenses/MIT",
+                  "codeRepository": "https://github.com/example/demo",
+                  "author": [{ "@type": "Person", "givenName": "Ada", "familyName": "Lovelace", "email": "ada@example.com" }]
+                }
+                """.trimIndent(),
+            )
             buildGradle(
                 """
                 plugins {
@@ -34,6 +50,7 @@ class EasyPublishCentralFuncTest {
                         enabled.set(true)
                         toMavenCentral()
                     }
+                    codemeta { enabled.set(true) }
                 }
                 """.trimIndent(),
             )

@@ -33,6 +33,8 @@ import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
 class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     /** Applies `maven-publish` once the project has the `java` plugin. */
     override fun afterEnabled(target: Project) {
+        MavenCentralWiring.wireJreleaserConfig(target, propertyResolver)
+        MavenCentralWiring.wireCheckCentralPoms(target)
         if (target.plugins.hasPlugin("java")) {
             target.plugins.apply("maven-publish")
             target.plugins.withId("maven-publish") {
@@ -72,7 +74,6 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         }
         configureMavenRepositories(target, publishing)
         wirePublishToMavenLocal(target)
-        wireJreleaserConfig(target)
     }
 
     private fun ensureDefaultPublication(
@@ -104,52 +105,6 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         }
         target.afterEvaluate { wire() }
         if (target.state.executed) wire()
-    }
-
-    private fun wireJreleaserConfig(target: Project) {
-        if (target != target.rootProject) return
-        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware
-        val publishExt = easy?.extensions?.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension
-        if (easy == null || publishExt == null) return
-
-        // Register lazily on root only; disabled until toMavenCentral is true. Uses convention defaults.
-        val taskProvider =
-            target.tasks.register(
-                "generateJreleaserConfig",
-                GenerateJreleaserConfigTask::class.java,
-            ) { task ->
-                task.projectName.convention(target.provider { target.name })
-                task.outputFile.convention(
-                    target.layout.buildDirectory.file("jreleaser/jreleaser.yml"),
-                )
-                // Default staging path is "stagingRepo" when central is enabled without explicit staging
-                val stagingDirProvider =
-                    publishExt.stagingPath
-                        .orElse("stagingRepo")
-                        .map { path ->
-                            target.rootProject.layout.buildDirectory
-                                .dir(path)
-                                .get()
-                                .asFile.invariantSeparatorsPath
-                        }
-                task.stagingDirectory.convention(stagingDirProvider)
-                task.gpgPublicKey.convention(propertyResolver.get("jreleaser.gpg.publicKey").orElse("dummy-gpg-public-key"))
-                task.gpgPrivateKey.convention(propertyResolver.get("jreleaser.gpg.privateKey").orElse("dummy-gpg-private-key"))
-                task.gpgPassphrase.convention(propertyResolver.get("jreleaser.gpg.passphrase").orElse("dummy-gpg-passphrase"))
-                task.mavenCentralUsername.convention(
-                    propertyResolver.get("jreleaser.mavencentral.username").orElse("dummy-mavencentral-username"),
-                )
-                task.mavenCentralPassword.convention(
-                    propertyResolver.get("jreleaser.mavencentral.password").orElse("dummy-mavencentral-password"),
-                )
-                task.onlyIf { publishExt.toMavenCentral.get() }
-            }
-
-        fun syncEnabled() {
-            taskProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
-        }
-        target.afterEvaluate { syncEnabled() }
-        if (target.state.executed) syncEnabled()
     }
 
     /**
