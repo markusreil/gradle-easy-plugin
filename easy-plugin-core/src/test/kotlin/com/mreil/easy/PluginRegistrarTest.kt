@@ -1,6 +1,6 @@
 package com.mreil.easy
 
-import com.mreil.easy.test.loadSettingsPluginId
+import com.mreil.easy.test.support.loadSettingsPluginId
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Action
 import org.gradle.api.Plugin

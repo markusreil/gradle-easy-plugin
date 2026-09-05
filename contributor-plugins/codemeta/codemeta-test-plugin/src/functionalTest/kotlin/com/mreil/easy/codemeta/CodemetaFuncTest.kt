@@ -1,13 +1,16 @@
 package com.mreil.easy.codemeta
 
-import com.mreil.easy.test.project.GradleTestProject
-import com.mreil.easy.test.project.GradleTestProjectExtension
-import com.mreil.easy.test.project.assertj.assertSoftly
-import com.mreil.easy.test.project.probeTask
+import com.mreil.easy.test.support.DisableAllEasyPlugins
+import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
+import com.mreil.gradletest.project.GradleTestProject
+import com.mreil.gradletest.project.GradleTestProjectExtension
+import com.mreil.gradletest.project.assertj.assertSoftly
+import com.mreil.gradletest.project.probeTask
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
-@ExtendWith(GradleTestProjectExtension::class)
+@ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
+@DisableAllEasyPlugins
 class CodemetaFuncTest {
     lateinit var project: GradleTestProject
 
@@ -22,7 +25,7 @@ class CodemetaFuncTest {
                     id("com.mreil.easy.test.codemeta")
                 }
                 easy {
-                    codemeta {}
+                    codemeta { enabled.set(true) }
                 }
                 tasks.register("verifyCodemeta") {
                     doLast {
@@ -90,7 +93,7 @@ class CodemetaFuncTest {
                         id("com.mreil.easy.test.codemeta")
                     }
                 easy {
-                    codemeta {}
+                    codemeta { enabled.set(true) }
                 }
                 ${codemetaProbe.script()}
                 """.trimIndent(),

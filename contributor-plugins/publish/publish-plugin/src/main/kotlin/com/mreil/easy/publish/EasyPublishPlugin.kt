@@ -9,7 +9,6 @@ import com.mreil.easy.semver.EasySemver
 import com.mreil.easy.semver.EasySemverExtension
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
-import org.gradle.api.publish.Publication
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
@@ -29,7 +28,6 @@ import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
  * plugin markers), applies consistent POM metadata and version mapping, and wires
  * up any Maven repositories declared via [EasyPublishExtension.mavenRepo].
  */
-@Suppress("TooManyFunctions")
 @EnabledBy(EasyPublishExtension::class)
 @ApplyToSubprojects
 class EasyPublishPlugin : AbstractEasyProjectPlugin() {
@@ -53,7 +51,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
      * `java-gradle-plugin` is applied in the same `plugins {}` block, so an eager
      * `hasPlugin` check would incorrectly create a duplicate `maven` publication.
      *
-     * Every publication is normalised by [configureMavenPublication] (live via
+     * Every publication is normalised by [MavenPublicationConfigurer] (live via
      * `configureEach`), and repositories declared in the extension are attached by
      * [configureMavenRepositories].
      *
@@ -78,7 +76,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
 
         // this collection is live and will configure elements that are in the future
         publishing.publications.configureEach {
-            configureMavenPublication(target, it)
+            MavenPublicationConfigurer.configure(target, it)
         }
         configureMavenRepositories(target, publishing)
         wirePublishToMavenLocal(target)
@@ -109,6 +107,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
                 "generateJreleaserConfig",
                 GenerateJreleaserConfigTask::class.java,
             ) { task ->
+                task.projectName.convention(target.provider { target.name })
                 task.outputFile.convention(
                     target.layout.buildDirectory.file("jreleaser/jreleaser.yml"),
                 )
@@ -199,82 +198,6 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             isSnapshot -> !isReleaseRepo
             else -> !isSnapshotRepo
         }
-    }
-
-    /**
-     * Normalises a [Publication] to a consistent, publishable shape.
-     *
-     * For regular [MavenPublication]s the group/artifactId/version are taken from the
-     * project (failing if `group`/`version` are unset), while plugin marker publications
-     * keep their marker coordinates and only have the version enforced. In both cases a
-     * POM is populated with name, description, license and SCM metadata, and version
-     * mapping is set up to resolve versions from the runtime classpath.
-     */
-    private fun configureMavenPublication(
-        target: Project,
-        publication: Publication,
-    ) {
-        if (publication !is MavenPublication) return
-        val isPluginMarker = publication.name.endsWith("PluginMarkerMaven")
-        configurePublicationCoordinates(target, publication, isPluginMarker)
-        configurePublicationPom(target, publication)
-        configurePublicationVersionMapping(publication)
-    }
-
-    private fun configurePublicationCoordinates(
-        target: Project,
-        publication: MavenPublication,
-        isPluginMarker: Boolean,
-    ) {
-        if (!isPluginMarker) {
-            val group = target.group.toString()
-            if (group.isEmpty() || group == "unspecified") {
-                error("Project group must be set for publication ${publication.name} (e.g. group = \"com.example\")")
-            }
-            if (publication.groupId.isNullOrEmpty() || publication.groupId == "unspecified") {
-                publication.groupId = group
-            }
-            if (publication.artifactId.isNullOrEmpty()) {
-                publication.artifactId = target.name
-            }
-        }
-        val version = target.version.toString()
-        if (version.isEmpty() || version == "unspecified") {
-            val hint = if (isPluginMarker) "plugin marker publication" else "publication"
-            error("Project version must be set for $hint ${publication.name} (e.g. version = \"1.0.0\")")
-        }
-        if (publication.version.isNullOrEmpty() || publication.version == "unspecified") {
-            publication.version = version
-        }
-    }
-
-    private fun configurePublicationPom(
-        target: Project,
-        publication: MavenPublication,
-    ) {
-        publication.pom { pom ->
-            pom.name.set(target.name)
-            pom.description.set(target.description ?: "Published via EasyPublishPlugin")
-            pom.url.set("https://github.com/mreil/gradle-easy-plugin-new")
-            pom.licenses { licenses ->
-                licenses.license { license ->
-                    license.name.set("MIT")
-                    license.url.set("https://opensource.org/licenses/MIT")
-                }
-            }
-            pom.scm { scm ->
-                scm.url.set("https://github.com/mreil/gradle-easy-plugin-new")
-            }
-        }
-    }
-
-    private fun configurePublicationVersionMapping(publication: MavenPublication) {
-        publication.versionMapping { mapping ->
-            mapping.usage("java-api") { it.fromResolutionOf("runtimeClasspath") }
-            mapping.usage("java-runtime") { it.fromResolutionResult() }
-        }
-        publication.suppressPomMetadataWarningsFor("java-api")
-        publication.suppressPomMetadataWarningsFor("java-runtime")
     }
 
     /**

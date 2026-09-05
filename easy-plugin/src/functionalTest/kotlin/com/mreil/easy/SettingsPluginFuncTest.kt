@@ -1,9 +1,9 @@
 package com.mreil.easy
 
-import com.mreil.easy.test.project.GradleTestProject
-import com.mreil.easy.test.project.GradleTestProjectExtension
-import com.mreil.easy.test.project.assertj.assertSoftly
-import com.mreil.easy.test.project.probeTask
+import com.mreil.gradletest.project.GradleTestProject
+import com.mreil.gradletest.project.GradleTestProjectExtension
+import com.mreil.gradletest.project.assertj.assertSoftly
+import com.mreil.gradletest.project.probeTask
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -32,6 +32,9 @@ class SettingsPluginFuncTest {
                     extensions.configure<com.mreil.easy.fixtures.DummyExtension>("dummy") {
                         message.set("fromSettings")
                     }
+                    extensions.configure<com.mreil.easy.codemeta.EasyCodemetaExtension>("codemeta") {
+                        enabled.set(false)
+                    }
                 }
                 """.trimIndent(),
             )
@@ -50,6 +53,58 @@ class SettingsPluginFuncTest {
 
         assertSoftly { softly ->
             extensionProbe.assertOutput(softly, result.output)
+        }
+    }
+
+    @Test
+    fun `settings plugin activates project plugins when extension enabled`() {
+        val probe =
+            probeTask("verifyProjectPlugin") {
+                taskExists("HAS_GENERATE_CODEMETA", "generateCodemeta")
+                expect(
+                    "HAS_CODEMETA_EXT",
+                    "(project.extensions.findByName(\"easy\") as? org.gradle.api.plugins.ExtensionAware)?.extensions?.findByName(\"codemeta\") != null",
+                    "true",
+                )
+            }
+        project.configure {
+            // pre-create codemeta.json so generateCodemeta does not fail the build
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "test",
+                  "description": "test",
+                  "version": "1.0.0"
+                }
+                """.trimIndent(),
+            )
+            settings(
+                """
+                plugins {
+                    id("com.mreil.easy.settings")
+                }
+                easy {
+                    codemeta { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+            buildGradle(
+                """
+                plugins {
+                    `java-library`
+                }
+                ${probe.script()}
+                """.trimIndent(),
+            )
+        }
+
+        val result = project.build("verifyProjectPlugin")
+
+        assertSoftly { softly ->
+            probe.assertOutput(softly, result.output)
         }
     }
 }

@@ -28,6 +28,9 @@ class SettingsPlugin : Plugin<Settings> {
                         parent = extension,
                     )
                 }
+                if (!it.pluginManager.hasPlugin(PluginIds.PROJECT)) {
+                    it.pluginManager.apply(ProjectPlugin::class.java)
+                }
             }
         }
 

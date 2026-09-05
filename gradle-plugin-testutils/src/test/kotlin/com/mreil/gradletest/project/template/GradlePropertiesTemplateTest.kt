@@ -1,0 +1,73 @@
+package com.mreil.gradletest.project.template
+
+import com.mreil.gradletest.project.GradleTestProject
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
+
+@Suppress("MaxLineLength")
+class GradlePropertiesTemplateTest {
+    @TempDir
+    lateinit var tempDir: File
+
+    @Test
+    fun `renders group then version`() {
+        assertThat(GradlePropertiesTemplate().render()).isEqualTo(
+            "group=com.example\nversion=1.0.0\norg.gradle.configuration-cache=true\norg.gradle.parallel=true\norg.gradle.caching=true\norg.gradle.warning.mode=all",
+        )
+    }
+
+    @Test
+    fun `omits null values`() {
+        assertThat(
+            GradlePropertiesTemplate(
+                group = null,
+                version = null,
+                configurationCache = null,
+                parallel = null,
+                caching = null,
+                warningMode = null,
+            ).render(),
+        ).isEmpty()
+        assertThat(GradlePropertiesTemplate(version = null).render()).isEqualTo(
+            "group=com.example\norg.gradle.configuration-cache=true\norg.gradle.parallel=true\norg.gradle.caching=true\norg.gradle.warning.mode=all",
+        )
+        assertThat(GradlePropertiesTemplate(group = null).render()).isEqualTo(
+            "version=1.0.0\norg.gradle.configuration-cache=true\norg.gradle.parallel=true\norg.gradle.caching=true\norg.gradle.warning.mode=all",
+        )
+    }
+
+    @Test
+    fun `raw template renders content unchanged`() {
+        assertThat(RawStringTemplate("a=b").render()).isEqualTo("a=b")
+    }
+
+    @Test
+    fun `group and version delegate to staged template`() {
+        val project = GradleTestProject(File(tempDir, "root"))
+
+        assertThat(project.group).isEqualTo("com.example")
+        assertThat(project.version).isEqualTo("1.0.0")
+
+        project.group = "org.acme"
+        project.version = null
+        project.flushPendingFiles()
+
+        assertThat(File(project.projectDir, "gradle.properties").readText()).isEqualTo(
+            "group=org.acme\norg.gradle.configuration-cache=true\norg.gradle.parallel=true\norg.gradle.caching=true\norg.gradle.warning.mode=all",
+        )
+        project.cleanup()
+    }
+
+    @Test
+    fun `group access fails fast on raw staged properties`() {
+        val project = GradleTestProject(File(tempDir, "root"))
+        project.file("gradle.properties", "custom=true")
+
+        assertThatThrownBy { project.group = "org.acme" }.isInstanceOf(IllegalStateException::class.java)
+
+        project.cleanup()
+    }
+}

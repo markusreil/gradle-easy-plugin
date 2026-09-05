@@ -2,35 +2,13 @@
 
 Umbrella Gradle plugin that provides a single `easy { }` DSL and discovers feature plugins via SPI. Built with Kotlin, `java-gradle-plugin`, Gradle 9.4.1.
 
-## Main plugin
+> **For contributors & plugin development, see [DEVELOPMENT.md](DEVELOPMENT.md).**
 
-Published via `easy-plugin` (`easy-plugin-core` contains implementation):
+## Requirements
 
-* `com.mreil.easy.project` → `com.mreil.easy.ProjectPlugin` (`easy-plugin-core/src/main/kotlin/com/mreil/easy/ProjectPlugin.kt:8`) — apply to a `Project`. Creates `EasyExtension` (`easy { }`) on the project (and injects copies to subprojects), loads contributors via `PluginRegistryService` (`ServiceLoader`), and applies contributed `Plugin<Project>`s via `PluginRegistrar`.
-* `com.mreil.easy.settings` → `com.mreil.easy.SettingsPlugin` (`easy-plugin-core/src/main/kotlin/com/mreil/easy/SettingsPlugin.kt`) — same for `Settings`. The `Settings` `easy` is copied to the root `Project` as parent via `ExtensionCopier`.
+* **Java 21+** — the plugin is compiled/published for JVM 21 (`org.gradle.jvm.version=21`). Consumers must run Gradle with Java 21 (`JAVA_HOME=/usr/lib/jvm/java-21-openjdk`).
 
-Plugin IDs are the single source in `gradle.properties:7` (`plugin.project`/`plugin.settings`), mirrored in `easy-contributor-api/src/main/kotlin/com/mreil/easy/PluginIds.kt`.
-
-Core mechanism:
-
-* `EasyPluginContributor` SPI (`easy-contributor-api/src/main/kotlin/com/mreil/easy/EasyPluginContributor.kt`) — `META-INF/services/com.mreil.easy.EasyPluginContributor`. Contributors declare `projectPlugins()`, `settingsPlugins()`, `pluginExtensions()` (`EasyPluginExtension`).
-* `PluginRegistry`/`PluginRegistryService` (BuildService) + `ExtensionRegistrar`/`PluginRegistrar` — eager `easy { }` creation, ordered application (`orderedAllProjects`), `@ApplyToSubprojects` fan-out, `@EnabledBy(Extension::class)` + `CanBeEnabled.enabled` (`easy-contributor-api/src/main/kotlin/com/mreil/easy/CanBeEnabled.kt:12`) + `AbstractEasyProjectPlugin.afterEnabled`/`afterEvaluate` for lazy enabling.
-* `@PublicType` — `ExtensionRegistrar.createExtensionAs` (`easy-plugin-core/src/main/kotlin/com/mreil/easy/ExtensionRegistrar.kt:160`) registers extensions under the public `-api` interface (e.g. `EasyPublishExtension`) while instantiating the internal `@PublicType` implementation.
-
-## Contributor plugins
-
-Internal, contributed via SPI — not applied by ID directly.
-
-| Contributor | API / Impl | Plugin | Extension (`easy.<name>`) | What it does |
-|---|---|---|---|---|
-| `contributor-plugins/publish` | `publish-plugin-api: EasyPublishExtension` + `MavenRepoSpec` / `publish-plugin: DefaultEasyPublishExtension` (`@PublicType`, `enabled` **false** by default) | `EasyPublishPlugin` (`@EnabledBy(EasyPublishExtension::class)`) | `easy.publish` (`CanBeEnabled`, disabled by default — `enabled.set(true)` required) | Wraps `maven-publish`. Creates default `maven` publication from `java` component (unless `java-gradle-plugin` present), normalizes coordinates/POM/versionMapping, wires `mavenRepo {}` declarations and snapshot/release filtering (uses `EasySemver` when `easy.semver` is enabled). See `contributor-plugins/publish/publish-plugin/src/main/kotlin/com/mreil/easy/publish/EasyPublishPlugin.kt:32`. |
-| `contributor-plugins/jvm-defaults` | no API extension | `EasyJvmDefaultsPlugin` | — (no DSL) | When `java` plugin is present, configures `JavaPluginExtension` with `withSourcesJar()` / `withJavadocJar()`. Always active via `EasyJvmDefaultsContributor`. See `contributor-plugins/jvm-defaults/jvm-defaults-plugin/src/main/kotlin/com/mreil/easy/jvm/EasyJvmDefaultsPlugin.kt:8`. |
-| `contributor-plugins/semver` | `semver-plugin-api: EasySemverExtension` / `semver-plugin: DefaultEasySemverExtension` | `EasySemverPlugin` (`@EnabledBy`) | `easy.semver` (`CanBeEnabled`, marker) | No eager work. Exposes typed `EasySemver.of(project): Provider<Semver>` for `project.version` (validates `group`/`version` are set and SEMVER via `semver4j`). Used by publish for snapshot detection and by external plugins. See `contributor-plugins/semver/semver-test-plugin/src/functionalTest/kotlin/com/mreil/easy/semver/SemverFuncTest.kt:14`. |
-| `contributor-plugins/codemeta` | `codemeta-plugin-api: EasyCodemetaExtension` (`filename: Property<String>` default `codemeta.json`) / `codemeta-plugin: DefaultEasyCodemetaExtension` | `EasyCodemetaPlugin` (`@EnabledBy`) | `easy.codemeta` (`CanBeEnabled`) | Registers `CodemetaService` (reads `codemeta.json` via Jackson) and `generateCodemeta` task. If the file is missing, every task depends on `generateCodemeta` which creates an initial `codemeta.json` and fails the build intentionally (`onlyIf !exists`). See `contributor-plugins/codemeta/codemeta-plugin/src/main/kotlin/com/mreil/easy/codemeta/EasyCodemetaPlugin.kt:17`. |
-
-Each contributor has a `-test-plugin` harness (`com.mreil.easy.test.publish` / `com.mreil.easy.test.jvm` / `com.mreil.easy.test.codemeta` / `com.mreil.easy.test.semver`) that applies `ProjectPlugin` for `withPluginClasspath` functional tests.
-
-## Usage
+## Installation
 
 `settings.gradle.kts`:
 
@@ -53,9 +31,11 @@ version = "1.2.3"
 description = "Example library"
 ```
 
-### Complete `easy { }` example
+Plugin IDs are the single source in `gradle.properties` (`plugin.project`/`plugin.settings`).
 
-All contributor extensions together (use only what you need — each is `CanBeEnabled`; `semver`/`codemeta` are enabled by default when their block is present, `publish` is **disabled by default** and must be explicitly enabled):
+## Configuration
+
+All features are configured via `easy { }`. Each feature is opt-in via its DSL block — use only what you need (`publish` is **disabled by default** and must be explicitly enabled, `semver`/`codemeta` are enabled when their block is present).
 
 ```kotlin
 easy {
@@ -98,23 +78,18 @@ easy {
 }
 ```
 
-With `semver` enabled, `publish` automatically skips `*release*` repos for snapshots and `*snapshot*` repos for releases. With `codemeta` enabled, pre-create `codemeta.json` or let `generateCodemeta` create an initial file (first build fails by design to let you edit it).
+* With `semver` enabled, `publish` automatically skips `*release*` repos for snapshots and `*snapshot*` repos for releases.
+* With `codemeta` enabled, pre-create `codemeta.json` or let `generateCodemeta` create an initial file (first build fails by design to let you edit it).
+
+## Features
+
+| Feature | Extension (`easy.<name>`) | Description |
+|---|---|---|
+| `publish` | `easy.publish` (disabled by default — `enabled.set(true)` required) | Wraps `maven-publish`. Creates default `maven` publication from `java` component (unless `java-gradle-plugin` present), wires `mavenRepo {}` declarations and snapshot/release filtering. |
+| `jvm-defaults` | — (no DSL) | When `java` plugin is present, configures `withSourcesJar()` / `withJavadocJar()`. Always active. |
+| `semver` | `easy.semver` | Validates `group`/`version` are SEMVER and exposes `EasySemver.of(project)` for typed access. |
+| `codemeta` | `easy.codemeta` (`filename` default `codemeta.json`) | Manages `codemeta.json` via `generateCodemeta` task (fails first build to let you edit if file is missing). |
 
 ## Multi-project
 
-`ProjectPlugin` injects `easy` copies to subprojects (`ExtensionRegistrar.injectExtensionsToSubprojects` at `easy-plugin-core/src/main/kotlin/com/mreil/easy/ExtensionRegistrar.kt:65`) with `CopyMode` semantics and respects `@ApplyToSubprojects`. Configure `easy { }` in the root; subprojects inherit via `ExtensionCopier`.
-
-## Testing helpers
-
-* Unit: `ProjectBuilder` + `AssertJ` (`easy-plugin-core/src/test`, `easy-plugin/src/test`, `contributor-plugins/*/src/test`).
-* Functional: `GradleRunner.withPluginClasspath()` + harness plugins (`easy-plugin/src/functionalTest/kotlin/com/mreil/easy/ProjectPluginFuncTest.kt:14`).
-* Isolated: `-Deasy.disableAllPlugins=true` early-sets every `CanBeEnabled.enabled=false` in `ExtensionRegistrar.kt:131`; re-enable late with `easy { <name> { enabled.set(true) } }`. In tests use both `@SetSystemProperty` (JUnit Pioneer) and `GradleRunner.withArguments("-Deasy.disableAllPlugins=true")` — see `easy-plugin/src/functionalTest/kotlin/com/mreil/easy/DisableAllPluginsFuncTest.kt:14`.
-
-## Commands
-
-```bash
-./gradlew build
-./gradlew :easy-plugin:check
-./gradlew spotlessCheck
-./gradlew spotlessApply
-```
+Configure `easy { }` in the root; subprojects inherit via `ExtensionCopier` and `@ApplyToSubprojects`. `ProjectPlugin` injects `easy` copies to subprojects automatically.

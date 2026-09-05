@@ -1,0 +1,15 @@
+{
+  "@context" : "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type" : "SoftwareSourceCode",
+  "name" : "gradle-easy-plugin",
+  "description" : "TODO: Add description - replace with project description",
+  "version" : "0.0.100-SNAPSHOT",
+  "license" : "https://spdx.org/licenses/MIT",
+  "codeRepository" : "https://github.com/mreil/gradle-easy-plugin-new",
+  "author" : [ {
+    "@type" : "Person",
+    "name" : "Markus Reil",
+    "email": "markus.reil@gmail.com"
+  } ],
+  "programmingLanguage" : "Kotlin"
+}

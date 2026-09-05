@@ -1,13 +1,16 @@
 package com.mreil.easy.semver
 
-import com.mreil.easy.test.project.GradleTestProject
-import com.mreil.easy.test.project.GradleTestProjectExtension
-import com.mreil.easy.test.project.assertj.assertSoftly
-import com.mreil.easy.test.project.probeTask
+import com.mreil.easy.test.support.DisableAllEasyPlugins
+import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
+import com.mreil.gradletest.project.GradleTestProject
+import com.mreil.gradletest.project.GradleTestProjectExtension
+import com.mreil.gradletest.project.assertj.assertSoftly
+import com.mreil.gradletest.project.probeTask
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
-@ExtendWith(GradleTestProjectExtension::class)
+@ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
+@DisableAllEasyPlugins
 class SemverFuncTest {
     lateinit var project: GradleTestProject
 
@@ -30,7 +33,7 @@ class SemverFuncTest {
                     id("com.mreil.easy.test.semver")
                 }
                 easy {
-                    semver {}
+                    semver { enabled.set(true) }
                 }
                 ${semverProbe.script()}
                 """.trimIndent(),
@@ -47,6 +50,12 @@ class SemverFuncTest {
 
     @Test
     fun `easySemver of fails on unspecified version`() {
+        val semverProbe =
+            probeTask("verifySemver") {
+                prelude(
+                    "try { com.mreil.easy.semver.EasySemver.of(project).get(); println(\"UNEXPECTED_SUCCESS\") } catch (e: Exception) { println(\"ERROR=\" + (e.message ?: \"null\")) }",
+                )
+            }
         project.configure {
             // no version staged - defaults to unspecified
             version = null
@@ -57,27 +66,29 @@ class SemverFuncTest {
                     id("com.mreil.easy.test.semver")
                 }
                 easy {
-                    semver {}
+                    semver { enabled.set(true) }
                 }
-                tasks.register("verifySemver") {
-                    doLast {
-                        com.mreil.easy.semver.EasySemver.of(project).get()
-                    }
-                }
+                ${semverProbe.script()}
                 """.trimIndent(),
             )
         }
 
-        val result =
-            project.buildAndFail("verifySemver")
+        val result = project.build("verifySemver")
 
         assertSoftly { softly ->
+            semverProbe.assertOutput(softly, result.output)
             softly.assertThat(result.output).contains("Project version must be set")
         }
     }
 
     @Test
     fun `easySemver of fails on invalid semver`() {
+        val semverProbe =
+            probeTask("verifySemver") {
+                prelude(
+                    "try { com.mreil.easy.semver.EasySemver.of(project).get(); println(\"UNEXPECTED_SUCCESS\") } catch (e: Exception) { println(\"ERROR=\" + (e.message ?: \"null\")) }",
+                )
+            }
         project.configure {
             version = "not-semver"
             buildGradle(
@@ -87,27 +98,29 @@ class SemverFuncTest {
                     id("com.mreil.easy.test.semver")
                 }
                 easy {
-                    semver {}
+                    semver { enabled.set(true) }
                 }
-                tasks.register("verifySemver") {
-                    doLast {
-                        com.mreil.easy.semver.EasySemver.of(project).get()
-                    }
-                }
+                ${semverProbe.script()}
                 """.trimIndent(),
             )
         }
 
-        val result =
-            project.buildAndFail("verifySemver")
+        val result = project.build("verifySemver")
 
         assertSoftly { softly ->
+            semverProbe.assertOutput(softly, result.output)
             softly.assertThat(result.output).contains("not valid semver")
         }
     }
 
     @Test
     fun `easySemver of fails when semver not enabled`() {
+        val semverProbe =
+            probeTask("verifySemver") {
+                prelude(
+                    "try { com.mreil.easy.semver.EasySemver.of(project).get(); println(\"UNEXPECTED_SUCCESS\") } catch (e: Exception) { println(\"ERROR=\" + (e.message ?: \"null\")) }",
+                )
+            }
         project.configure {
             version = "1.2.3"
             buildGradle(
@@ -121,72 +134,52 @@ class SemverFuncTest {
                         enabled.set(false)
                     }
                 }
-                tasks.register("verifySemver") {
-                    doLast {
-                        com.mreil.easy.semver.EasySemver.of(project).get()
-                    }
-                }
+                ${semverProbe.script()}
                 """.trimIndent(),
             )
         }
 
-        val result =
-            project.buildAndFail("verifySemver")
+        val result = project.build("verifySemver")
 
         assertSoftly { softly ->
+            semverProbe.assertOutput(softly, result.output)
             softly.assertThat(result.output).contains("EasySemver plugin is not enabled")
         }
     }
 
     @Test
     fun `external plugin can use EasySemver to configure task`() {
+        val pluginProbe =
+            probeTask("verifyMyPlugin") {
+                prelude("val semverProvider = com.mreil.easy.semver.EasySemver.of(project)")
+                prelude("val semver = semverProvider.get()")
+                expect("MYPLUGIN_MAJOR", "semver.major", "2")
+                expect("MYPLUGIN_MINOR", "semver.minor", "5")
+                expect("MYPLUGIN_PATCH", "semver.patch", "7")
+                expect("MYPLUGIN_VERSION", "semver.version", "2.5.7")
+                expect("MYPLUGIN_STABLE", "semver.isStable", "true")
+            }
         project.configure {
             group = "com.example.myplugin"
             version = "2.5.7"
             buildGradle(
                 """
-                import org.gradle.api.Plugin
-                import org.gradle.api.Project
-                import org.gradle.kotlin.dsl.apply
-
                 plugins {
                     `java-library`
                     id("com.mreil.easy.test.semver")
                 }
                 easy {
-                    semver {}
+                    semver { enabled.set(true) }
                 }
-
-                class MyPlugin : Plugin<Project> {
-                    override fun apply(target: Project) {
-                        val semverProvider = com.mreil.easy.semver.EasySemver.of(target)
-                        target.tasks.register("verifyMyPlugin") {
-                            doLast {
-                                val semver = semverProvider.get()
-                                println("MYPLUGIN_MAJOR=" + semver.major)
-                                println("MYPLUGIN_MINOR=" + semver.minor)
-                                println("MYPLUGIN_PATCH=" + semver.patch)
-                                println("MYPLUGIN_VERSION=" + semver.version)
-                                println("MYPLUGIN_STABLE=" + semver.isStable)
-                            }
-                        }
-                    }
-                }
-
-                apply<MyPlugin>()
+                ${pluginProbe.script()}
                 """.trimIndent(),
             )
         }
 
-        val result =
-            project.build("verifyMyPlugin")
+        val result = project.build("verifyMyPlugin")
 
         assertSoftly { softly ->
-            softly.assertThat(result.output).contains("MYPLUGIN_MAJOR=2")
-            softly.assertThat(result.output).contains("MYPLUGIN_MINOR=5")
-            softly.assertThat(result.output).contains("MYPLUGIN_PATCH=7")
-            softly.assertThat(result.output).contains("MYPLUGIN_VERSION=2.5.7")
-            softly.assertThat(result.output).contains("MYPLUGIN_STABLE=true")
+            pluginProbe.assertOutput(softly, result.output)
         }
     }
 }

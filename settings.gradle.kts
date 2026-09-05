@@ -5,13 +5,28 @@
  * For more detailed information on multi-project builds, please refer to https://docs.gradle.org/9.4.1/userguide/multi_project_builds.html in the Gradle documentation.
  * This project uses @Incubating APIs which are subject to change.
  */
+pluginManagement {
+    repositories {
+        mavenLocal() // for local iteration, else remote snapshots
+        gradlePluginPortal()
+        maven { url = uri("https://repo.mreil.com/gradle-plugins-snapshots") }
+    }
+}
+
+//plugins { id("com.mreil.easy.settings") version "0.0.100-SNAPSHOT" }
+//
+//easy {
+//    codemeta {
+//        enabled = true
+//    }
+//}
 
 rootProject.name = "gradle-easy-plugin-new"
 include("easy-plugin")
 include("easy-plugin-core")
 include("easy-contributor-api")
 include("easy-contributor-support")
-include("test-fixtures")
+include("easy-test-support")
 include("gradle-plugin-testutils")
 include("gradle-plugin-utils")
 include("contributor-plugins:publish:publish-plugin-api")
@@ -25,3 +40,6 @@ include("contributor-plugins:semver:semver-test-plugin")
 include("contributor-plugins:codemeta:codemeta-plugin-api")
 include("contributor-plugins:codemeta:codemeta-plugin")
 include("contributor-plugins:codemeta:codemeta-test-plugin")
+include("contributor-plugins:project-defaults:project-defaults-plugin-api")
+include("contributor-plugins:project-defaults:project-defaults-plugin")
+include("contributor-plugins:project-defaults:project-defaults-test-plugin")

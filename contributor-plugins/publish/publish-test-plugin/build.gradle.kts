@@ -10,6 +10,7 @@ repositories { mavenCentral() }
 dependencies {
     implementation(project(":easy-plugin-core"))
     implementation(project(":contributor-plugins:publish:publish-plugin"))
+    implementation(project(":contributor-plugins:codemeta:codemeta-plugin"))
     implementation(project(":contributor-plugins:semver:semver-plugin"))
     implementation(project(":contributor-plugins:semver:semver-plugin-api"))
     implementation(project(":easy-contributor-api"))
@@ -37,6 +38,7 @@ testing {
                 implementation(project())
                 implementation(gradleTestKit())
                 implementation(project(":gradle-plugin-testutils"))
+                implementation(project(":easy-test-support"))
                 implementation(libs.assertj.core)
             }
             targets { all { testTask.configure { shouldRunAfter(test) } } }
