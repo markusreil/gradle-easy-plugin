@@ -61,18 +61,10 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     private fun withMavenPublish(target: Project) {
         val publishing = target.extensions.getByType(PublishingExtension::class.java)
 
-        fun ensureDefaultPublication() {
-            if (!target.plugins.hasPlugin(JavaGradlePluginPlugin::class.java) &&
-                publishing.publications.findByName("maven") == null
-            ) {
-                createDefaultMavenPublication(target, publishing)
-            }
-        }
-
         // Defer to afterEvaluate so all `plugins {}` have been applied; run immediately
         // if already evaluated (e.g., harness `afterEvaluate` already fired).
-        target.afterEvaluate { ensureDefaultPublication() }
-        if (target.state.executed) ensureDefaultPublication()
+        target.afterEvaluate { ensureDefaultPublication(target, publishing) }
+        if (target.state.executed) ensureDefaultPublication(target, publishing)
 
         // this collection is live and will configure elements that are in the future
         publishing.publications.configureEach {
@@ -81,6 +73,25 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         configureMavenRepositories(target, publishing)
         wirePublishToMavenLocal(target)
         wireJreleaserConfig(target)
+    }
+
+    private fun ensureDefaultPublication(
+        target: Project,
+        publishing: PublishingExtension,
+    ) {
+        val hasJavaGradlePlugin = target.plugins.hasPlugin(JavaGradlePluginPlugin::class.java)
+        val mavenPublication = publishing.publications.findByName("maven")
+
+        if (!hasJavaGradlePlugin && mavenPublication != null) {
+            target.logger.lifecycle(
+                "Publication 'maven' already exists in project '${target.path}'. " +
+                    "The easy-publish plugin creates this publication automatically, so manual creation is not needed.",
+            )
+        }
+
+        if (!hasJavaGradlePlugin && mavenPublication == null) {
+            createDefaultMavenPublication(target, publishing)
+        }
     }
 
     private fun wirePublishToMavenLocal(target: Project) {

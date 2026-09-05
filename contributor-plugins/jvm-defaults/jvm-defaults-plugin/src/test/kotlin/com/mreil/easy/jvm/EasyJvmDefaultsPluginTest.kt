@@ -20,6 +20,22 @@ class EasyJvmDefaultsPluginTest {
     }
 
     @Test
+    fun `keeps manually configured sources and javadoc jars`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply("java")
+        val javaExtension = project.extensions.getByType(JavaPluginExtension::class.java)
+        javaExtension.withSourcesJar()
+        javaExtension.withJavadocJar()
+
+        project.pluginManager.apply(ProjectPlugin::class.java)
+
+        assertSoftly { softly ->
+            softly.assertThat(project.tasks.findByName("sourcesJar")).isNotNull()
+            softly.assertThat(project.tasks.findByName("javadocJar")).isNotNull()
+        }
+    }
+
+    @Test
     fun `does not configure when java plugin absent`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply(ProjectPlugin::class.java)

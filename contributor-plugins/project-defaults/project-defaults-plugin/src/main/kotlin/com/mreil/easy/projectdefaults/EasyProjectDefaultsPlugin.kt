@@ -28,9 +28,17 @@ class EasyProjectDefaultsPlugin : AbstractEasyProjectPlugin() {
     }
 
     override fun afterEnabled(target: Project) {
+        checkGroup(target)
+        checkVersion(target)
+    }
+
+    private fun checkGroup(target: Project) {
         if (!target.hasGroup()) {
             error("Project group must be set (e.g. group = \"com.example\" in gradle.properties)")
         }
+    }
+
+    private fun checkVersion(target: Project) {
         val version = target.version.toString()
         if (!target.hasVersion()) {
             val searched = propertiesDirs(target).map { File(it, "gradle.properties") }
