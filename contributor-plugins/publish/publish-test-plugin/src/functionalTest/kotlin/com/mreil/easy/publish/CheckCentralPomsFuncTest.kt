@@ -78,6 +78,9 @@ class CheckCentralPomsFuncTest {
             softly.assertThat(result.output).contains(":child:publish")
             softly.assertThat(result.output).contains(":child:generatePomFileForMavenPublication")
             softly.assertThat(project).hasArtifact(stagingRepo, MavenCoordinates(name = rootName))
+            // The child module must stage into the shared root staging dir as well —
+            // root-only staging would leave :child:publish with nowhere to upload to.
+            softly.assertThat(project).hasArtifact(stagingRepo, MavenCoordinates(name = "child"))
         }
     }
 

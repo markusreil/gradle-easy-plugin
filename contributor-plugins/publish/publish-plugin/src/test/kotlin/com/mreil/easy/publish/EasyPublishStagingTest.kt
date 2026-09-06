@@ -13,7 +13,7 @@ import org.junit.jupiter.api.assertThrows
 
 class EasyPublishStagingTest {
     @Test
-    fun `staging repo is only added to root in multi-module build`() {
+    fun `staging repo is added to every enabled project in multi-module build`() {
         val root = ProjectBuilder.builder().withName("root").build()
         val child =
             ProjectBuilder
@@ -43,16 +43,22 @@ class EasyPublishStagingTest {
             root.extensions
                 .getByType(PublishingExtension::class.java)
                 .repositories
-                .findByName("mavenStaging")
+                .findByName("mavenStaging") as MavenArtifactRepository
         val childRepo =
             child.extensions
                 .getByType(PublishingExtension::class.java)
                 .repositories
-                .findByName("mavenStaging")
+                .findByName("mavenStaging") as? MavenArtifactRepository
+        val rootBuild =
+            root.layout.buildDirectory
+                .get()
+                .asFile.invariantSeparatorsPath
         assertSoftly { softly ->
-            softly.assertThat(rootRepo).isNotNull()
-            softly.assertThat(rootRepo?.name).isEqualTo("mavenStaging")
-            softly.assertThat(childRepo).isNull()
+            softly.assertThat(rootRepo.url.toString()).contains(rootBuild)
+            // Every module stages into the shared root staging dir JReleaser deploys.
+            softly.assertThat(childRepo).isNotNull()
+            softly.assertThat(childRepo?.url.toString()).contains(rootBuild)
+            softly.assertThat(childRepo?.url.toString()).contains("stagingRepo")
         }
     }
 

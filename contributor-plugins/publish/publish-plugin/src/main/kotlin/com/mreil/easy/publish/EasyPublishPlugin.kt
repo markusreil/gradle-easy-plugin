@@ -33,6 +33,9 @@ import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
 class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     /** Applies `maven-publish` once the project has the `java` plugin. */
     override fun afterEnabled(target: Project) {
+        // Staging is a publish concern, not a java concern: every enabled project stages into
+        // the shared root staging dir (see addStagingRepository), whether or not it has publications.
+        addStagingRepository(target)
         if (target.plugins.hasPlugin("java")) {
             target.plugins.apply("maven-publish")
             target.plugins.withId("maven-publish") {
@@ -128,7 +131,6 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     ) {
         val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
         val publishExt = easy.extensions.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension ?: return
-        addStagingRepository(publishExt, target)
         val isSnapshot = resolveIsSnapshot(target)
         publishExt.mavenRepos.forEach { spec ->
             if (!shouldPublishToRepo(spec.name, isSnapshot)) return@forEach
@@ -136,12 +138,20 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         }
     }
 
-    private fun addStagingRepository(
-        publishExt: DefaultEasyPublishExtension,
-        target: Project,
-    ) {
-        if (target != target.rootProject) return
-        publishExt.stagingPath.orNull?.let { path ->
+    /**
+     * Adds the shared `mavenStaging` file repository to this project's container, resolving
+     * the staging path (inherited from the root/`Settings` configuration) under the root
+     * build directory so every module stages into the same directory JReleaser deploys.
+     *
+     * Runs for every enabled project — unlike publications, the staging repo needs no `java`
+     * plugin. Skipped when no staging path is configured or a `mavenStaging` repo already
+     * exists (e.g. user-declared, which takes precedence).
+     */
+    private fun addStagingRepository(target: Project) {
+        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware
+        val publishExt = easy?.extensions?.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension
+        val path = publishExt?.stagingPath?.orNull
+        if (publishExt != null && path != null && publishExt.mavenRepos.findByName("mavenStaging") == null) {
             val url =
                 target.rootProject.layout.buildDirectory
                     .dir(path)
