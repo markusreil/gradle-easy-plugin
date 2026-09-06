@@ -16,6 +16,7 @@ easy {
     publish {
         enabled.set(true)
         toMavenLocal()
+        toMavenStaging()
     }
     semver {}
     codemeta {}
