@@ -33,6 +33,7 @@ testing {
             useJUnitJupiter()
             dependencies {
                 implementation(libs.assertj.core)
+                implementation(libs.jreleaser)
                 implementation(project(":easy-plugin-core"))
                 implementation(gradleTestKit())
             }

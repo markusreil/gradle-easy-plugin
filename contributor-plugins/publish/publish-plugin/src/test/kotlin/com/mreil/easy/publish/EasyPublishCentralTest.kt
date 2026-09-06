@@ -243,6 +243,87 @@ class EasyPublishCentralTest {
             softly.assertThat(deps).contains("checkCentralPoms")
         }
     }
+
+    @Test
+    fun `generateJreleaserConfig carries project version`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val task = project.project.tasks.getByName("generateJreleaserConfig") as GenerateJreleaserConfigTask
+        assertSoftly { softly ->
+            softly.assertThat(task.projectVersion.get()).isEqualTo("1.0.0")
+        }
+    }
+
+    @Test
+    fun `publishToMavenCentral is registered on root only and enabled with toMavenCentral`() {
+        val root = ProjectBuilderHelper.createRootWithChild("root")
+        val child = root.child
+        root.publish.enabled.set(true)
+        root.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(root.project)
+        ProjectBuilderHelper.evaluate(child.project)
+
+        val rootTask = root.project.tasks.findByName("publishToMavenCentral") as JreleaserPublishTask?
+        val childTask = child.project.tasks.findByName("publishToMavenCentral")
+        assertSoftly { softly ->
+            softly.assertThat(rootTask).isNotNull()
+            softly.assertThat(childTask).isNull()
+            softly.assertThat(rootTask?.enabled).isTrue()
+            softly.assertThat(rootTask?.mainClass?.get()).isEqualTo("org.jreleaser.cli.Main")
+        }
+    }
+
+    @Test
+    fun `publishToMavenCentral is disabled without toMavenCentral`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenStaging()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val task = project.project.tasks.getByName("publishToMavenCentral") as JreleaserPublishTask
+        assertSoftly { softly ->
+            softly.assertThat(task.enabled).isFalse()
+        }
+    }
+
+    @Test
+    fun `publishToMavenCentral depends on publish and generateJreleaserConfig`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val task = project.project.tasks.getByName("publishToMavenCentral")
+        val deps = task.taskDependencies.getDependencies(task).map { it.name }
+        assertSoftly { softly ->
+            softly.assertThat(deps).contains("publish", "generateJreleaserConfig")
+        }
+    }
+
+    @Test
+    fun `jreleaser configuration resolves cli dependency`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val conf = project.project.configurations.getByName("jreleaser")
+        assertSoftly { softly ->
+            softly.assertThat(conf.isCanBeResolved).isTrue()
+            softly.assertThat(conf.isCanBeConsumed).isFalse()
+            softly
+                .assertThat(conf.dependencies.map { "${it.group}:${it.name}:${it.version}" })
+                .contains("org.jreleaser:jreleaser:1.25.0")
+        }
+    }
 }
 
 private object ProjectBuilderHelper {

@@ -1,0 +1,22 @@
+name: central-smoke
+
+services:
+  nexus:
+    image: ${NEXUS_IMAGE:-sonatype/nexus3}
+    ports:
+      - "8081:8081"
+    environment:
+      # Local-only smoke test: keep the well-known admin/admin123 credentials.
+      # Never use this for anything exposed.
+      NEXUS_SECURITY_RANDOMPASSWORD: "false"
+    volumes:
+      - nexus-data:/nexus-data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/service/rest/v1/status || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+volumes:
+  nexus-data:

@@ -33,14 +33,15 @@ import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
 class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     /** Applies `maven-publish` once the project has the `java` plugin. */
     override fun afterEnabled(target: Project) {
-        MavenCentralWiring.wireJreleaserConfig(target, propertyResolver)
-        MavenCentralWiring.wireCheckCentralPoms(target)
         if (target.plugins.hasPlugin("java")) {
             target.plugins.apply("maven-publish")
             target.plugins.withId("maven-publish") {
                 withMavenPublish(target)
             }
         }
+        MavenCentralWiring.wireJreleaserConfig(target, propertyResolver)
+        MavenCentralWiring.wireCheckCentralPoms(target)
+        MavenCentralWiring.wireJreleaserDeploy(target)
     }
 
     /**

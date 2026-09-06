@@ -67,18 +67,86 @@ class EasyPublishCentralFuncTest {
             softly.assertThat(text).contains("signing:")
             softly.assertThat(text).contains("active: ALWAYS")
             softly.assertThat(text).contains("armored: true")
-            softly.assertThat(text).contains("gpgPublicKey:")
-            softly.assertThat(text).contains("gpgPrivateKey:")
-            softly.assertThat(text).contains("gpgPassphrase:")
+            softly.assertThat(text).contains("pgp:")
+            softly.assertThat(text).contains("publicKey:")
+            softly.assertThat(text).contains("secretKey:")
+            softly.assertThat(text).contains("passphrase:")
             softly.assertThat(text).contains("dummy-gpg-public-key")
             softly.assertThat(text).contains("deploy:")
             softly.assertThat(text).contains("mavenCentral:")
+            softly.assertThat(text).contains("active: RELEASE")
+            softly.assertThat(text).contains("nexus2:")
+            softly.assertThat(text).contains("sonatype-snapshots:")
+            softly.assertThat(text).contains("active: SNAPSHOT")
+            softly.assertThat(text).contains("snapshotSupported: true")
             softly.assertThat(text).contains("stagingRepositories:")
             softly.assertThat(text).contains(project.file("build/stagingRepo").invariantSeparatorsPath)
+            // JReleaser rejects sequences whose indicator sits at the parent key indent -
+            // guard the indented form explicitly (plain contains() would miss it).
+            softly.assertThat(text).contains("\n          - ${project.file("build/stagingRepo").invariantSeparatorsPath}")
             softly.assertThat(text).contains("username:")
             softly.assertThat(text).contains("password:")
             softly.assertThat(text).contains("dummy-mavencentral-username")
+            softly.assertThat(text).contains("version: 1.0.0")
             softly.assertThat(text).doesNotContain("release:")
+            softly.assertThat(text).doesNotContain("nexus3:")
+        }
+    }
+
+    /** With the test nexus URL set, YAML targets a `nexus3/local-test` deployer and demotes Central. */
+    @Test
+    fun `generateJreleaserConfig with nexus url emits nexus3 deployer`() {
+        project.configure {
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "demo",
+                  "description": "demo description",
+                  "version": "1.0.0",
+                  "license": "https://spdx.org/licenses/MIT",
+                  "codeRepository": "https://github.com/example/demo",
+                  "author": [{ "@type": "Person", "givenName": "Ada", "familyName": "Lovelace", "email": "ada@example.com" }]
+                }
+                """.trimIndent(),
+            )
+            buildGradle(
+                """
+                plugins {
+                    `java-library`
+                    id("com.mreil.easy.test.publish")
+                }
+                easy {
+                    publish {
+                        enabled.set(true)
+                        toMavenCentral()
+                    }
+                    codemeta { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+            javaSource()
+            systemProperty(
+                "jreleaser.testNexusUrl",
+                "http://localhost:8081/service/rest/v1/components?repository=maven-releases",
+            )
+        }
+
+        project.build("generateJreleaserConfig", "--info")
+
+        val yaml = project.file("build/jreleaser/jreleaser.yml")
+        assertSoftly { softly ->
+            softly.assertThat(yaml).exists()
+            val text = yaml.readText()
+            softly.assertThat(text).contains("nexus3:")
+            softly.assertThat(text).contains("local-test:")
+            softly.assertThat(text).contains("http://localhost:8081/service/rest/v1/components?repository=maven-releases")
+            softly.assertThat(text).contains("applyMavenCentralRules: true")
+            softly.assertThat(text).contains("NEVER")
+            softly.assertThat(text).doesNotContain("SNAPSHOT")
+            softly.assertThat(text).contains("\n          - ")
         }
     }
 }

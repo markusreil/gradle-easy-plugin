@@ -4,6 +4,7 @@
 assertj = "3.27.3"
 detekt = "1.23.7"
 jackson = "2.18.2"
+jreleaser = "1.25.0"
 junit-jupiter = "5.11.3"
 junit-pioneer = "2.3.0"
 semver4j = "5.3.0"
@@ -17,6 +18,7 @@ jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+jreleaser = { module = "org.jreleaser:jreleaser", version.ref = "jreleaser" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
 junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit-jupiter" }
 semver4j = { module = "org.semver4j:semver4j", version.ref = "semver4j" }
