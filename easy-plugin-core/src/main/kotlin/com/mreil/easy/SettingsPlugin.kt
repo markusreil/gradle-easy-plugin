@@ -22,8 +22,8 @@ class SettingsPlugin : Plugin<Settings> {
         settings.gradle.beforeProject {
             if (it == it.rootProject) {
                 if (!it.hasEasyExtension()) {
-                    ExtensionRegistrar.createExtension(
-                        target = it,
+                    ExtensionRegistrar.createExtensionWithSubprojects(
+                        project = it,
                         registry = registry,
                         parent = extension,
                     )

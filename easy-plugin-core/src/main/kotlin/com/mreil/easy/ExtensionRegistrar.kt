@@ -27,6 +27,9 @@ object ExtensionRegistrar {
     /**
      * Creates and registers the root [EasyExtension] on the provided [target] [ExtensionAware] instance.
      *
+     * Creates the extension on this target only — no subproject fan-out. For [Project] targets
+     * that need extension copies injected into subprojects, use [createExtensionWithSubprojects].
+     *
      * @param target The Gradle entity hosting extensions (e.g., [org.gradle.api.Project] or [org.gradle.api.initialization.Settings]).
      * @param registry The [PluginRegistry] containing registered [EasyPluginExtension] classes to attach as child extensions.
      * @param parent An optional parent [ExtensionAware] or [CanBeCopied] instance from which existing configuration is copied.
@@ -42,6 +45,10 @@ object ExtensionRegistrar {
      * Creates and registers the root [EasyExtension] on the given [project] and, if the project
      * is the root, injects copies into all subprojects.
      *
+     * Deliberately named differently from [createExtension]: the overloads would otherwise differ
+     * only by parameter type, letting a named-argument call silently select the non-injecting
+     * variant (see SettingsPlugin history). The distinct name forces call sites to state intent.
+     *
      * For now the injection is unconditional for all registered extensions (the plugin-side
      * guard `ApplyToSubprojects` is not yet mirrored for extensions). This ensures a plugin
      * applied to subprojects via [PluginRegistrar] always finds its `easy.*` extension in the
@@ -52,7 +59,7 @@ object ExtensionRegistrar {
      * @param parent Optional parent for the root project (usually the `Settings` `easy`).
      * @return The created `EasyExtension` for `project`.
      */
-    fun createExtension(
+    fun createExtensionWithSubprojects(
         project: Project,
         registry: PluginRegistry,
         parent: ExtensionAware? = null,

@@ -10,7 +10,7 @@ class ProjectPlugin : Plugin<Project> {
         val registry = project.getPluginRegistry()
         registry.loadFromServiceLoader(javaClass.classLoader)
         if (!project.hasEasyExtension()) {
-            ExtensionRegistrar.createExtension(
+            ExtensionRegistrar.createExtensionWithSubprojects(
                 project,
                 registry,
             )
