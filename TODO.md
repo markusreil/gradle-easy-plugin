@@ -5,7 +5,8 @@ This document keeps track of tasks that need to be completed.
 ## Contributor plugins
 
 * jvm-defaults: detect and configure test suites
-* publish: data class for jreleaser task config properties
+* publish: move ensureDefaultPublication to a task or something that can be disabled once the plugin-plugin 
+  publication is created. I really dislike the double-invocation of `afterEvaluate { ... }` + `if (state.executed) ...`.
 
 ## Architecture changes / fixes
 

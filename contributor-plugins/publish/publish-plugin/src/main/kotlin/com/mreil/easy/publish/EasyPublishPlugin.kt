@@ -64,10 +64,16 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     private fun withMavenPublish(target: Project) {
         val publishing = target.extensions.getByType(PublishingExtension::class.java)
 
-        // Defer to afterEvaluate so all `plugins {}` have been applied; run immediately
-        // if already evaluated (e.g., harness `afterEvaluate` already fired).
-        target.afterEvaluate { ensureDefaultPublication(target, publishing) }
-        if (target.state.executed) ensureDefaultPublication(target, publishing)
+        // The only existence check after the fact: defer to afterEvaluate so all `plugins {}`
+        // have been applied before probing for a user-defined 'maven' publication; run
+        // immediately if already evaluated. Either/or: a late-registered afterEvaluate
+        // action fires immediately, so doing both would run twice (and the second run would
+        // find the self-created publication and log a spurious warning).
+        if (target.state.executed) {
+            ensureDefaultPublication(target, publishing)
+        } else {
+            target.afterEvaluate { ensureDefaultPublication(target, publishing) }
+        }
 
         // this collection is live and will configure elements that are in the future
         publishing.publications.configureEach {
@@ -97,15 +103,15 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     }
 
     private fun wirePublishToMavenLocal(target: Project) {
-        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
-        val publishExt = easy.extensions.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension ?: return
+        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware
+        val publishExt = easy?.extensions?.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension
 
-        fun wire() {
-            if (!publishExt.toMavenLocal.get()) return
+        // Eager: only extension values are read (final once afterEnabled runs post-evaluation)
+        // and tasks.named is lazy, so no afterEvaluate deferral is needed here — unlike
+        // ensureDefaultPublication, nothing checks for after-the-fact existence.
+        if (publishExt?.toMavenLocal?.get() == true) {
             target.tasks.named("publish").configure { it.dependsOn("publishToMavenLocal") }
         }
-        target.afterEvaluate { wire() }
-        if (target.state.executed) wire()
     }
 
     /**

@@ -177,6 +177,9 @@ class SettingsPluginFuncTest {
 
         assertSoftly { softly ->
             probe.assertOutput(softly, result.output)
+            // ensureDefaultPublication must run exactly once per project: a second run would find
+            // the self-created 'maven' publication and log this spurious warning on every project.
+            softly.assertThat(result.output).doesNotContain("already exists")
         }
     }
 }

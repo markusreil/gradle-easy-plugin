@@ -151,4 +151,4 @@ Example for a repository named `releases`:
 5. If `stagingPath` is present (`toMavenStaging`), creates `mavenStaging` via helper `mavenRepo("mavenStaging", buildDirectory/dir(path))` per-project.
 6. Resolves semver lazily via `EasySemver.of(target).orNull` (`semver4j`, strict parse, `isExtensionEnabled(EasySemverExtension::class)` guard) — `null` → no filtering. Otherwise `isSnapshot = !semver.isStable`; `shouldPublishToRepo(name, isSnapshot)` skips `*release*` repos for snapshots and `*snapshot*` repos for releases (case-insensitive); neutral names always added.
 7. Attaches filtered `mavenRepos` to `publishing.repositories` (`spec.configure(target, repo)`), enabling `PasswordCredentials` when requested.
-8. If `toMavenLocal` is true, wires `publish -> publishToMavenLocal` via `afterEvaluate` + `tasks.named("publish").configure { dependsOn("publishToMavenLocal") }` (CC-safe, one-shot).
+8. If `toMavenLocal` is true, wires `publish -> publishToMavenLocal` eagerly via `tasks.named("publish").configure { dependsOn("publishToMavenLocal") }` (CC-safe, one-shot; no `afterEvaluate` needed since only final extension values are read).

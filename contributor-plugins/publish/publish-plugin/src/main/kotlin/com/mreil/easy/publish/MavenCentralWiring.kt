@@ -74,11 +74,9 @@ internal object MavenCentralWiring {
                 task.onlyIf { publishExt.toMavenCentral.get() }
             }
 
-        fun syncEnabled() {
-            taskProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
-        }
-        target.afterEvaluate { syncEnabled() }
-        if (target.state.executed) syncEnabled()
+        // Eager: only an extension value is read (final once afterEnabled runs
+        // post-evaluation), so no afterEvaluate deferral is needed.
+        taskProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
     }
 
     fun wireCheckCentralPoms(target: Project) {
@@ -121,11 +119,8 @@ internal object MavenCentralWiring {
         }
         target.tasks.named("generateJreleaserConfig").configure { it.dependsOn(checkerProvider) }
 
-        fun syncEnabled() {
-            checkerProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
-        }
-        target.afterEvaluate { syncEnabled() }
-        if (target.state.executed) syncEnabled()
+        // Eager (see above): no afterEvaluate deferral needed.
+        checkerProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
     }
 
     private fun publishExtension(target: Project): DefaultEasyPublishExtension? {
@@ -178,11 +173,8 @@ internal object MavenCentralWiring {
             it.dependsOn(target.tasks.named("generateJreleaserConfig"))
         }
 
-        fun syncEnabled() {
-            deployProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
-        }
-        target.afterEvaluate { syncEnabled() }
-        if (target.state.executed) syncEnabled()
+        // Eager (see above): no afterEvaluate deferral needed.
+        deployProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
     }
 
     /**
