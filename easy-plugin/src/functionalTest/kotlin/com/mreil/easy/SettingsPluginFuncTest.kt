@@ -107,4 +107,79 @@ class SettingsPluginFuncTest {
             probe.assertOutput(softly, result.output)
         }
     }
+
+    @Test
+    fun `settings plugin copies easy extension to subprojects and activates project plugins`() {
+        val probe =
+            probeTask("verifySubproject") {
+                prelude(
+                    "val child = project.findProject(\":child\")!!",
+                    "val ext = child.extensions.findByName(\"easy\") as? EasyExtension",
+                    "val dummy = ext?.extensions?.findByName(\"dummy\") as? DummyExtension",
+                    "val publish = ext?.extensions?.findByName(\"publish\")",
+                )
+                expect("CHILD_HAS_ROOT_EXTENSION", "ext != null", "true")
+                expect("DUMMY_MESSAGE", "dummy?.message?.get()", "fromSettings")
+                expect("CHILD_HAS_PUBLISH_EXT", "publish != null", "true")
+                taskExists("CHILD_HAS_PUBLISH_TASK", "publish", inProject = ":child")
+            }
+        project.configure {
+            // pre-create codemeta.json so generateCodemeta (auto-wired into every task) does not fail the build
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "test",
+                  "description": "test",
+                  "version": "1.0.0"
+                }
+                """.trimIndent(),
+            )
+            settings(
+                """
+                plugins {
+                    id("com.mreil.easy.settings")
+                }
+                easy {
+                    dummy {
+                        message.set("fromSettings")
+                    }
+                    publish {
+                        enabled.set(true)
+                        toMavenLocal()
+                    }
+                }
+                include(":child")
+                """.trimIndent(),
+            )
+            buildGradle(
+                """
+                import com.mreil.easy.EasyExtension
+                import com.mreil.easy.fixtures.DummyExtension
+
+                ${probe.script()}
+                """.trimIndent(),
+            )
+            createChild {
+                buildGradle(
+                    """
+                    plugins {
+                        `java-library`
+                    }
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        val result = project.build("verifySubproject")
+
+        assertSoftly { softly ->
+            probe.assertOutput(softly, result.output)
+            // ensureDefaultPublication must run exactly once per project: a second run would find
+            // the self-created 'maven' publication and log this spurious warning on every project.
+            softly.assertThat(result.output).doesNotContain("already exists")
+        }
+    }
 }

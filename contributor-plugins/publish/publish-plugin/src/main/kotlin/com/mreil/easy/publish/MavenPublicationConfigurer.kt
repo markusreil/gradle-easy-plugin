@@ -73,7 +73,7 @@ internal object MavenPublicationConfigurer {
         publication.pom { pom ->
             pom.name.set(codemeta?.name ?: target.name)
             pom.description.set(codemeta?.description ?: target.description ?: "Published via EasyPublishPlugin")
-            pom.url.set(scmBase)
+            pom.url.set(codemeta?.url ?: scmBase)
             codemeta?.license?.let { raw ->
                 pom.licenses { licenses ->
                     licenses.license { license ->

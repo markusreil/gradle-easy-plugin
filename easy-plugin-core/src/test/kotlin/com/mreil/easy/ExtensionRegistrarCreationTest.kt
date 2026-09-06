@@ -67,7 +67,7 @@ class ExtensionRegistrarCreationTest {
                 registerExtension(OtherTestSubExtension::class)
             }
 
-        val extension = ExtensionRegistrar.createExtension(project, registry)
+        val extension = ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
 
         assertSoftly { softly ->
             softly.assertThat(extension).isNotNull
@@ -103,7 +103,7 @@ class ExtensionRegistrarCreationTest {
             }
 
         assertThatThrownBy {
-            ExtensionRegistrar.createExtension(project, registry)
+            ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
         }.isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("must have a companion object implementing Named")
     }

@@ -20,6 +20,13 @@ Standalone manual smoke-test projects for dogfooding snapshots published to `mre
   }
   ```
 * `simple-settings/` — same as `simple` but for the **settings** plugin (`id("com.mreil.easy.settings") version "latest.integration"` in `settings.gradle.kts`; `build.gradle.kts` only has `java`).
+* `central-smoke/` — manual end-to-end test deploying staged artifacts to a **local docker Nexus** via JReleaser (`publishToMavenCentral`). Uses the test-only `jreleaser.testNexusUrl` property, which swaps the generated config to a `nexus3/local-test` deployer with `applyMavenCentralRules` and demotes `mavenCentral` to `NEVER`, so it can never touch real Central. Requires docker (compose v2), `gpg` and `curl`; never runs in `./gradlew build`/`check`, invoke explicitly:
+  ```bash
+  cd test-projects/central-smoke
+  ./run-smoke.sh
+  # Optional overrides: NEXUS_URL, NEXUS_REPO, NEXUS_USER, NEXUS_PASSWORD, NEXUS_IMAGE, GPG_PASSPHRASE
+  ```
+  The script starts Nexus (fresh volume, `admin`/`admin123` — local-only), generates a throwaway GPG key, runs `publish publishToMavenCentral` against it and asserts pom/jar/`-sources`/`-javadoc`/`.asc` all landed. This rehearses everything short of the Central Portal state machine.
 
   Both have their own Gradle wrapper (`gradle/wrapper/` + `gradle/gradle-daemon-jvm.properties` with `toolchainVersion=21`) copied from the root so `./gradlew` works inside the folder. No source is required — empty build proves plugin resolution and application.
 

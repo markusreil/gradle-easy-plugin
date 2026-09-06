@@ -98,7 +98,7 @@ class ExtensionRegistrarInjectionTest {
                 registerExtension(OtherTestSubExtension::class)
             }
 
-        val rootExt = ExtensionRegistrar.createExtension(root, registry)
+        val rootExt = ExtensionRegistrar.createExtensionWithSubprojects(root, registry)
 
         assertSoftly { softly ->
             softly.assertThat(root.extensions.findByName(EasyExtension.name)).isSameAs(rootExt)
@@ -136,7 +136,7 @@ class ExtensionRegistrarInjectionTest {
                 registerExtension(TestSubExtension::class)
             }
 
-        val rootExt = ExtensionRegistrar.createExtension(root, registry, parentHolder as ExtensionAware)
+        val rootExt = ExtensionRegistrar.createExtensionWithSubprojects(root, registry, parentHolder as ExtensionAware)
         val subEasy = sub.extensions.getByName(EasyExtension.name) as ExtensionAware
         val subSub = subEasy.extensions.getByType(TestSubExtension::class.java)
 
@@ -167,13 +167,13 @@ class ExtensionRegistrarInjectionTest {
             }
 
         val subRegistry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
-        val existing = ExtensionRegistrar.createExtension(sub, subRegistry)
+        val existing = ExtensionRegistrar.createExtensionWithSubprojects(sub, subRegistry)
         existing.extensions
             .getByType(TestSubExtension::class.java)
             .enabled
             .set(false)
 
-        val rootExt = ExtensionRegistrar.createExtension(root, registry)
+        val rootExt = ExtensionRegistrar.createExtensionWithSubprojects(root, registry)
         rootExt.extensions
             .getByType(TestSubExtension::class.java)
             .enabled
@@ -210,7 +210,7 @@ class ExtensionRegistrarInjectionTest {
                 .withParent(freshRoot)
                 .build()
 
-        ExtensionRegistrar.createExtension(freshSub1, registry)
+        ExtensionRegistrar.createExtensionWithSubprojects(freshSub1, registry)
 
         assertSoftly { softly ->
             softly.assertThat(freshSub1.extensions.findByName(EasyExtension.name)).isNotNull

@@ -39,6 +39,9 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
                 withMavenPublish(target)
             }
         }
+        MavenCentralWiring.wireJreleaserConfig(target, propertyResolver)
+        MavenCentralWiring.wireCheckCentralPoms(target)
+        MavenCentralWiring.wireJreleaserDeploy(target)
     }
 
     /**
@@ -61,10 +64,16 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     private fun withMavenPublish(target: Project) {
         val publishing = target.extensions.getByType(PublishingExtension::class.java)
 
-        // Defer to afterEvaluate so all `plugins {}` have been applied; run immediately
-        // if already evaluated (e.g., harness `afterEvaluate` already fired).
-        target.afterEvaluate { ensureDefaultPublication(target, publishing) }
-        if (target.state.executed) ensureDefaultPublication(target, publishing)
+        // The only existence check after the fact: defer to afterEvaluate so all `plugins {}`
+        // have been applied before probing for a user-defined 'maven' publication; run
+        // immediately if already evaluated. Either/or: a late-registered afterEvaluate
+        // action fires immediately, so doing both would run twice (and the second run would
+        // find the self-created publication and log a spurious warning).
+        if (target.state.executed) {
+            ensureDefaultPublication(target, publishing)
+        } else {
+            target.afterEvaluate { ensureDefaultPublication(target, publishing) }
+        }
 
         // this collection is live and will configure elements that are in the future
         publishing.publications.configureEach {
@@ -72,7 +81,6 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         }
         configureMavenRepositories(target, publishing)
         wirePublishToMavenLocal(target)
-        wireJreleaserConfig(target)
     }
 
     private fun ensureDefaultPublication(
@@ -95,61 +103,15 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     }
 
     private fun wirePublishToMavenLocal(target: Project) {
-        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
-        val publishExt = easy.extensions.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension ?: return
-
-        fun wire() {
-            if (!publishExt.toMavenLocal.get()) return
-            target.tasks.named("publish").configure { it.dependsOn("publishToMavenLocal") }
-        }
-        target.afterEvaluate { wire() }
-        if (target.state.executed) wire()
-    }
-
-    private fun wireJreleaserConfig(target: Project) {
-        if (target != target.rootProject) return
         val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware
         val publishExt = easy?.extensions?.findByType(EasyPublishExtension::class.java) as? DefaultEasyPublishExtension
-        if (easy == null || publishExt == null) return
 
-        // Register lazily on root only; disabled until toMavenCentral is true. Uses convention defaults.
-        val taskProvider =
-            target.tasks.register(
-                "generateJreleaserConfig",
-                GenerateJreleaserConfigTask::class.java,
-            ) { task ->
-                task.projectName.convention(target.provider { target.name })
-                task.outputFile.convention(
-                    target.layout.buildDirectory.file("jreleaser/jreleaser.yml"),
-                )
-                // Default staging path is "stagingRepo" when central is enabled without explicit staging
-                val stagingDirProvider =
-                    publishExt.stagingPath
-                        .orElse("stagingRepo")
-                        .map { path ->
-                            target.rootProject.layout.buildDirectory
-                                .dir(path)
-                                .get()
-                                .asFile.invariantSeparatorsPath
-                        }
-                task.stagingDirectory.convention(stagingDirProvider)
-                task.gpgPublicKey.convention(propertyResolver.get("jreleaser.gpg.publicKey").orElse("dummy-gpg-public-key"))
-                task.gpgPrivateKey.convention(propertyResolver.get("jreleaser.gpg.privateKey").orElse("dummy-gpg-private-key"))
-                task.gpgPassphrase.convention(propertyResolver.get("jreleaser.gpg.passphrase").orElse("dummy-gpg-passphrase"))
-                task.mavenCentralUsername.convention(
-                    propertyResolver.get("jreleaser.mavencentral.username").orElse("dummy-mavencentral-username"),
-                )
-                task.mavenCentralPassword.convention(
-                    propertyResolver.get("jreleaser.mavencentral.password").orElse("dummy-mavencentral-password"),
-                )
-                task.onlyIf { publishExt.toMavenCentral.get() }
-            }
-
-        fun syncEnabled() {
-            taskProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
+        // Eager: only extension values are read (final once afterEnabled runs post-evaluation)
+        // and tasks.named is lazy, so no afterEvaluate deferral is needed here — unlike
+        // ensureDefaultPublication, nothing checks for after-the-fact existence.
+        if (publishExt?.toMavenLocal?.get() == true) {
+            target.tasks.named("publish").configure { it.dependsOn("publishToMavenLocal") }
         }
-        target.afterEvaluate { syncEnabled() }
-        if (target.state.executed) syncEnabled()
     }
 
     /**

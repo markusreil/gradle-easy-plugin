@@ -1,14 +1,11 @@
 package com.mreil.easy.publish
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
@@ -16,8 +13,10 @@ import org.gradle.api.tasks.TaskAction
  * Generates a JReleaser YAML config for Maven Central deployment.
  *
  * Guarded by [DefaultEasyPublishExtension.toMavenCentral]; registered only on the root project.
- * The generated file is `build/jreleaser/jreleaser.yml` and contains signing (armored, ALWAYS) and
- * `deploy.maven.mavenCentral` pointing at the global staging directory. No `release` section is generated.
+ * Holds the lazy `@Input` properties and delegates rendering to [MavenCentralWiring.buildYaml].
+ * See [MavenCentralWiring.Config] for the resolved values (including the test-only nexus
+ * escape hatch that swaps in a `nexus3/local-test` deployer and demotes `mavenCentral`
+ * to `NEVER` so smoke runs can never touch real Central).
  */
 @CacheableTask
 abstract class GenerateJreleaserConfigTask : DefaultTask() {
@@ -42,6 +41,22 @@ abstract class GenerateJreleaserConfigTask : DefaultTask() {
     @get:Input
     abstract val projectName: Property<String>
 
+    @get:Input
+    abstract val projectVersion: Property<String>
+
+    @get:Input
+    abstract val projectGroupId: Property<String>
+
+    @get:Input
+    @get:Optional
+    abstract val nexusUrl: Property<String>
+
+    @get:Input
+    abstract val nexusUsername: Property<String>
+
+    @get:Input
+    abstract val nexusPassword: Property<String>
+
     @get:OutputFile
     abstract val outputFile: RegularFileProperty
 
@@ -55,66 +70,22 @@ abstract class GenerateJreleaserConfigTask : DefaultTask() {
         val file = outputFile.get().asFile
         file.parentFile.mkdirs()
         file.writeText(
-            buildYaml(
-                projectName = projectName.get(),
-                stagingDir = stagingDirectory.get(),
-                gpgPublicKey = gpgPublicKey.get(),
-                gpgPrivateKey = gpgPrivateKey.get(),
-                gpgPassphrase = gpgPassphrase.get(),
-                mavenCentralUsername = mavenCentralUsername.get(),
-                mavenCentralPassword = mavenCentralPassword.get(),
+            MavenCentralWiring.buildYaml(
+                MavenCentralWiring.Config(
+                    projectName = projectName.get(),
+                    projectVersion = projectVersion.get(),
+                    projectGroupId = projectGroupId.get(),
+                    stagingDir = stagingDirectory.get(),
+                    gpgPublicKey = gpgPublicKey.get(),
+                    gpgPrivateKey = gpgPrivateKey.get(),
+                    gpgPassphrase = gpgPassphrase.get(),
+                    mavenCentralUsername = mavenCentralUsername.get(),
+                    mavenCentralPassword = mavenCentralPassword.get(),
+                    nexusUrl = nexusUrl.orNull,
+                    nexusUsername = nexusUsername.get(),
+                    nexusPassword = nexusPassword.get(),
+                ),
             ),
         )
-    }
-
-    @Suppress("LongParameterList")
-    internal fun buildYaml(
-        projectName: String,
-        stagingDir: String,
-        gpgPublicKey: String,
-        gpgPrivateKey: String,
-        gpgPassphrase: String,
-        mavenCentralUsername: String,
-        mavenCentralPassword: String,
-    ): String {
-        val config =
-            linkedMapOf(
-                "project" to linkedMapOf("name" to projectName),
-                "signing" to
-                    linkedMapOf(
-                        "active" to "ALWAYS",
-                        "armored" to true,
-                        "gpgPublicKey" to gpgPublicKey,
-                        "gpgPrivateKey" to gpgPrivateKey,
-                        "gpgPassphrase" to gpgPassphrase,
-                    ),
-                "deploy" to
-                    linkedMapOf(
-                        "maven" to
-                            linkedMapOf(
-                                "mavenCentral" to
-                                    linkedMapOf(
-                                        "active" to "ALWAYS",
-                                        "url" to "https://central.sonatype.com/api/v1/publisher",
-                                        "stagingRepositories" to listOf(stagingDir),
-                                        "username" to mavenCentralUsername,
-                                        "password" to mavenCentralPassword,
-                                    ),
-                            ),
-                    ),
-            )
-        val yaml = yamlMapper.writeValueAsString(config)
-        return "# Generated by EasyPublishPlugin — JReleaser config for Maven Central\n" + yaml
-    }
-
-    companion object {
-        private val yamlMapper: ObjectMapper =
-            ObjectMapper(
-                YAMLFactory
-                    .builder()
-                    .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-                    .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
-                    .build(),
-            ).registerKotlinModule()
     }
 }

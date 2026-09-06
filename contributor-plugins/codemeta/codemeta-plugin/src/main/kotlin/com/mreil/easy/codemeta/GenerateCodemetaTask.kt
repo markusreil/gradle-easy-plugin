@@ -41,6 +41,10 @@ abstract class GenerateCodemetaTask : DefaultTask() {
                 version = projectVersion.getOrElse("TODO: Add version"),
                 license = "https://spdx.org/licenses/MIT",
                 codeRepository = "TODO: Add codeRepository - e.g. https://github.com/mreil/gradle-easy-plugin-new",
+                url = "TODO: Add url - e.g. https://mreil.com/gradle-easy-plugin-new",
+                issueTracker = "TODO: Add issueTracker - e.g. https://github.com/mreil/gradle-easy-plugin-new/issues",
+                datePublished = "TODO: Add datePublished - e.g. 2026-01-01",
+                keywords = listOf("TODO: Add keywords"),
                 author =
                     listOf(
                         Person(
