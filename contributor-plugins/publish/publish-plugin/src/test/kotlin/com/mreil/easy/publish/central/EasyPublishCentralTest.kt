@@ -8,6 +8,8 @@ import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -117,6 +119,43 @@ class EasyPublishCentralTest {
             softly.assertThat(task.stagingDirs.get()).containsExactly(rootStaging, childStaging)
         }
     }
+
+    @Test
+    fun `stagingDirsForPublishing omits publication-less projects`() {
+        // Java-less root (like a real aggregator): enabled but stages nothing.
+        val root = ProjectBuilder.builder().withName("root").build()
+        val child =
+            ProjectBuilder
+                .builder()
+                .withName("child")
+                .withParent(root)
+                .build()
+        root.pluginManager.apply(ProjectPlugin::class.java)
+        child.pluginManager.apply("java-library")
+        child.pluginManager.apply(ProjectPlugin::class.java)
+        child.pluginManager.apply("maven-publish")
+        val publishing = child.extensions.getByType(PublishingExtension::class.java)
+        publishing.publications.create("maven", MavenPublication::class.java) {
+            it.from(child.components.getByName("java"))
+        }
+        publishExtensionOf(root).enabled.set(true)
+        publishExtensionOf(child).enabled.set(true)
+
+        val childStaging =
+            child.layout.buildDirectory
+                .get()
+                .asFile.invariantSeparatorsPath + "/stagingRepo"
+        assertSoftly { softly ->
+            softly
+                .assertThat(JreleaserConfigWiring.stagingDirsForPublishing(listOf(root, child)))
+                .containsExactly(childStaging)
+        }
+    }
+
+    private fun publishExtensionOf(project: Project): DefaultEasyPublishExtension =
+        (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
+            .extensions
+            .getByType(EasyPublishExtension::class.java) as DefaultEasyPublishExtension
 
     @Test
     fun `generateJreleaserConfig is skipped when toMavenCentral not set`() {

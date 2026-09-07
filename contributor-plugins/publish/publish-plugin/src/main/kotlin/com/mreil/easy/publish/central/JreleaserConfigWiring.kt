@@ -5,6 +5,7 @@ import com.mreil.easy.isRoot
 import com.mreil.easy.publish.publishExtension
 import com.mreil.utils.PropertyResolver
 import org.gradle.api.Project
+import org.gradle.api.publish.PublishingExtension
 
 /**
  * Root-only registration of `generateJreleaserConfig` (JReleaser YAML generation).
@@ -45,18 +46,8 @@ internal object JreleaserConfigWiring {
                 val stagingDirs =
                     target.allprojects
                         .sortedBy { it.path }
-                        .mapNotNull { project ->
-                            project
-                                .publishExtension()
-                                ?.takeIf { it.isEnabled() }
-                                ?.let { ext ->
-                                    val path = ext.stagingPath.orNull ?: "stagingRepo"
-                                    project.layout.buildDirectory
-                                        .dir(path)
-                                        .get()
-                                        .asFile.invariantSeparatorsPath
-                                }
-                        }.distinct()
+                        .mapNotNull { stagingDirFor(it) }
+                        .distinct()
                 task.stagingDirs.convention(stagingDirs)
                 task.gpgPublicKey.convention(
                     propertyResolver.get("jreleaser.gpg.publicKey").base64Decode(),
@@ -93,5 +84,44 @@ internal object JreleaserConfigWiring {
         target.allprojects { project ->
             taskProvider.configure { it.dependsOn(project.tasks.withType(CheckCentralPomsTask::class.java)) }
         }
+
+        // Phantom-dir correction (see stagingDirsForPublishing): runs only when generation
+        // is really scheduled, so eager unit-test assertions and previews without
+        // publications are untouched.
+        target.gradle.taskGraph.whenReady { graph ->
+            val generate = taskProvider.get()
+            if (graph.hasTask(generate)) {
+                generate.stagingDirs.set(stagingDirsForPublishing(target.allprojects))
+            }
+        }
     }
+
+    /**
+     * Staging dirs of projects that actually publish something.
+     *
+     * Publication-less containers (a java-less root, intermediate dirs) stage nothing —
+     * their dirs are never created and JReleaser fails on the first missing
+     * `stagingRepository`. Publications are final once the task graph is ready.
+     */
+    internal fun stagingDirsForPublishing(projects: Iterable<Project>): List<String> =
+        projects
+            .sortedBy { it.path }
+            .filter { it.hasMavenPublications() }
+            .mapNotNull { stagingDirFor(it) }
+            .distinct()
+
+    private fun Project.hasMavenPublications(): Boolean =
+        extensions.findByType(PublishingExtension::class.java)?.publications?.isNotEmpty() == true
+
+    private fun stagingDirFor(project: Project): String? =
+        project
+            .publishExtension()
+            ?.takeIf { it.isEnabled() }
+            ?.let { ext ->
+                val path = ext.stagingPath.orNull ?: "stagingRepo"
+                project.layout.buildDirectory
+                    .dir(path)
+                    .get()
+                    .asFile.invariantSeparatorsPath
+            }
 }

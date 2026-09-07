@@ -7,6 +7,7 @@ import com.mreil.gradletest.project.GradleTestProjectExtension
 import com.mreil.gradletest.project.assertj.assertSoftly
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.io.File
 
 /**
  * Smoke test for Maven Central publishing via JReleaser.
@@ -173,6 +174,67 @@ class EasyPublishCentralFuncTest {
             softly.assertThat(text).contains("NEVER")
             softly.assertThat(text).doesNotContain("SNAPSHOT")
             softly.assertThat(text).contains("\n          - ")
+        }
+    }
+
+    /** Publication-less projects (e.g. a java-less root) stage nothing: their phantom dirs must not reach the YAML. */
+    @Test
+    fun `generateJreleaserConfig omits staging dirs of projects without publications`() {
+        project.configure {
+            settings("include(\"child\")")
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "demo",
+                  "description": "demo description",
+                  "version": "1.0.0",
+                  "license": "https://spdx.org/licenses/MIT",
+                  "codeRepository": "https://github.com/example/demo",
+                  "author": [{ "@type": "Person", "givenName": "Ada", "familyName": "Lovelace", "email": "ada@example.com" }]
+                }
+                """.trimIndent(),
+            )
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.publish")
+                }
+                easy {
+                    publish {
+                        enabled.set(true)
+                        toMavenCentral()
+                    }
+                    codemeta { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+            createChild {
+                buildGradle(
+                    """
+                    plugins {
+                        `java-library`
+                        id("com.mreil.easy.test.publish")
+                    }
+                    """.trimIndent(),
+                )
+                javaSource()
+            }
+            stageCentralCredentials()
+        }
+
+        project.build("generateJreleaserConfig")
+
+        val yaml = project.file("build/jreleaser/jreleaser.yml")
+        val rootStaging = project.file("build/stagingRepo").invariantSeparatorsPath
+        val childStaging = File(project.projectDir, "child/build/stagingRepo").invariantSeparatorsPath
+        assertSoftly { softly ->
+            softly.assertThat(yaml).exists()
+            val text = yaml.readText()
+            softly.assertThat(text).contains("\n          - $childStaging")
+            softly.assertThat(text).doesNotContain("\n          - $rootStaging")
         }
     }
 }
