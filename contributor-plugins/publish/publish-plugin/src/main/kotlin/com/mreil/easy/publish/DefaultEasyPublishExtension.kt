@@ -19,6 +19,7 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
         enabled.convention(false)
         toMavenLocal.convention(false)
         toMavenCentral.convention(false)
+        signingEnabled.convention(true)
     }
 
     abstract val mavenRepos: NamedDomainObjectContainer<MavenRepoSpec>
@@ -42,6 +43,8 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     override fun toMavenCentral() {
         toMavenCentral.set(true)
     }
+
+    abstract override val signingEnabled: Property<Boolean>
 
     override fun mavenRepo(
         name: String,

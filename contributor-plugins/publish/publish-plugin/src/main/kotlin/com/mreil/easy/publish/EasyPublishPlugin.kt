@@ -5,6 +5,7 @@ import com.mreil.easy.ApplyToSubprojects
 import com.mreil.easy.EnabledBy
 import com.mreil.easy.isEasyChildEnabled
 import com.mreil.easy.publish.central.PomCheckWiring
+import com.mreil.easy.publish.central.SigningWiring
 import com.mreil.easy.semver.EasySemver
 import com.mreil.easy.semver.EasySemverExtension
 import org.gradle.api.Project
@@ -73,6 +74,9 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             target.plugins.withId("maven-publish") {
                 withMavenPublish(target)
             }
+            // TODO - move jreleaser.gpg.* property names to EasyPublishExtension later.
+            // Keep JReleaser signing active until Gradle signing is proven (dual-sign for now).
+            SigningWiring.wire(target, propertyResolver)
         }
         PomCheckWiring.wire(target)
     }

@@ -32,6 +32,7 @@ class PomWithoutCodemetaFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         toMavenStaging()
                     }
                 }
@@ -65,6 +66,7 @@ class PomWithoutCodemetaFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         toMavenCentral()
                         toMavenStaging()
                     }

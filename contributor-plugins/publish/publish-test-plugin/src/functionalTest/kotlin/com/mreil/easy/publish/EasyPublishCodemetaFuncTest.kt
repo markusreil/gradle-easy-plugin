@@ -51,6 +51,7 @@ class EasyPublishCodemetaFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         mavenRepo("testRepo", "${repoDir.invariantSeparatorsPath}")
                     }
                     codemeta { enabled.set(true) }

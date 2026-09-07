@@ -4,6 +4,7 @@ import com.mreil.easy.CanBeEnabled
 import com.mreil.easy.EasyPluginExtension
 import com.mreil.easy.Named
 import org.gradle.api.Action
+import org.gradle.api.provider.Property
 
 /**
  * Public API for the `easy.publish` extension.
@@ -28,6 +29,8 @@ interface EasyPublishExtension :
     fun toMavenLocal()
 
     fun toMavenCentral()
+
+    val signingEnabled: Property<Boolean>
 
     /**
      * Declares a named Maven repository to publish to.

@@ -21,6 +21,7 @@ class CheckCentralPomsFuncTest {
     lateinit var project: GradleTestProject
 
     @Test
+    @Suppress("LongMethod")
     fun `publish validates all module poms and aggregates child publish`() {
         val rootName = project.projectDir.name
         project.configure {
@@ -49,6 +50,7 @@ class CheckCentralPomsFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         toMavenCentral()
                         toMavenStaging()
                     }
@@ -112,6 +114,7 @@ class CheckCentralPomsFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         toMavenCentral()
                         toMavenStaging()
                     }
@@ -162,6 +165,7 @@ class CheckCentralPomsFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         toMavenCentral()
                         toMavenStaging()
                     }

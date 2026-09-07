@@ -42,6 +42,7 @@ class EasyPublishRoutingFuncTest {
                     semver { enabled.set(true) }
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
                         mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}")
                         mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}")
@@ -83,6 +84,7 @@ class EasyPublishRoutingFuncTest {
                     semver { enabled.set(true) }
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
                         mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}")
                         mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}")
@@ -122,6 +124,7 @@ class EasyPublishRoutingFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
                         mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}")
                         mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}")

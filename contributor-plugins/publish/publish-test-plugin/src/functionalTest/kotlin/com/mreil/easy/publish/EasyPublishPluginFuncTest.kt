@@ -38,6 +38,7 @@ class EasyPublishPluginFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         mavenRepo("testRepo", "${repoDir.invariantSeparatorsPath}")
                     }
                 }
@@ -89,6 +90,7 @@ class EasyPublishPluginFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         mavenRepo("testRepo", "${repoDir.invariantSeparatorsPath}")
                     }
                 }

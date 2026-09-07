@@ -44,6 +44,7 @@ class JreleaserVersionFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                     }
                 }
                 ${versionProbe.script()}
@@ -77,6 +78,7 @@ class JreleaserVersionFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                     }
                 }
                 ${versionProbe.script()}

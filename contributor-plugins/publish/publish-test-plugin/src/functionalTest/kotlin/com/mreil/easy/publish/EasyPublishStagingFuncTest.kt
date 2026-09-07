@@ -34,6 +34,7 @@ class EasyPublishStagingFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
+                        signingEnabled.set(false)
                         toMavenStaging()
                     }
                 }
