@@ -92,6 +92,13 @@ defer extra-plugin application via
 `pluginManager.apply(kclass.java)` (no manual instantiation, never
 `newInstance().apply()`). Ordering is `orderedAllProjects` (root + subprojects sorted by path); `@ApplyToSubprojects` on the contributor controls fan-out, `@EnabledBy(Extension::class)` + `AbstractEasyProjectPlugin`/`afterEvaluate` + `CanBeEnabled` controls lazy enabling via `easy { ... }`. Extensions can expose a public API via `@PublicType` on the implementation — `ExtensionRegistrar.createExtensionAs` registers the extension under the public type (its `Named` companion) and instantiates the implementation (resolved via `resolvePublicType()`).
 - Lifecycle contract (`AbstractEasyProjectPlugin.apply` = eager `init()` + deferred `afterEnabled()`): shared state consumed across contributors (e.g. `BuildService`s like `CodemetaService`) must be registered in `init()` (apply time), never in `afterEnabled()`. `afterEnabled()` is for enabled-gated behavior only (tasks, wiring). `withType`/`withId` order plugin *application*, not deferred `afterEvaluate` actions — so cross-contributor reads during configuration may only depend on eagerly-available state (extensions, apply-time services), never on another contributor's `afterEvaluate` having run.
+- `afterEvaluate` is a last resort, never routine: prefer lazy Gradle APIs (providers, `withType`/`withId`/`configureEach`, `named`) plus the `init()`/`afterEnabled()` lifecycle, which compose regardless of evaluation order. Extra `afterEvaluate` blocks (nested ones, `state.executed` branches) create ordering puzzles — e.g. the `PomCheckWiring` incident where a `matching().all()` hook silently never fired for lazily-registered tasks.
+
+## Code Style
+- Early returns / guard clauses over nesting: `val x = ... ?: return`, then `x.y.orNull?.let { ... }` (detekt `ReturnCount` max is 2 — stay within it, don't stack guards to dodge nesting).
+- Idiomatic null handling: `?.let`, `?:`, `takeIf`, `orNull`, `orEmpty` — never compound `x != null && y != null` guards or temp-then-check (`val x = a?.b` followed by `if (a != null && x != null)`).
+- `filter { ... }.forEach { ... }` over `forEach` + `return@forEach`; expression bodies for single-expression functions; `mapNotNull` chains over `return@mapNotNull null` guards.
+- Behavior-preserving: conciseness refactors must not change semantics — verify with `check` (unit + functional + detekt) and `spotlessCheck`.
 
 ## Testing
 - Unit: `easy-plugin/src/test`, `easy-plugin-core/src/test`, `easy-contributor-support/src/test`, `gradle-plugin-utils/src/test`, `contributor-plugins/*/src/test` — JUnit Jupiter 5.11.3 + AssertJ SoftAssertions, `ProjectBuilder` for `PluginRegistryService`/`ExtensionRegistrar`/`PluginRegistrar` (fast). Shared fixtures in `easy-test-support` (`com.mreil.easy.fixtures` + `com.mreil.easy.test.support.PluginTestUtils`) — also `easy-plugin` `fixtures` configuration for TestKit classpath; generic helpers are `com.mreil.gradletest.project.GradleTestProject`/`ProbeTask` in `gradle-plugin-testutils` (package `com.mreil.gradletest`), `com.mreil.utils.PropertyResolver` in `gradle-plugin-utils` (generic, to be extracted).
@@ -108,6 +115,8 @@ warning — ignore until 2.x.
 
 ## Code Analysis
 - Config in `config/detekt/detekt.yml` (maxLineLength 140, EmptyFunctionBlock off). `check` depends on `detekt` and `jacocoTestReport` (plus `functionalTest` where applicable). Fix `detekt` findings before submitting.
+- `detekt` analyzes every Kotlin source set (`main`, `test`, `functionalTest`, …) via centralized source wiring in root `build.gradle.kts` (the task defaults to `main`+`test` only). `FunctionNaming` excludes test paths; abstract plugin/extension bases carry `@Suppress("UnnecessaryAbstractClass")` (Gradle decoration requires non-final types).
+- `detektMain`/`detektTest` (type-resolution rules) are NOT in `check`: EXPERIMENTAL in detekt 1.x and crash on some files under Kotlin 2.3 — run manually, revisit with detekt 2.x.
 - Spotless (with `ktlint`) enforces code formatting across Kotlin sources and Gradle scripts (centralized in root `build.gradle.kts` for leaf projects). Run `./gradlew spotlessCheck` to verify and `./gradlew spotlessApply` to automatically format.
 
 ## Editing Guidelines

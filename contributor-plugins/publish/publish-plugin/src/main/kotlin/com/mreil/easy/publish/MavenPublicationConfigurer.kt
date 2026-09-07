@@ -5,7 +5,7 @@ import com.mreil.easy.codemeta.CodemetaLicense
 import com.mreil.easy.codemeta.EasyCodemeta
 import com.mreil.easy.codemeta.EasyCodemetaExtension
 import com.mreil.easy.codemeta.Person
-import com.mreil.easy.isExtensionEnabled
+import com.mreil.easy.isEasyChildEnabled
 import com.mreil.utils.hasGroup
 import com.mreil.utils.hasVersion
 import com.mreil.utils.isSpecified
@@ -20,10 +20,12 @@ import org.gradle.api.publish.maven.MavenPublication
  * project (failing if `group`/`version` are unset), while plugin marker publications
  * keep their marker coordinates and only have the version enforced. In both cases a
  * POM is populated with name, description, URL, license, developers and SCM metadata
- * (overlaid from Codemeta when the codemeta extension is enabled, leniently omitted
- * when absent), and version mapping is set up to resolve versions from the runtime
- * classpath. Missing extended properties never fail here; the JReleaser task
- * validates Central requirements later.
+ * (overlaid from Codemeta when the codemeta extension is enabled). `url` and the
+ * whole `scm` block are set only when Codemeta provides them and left unset
+ * otherwise — never invented here; missing values are reported later by
+ * `checkCentralPoms` (see `PomRequirementsChecker`), and version mapping is set
+ * up to resolve versions from the runtime classpath. Missing extended properties
+ * never fail here; the JReleaser task validates Central requirements later.
  */
 internal object MavenPublicationConfigurer {
     fun configure(
@@ -69,11 +71,11 @@ internal object MavenPublicationConfigurer {
         publication: MavenPublication,
         codemeta: Codemeta?,
     ) {
-        val scmBase = codemeta?.codeRepository ?: "https://github.com/mreil/gradle-easy-plugin-new"
         publication.pom { pom ->
             pom.name.set(codemeta?.name ?: target.name)
             pom.description.set(codemeta?.description ?: target.description ?: "Published via EasyPublishPlugin")
-            pom.url.set(codemeta?.url ?: scmBase)
+            val pomUrl = codemeta?.url ?: codemeta?.codeRepository
+            pomUrl?.let { pom.url.set(it) }
             codemeta?.license?.let { raw ->
                 pom.licenses { licenses ->
                     licenses.license { license ->
@@ -82,7 +84,7 @@ internal object MavenPublicationConfigurer {
                     }
                 }
             }
-            codemeta?.author.orEmpty().mapNotNull { displayName(it)?.let { name -> it to name } }.forEach { (person, name) ->
+            codemeta?.author.orEmpty().mapNotNull { person -> displayName(person)?.let { person to it } }.forEach { (person, name) ->
                 pom.developers { developers ->
                     developers.developer { developer ->
                         developer.name.set(name)
@@ -90,10 +92,12 @@ internal object MavenPublicationConfigurer {
                     }
                 }
             }
-            pom.scm { scm ->
-                scm.connection.set("scm:git:$scmBase")
-                scm.developerConnection.set("scm:git:$scmBase")
-                scm.url.set(scmBase)
+            codemeta?.codeRepository?.let { repo ->
+                pom.scm { scm ->
+                    scm.connection.set("scm:git:$repo")
+                    scm.developerConnection.set("scm:git:$repo")
+                    scm.url.set(repo)
+                }
             }
         }
     }
@@ -106,7 +110,7 @@ internal object MavenPublicationConfigurer {
 
     private fun resolveCodemeta(target: Project): Codemeta? =
         runCatching {
-            if (!target.isExtensionEnabled(EasyCodemetaExtension::class)) {
+            if (!target.isEasyChildEnabled<EasyCodemetaExtension>()) {
                 null
             } else {
                 EasyCodemeta.of(target).orNull

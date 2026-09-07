@@ -26,7 +26,7 @@ Standalone manual smoke-test projects for dogfooding snapshots published to `mre
   ./run-smoke.sh
   # Optional overrides: NEXUS_URL, NEXUS_REPO, NEXUS_USER, NEXUS_PASSWORD, NEXUS_IMAGE, GPG_PASSPHRASE
   ```
-  The script starts Nexus (fresh volume, `admin`/`admin123` — local-only), generates a throwaway GPG key, runs `publish publishToMavenCentral` against it and asserts pom/jar/`-sources`/`-javadoc`/`.asc` all landed. This rehearses everything short of the Central Portal state machine.
+  The script starts Nexus (fresh volume, `admin`/`admin123` — local-only), generates a throwaway GPG key, runs `publish` (which includes the `publishToMavenCentral` deploy) against it and asserts pom/jar/`-sources`/`-javadoc`/`.asc` all landed. This rehearses everything short of the Central Portal state machine.
 
   Both have their own Gradle wrapper (`gradle/wrapper/` + `gradle/gradle-daemon-jvm.properties` with `toolchainVersion=21`) copied from the root so `./gradlew` works inside the folder. No source is required — empty build proves plugin resolution and application.
 

@@ -1,16 +1,16 @@
-package com.mreil.easy.publish
+package com.mreil.easy.publish.central
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.mreil.easy.publish.MavenCentralWiring.Config
+import com.mreil.easy.publish.central.JreleaserYaml.Config
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.Test
 
 class GenerateJreleaserConfigTaskTest {
     @Test
     fun `central yaml has project signing and mavenCentral deployer`() {
-        val yaml = MavenCentralWiring.buildYaml(centralConfig())
+        val yaml = JreleaserYaml.buildYaml(centralConfig())
 
         assertSoftly { softly ->
             softly.assertThat(yaml).contains("name: demo")
@@ -31,7 +31,7 @@ class GenerateJreleaserConfigTaskTest {
 
     @Test
     fun `yaml includes nexus2 snapshots deployer`() {
-        val yaml = MavenCentralWiring.buildYaml(centralConfig())
+        val yaml = JreleaserYaml.buildYaml(centralConfig())
 
         assertSoftly { softly ->
             softly.assertThat(yaml).contains("nexus2:")
@@ -45,7 +45,7 @@ class GenerateJreleaserConfigTaskTest {
     @Test
     fun `nexus yaml demotes central and snapshots and adds nexus3 deployer`() {
         val yaml =
-            MavenCentralWiring.buildYaml(
+            JreleaserYaml.buildYaml(
                 centralConfig().copy(
                     nexusUrl = "http://localhost:8081/service/rest/v1/components?repository=maven-releases",
                     nexusUsername = "admin",
@@ -66,7 +66,7 @@ class GenerateJreleaserConfigTaskTest {
 
     @Test
     fun `multiline keys use block scalars`() {
-        val yaml = MavenCentralWiring.buildYaml(centralConfig(gpgPublicKey = ARMOR, gpgPrivateKey = ARMOR))
+        val yaml = JreleaserYaml.buildYaml(centralConfig(gpgPublicKey = ARMOR, gpgPrivateKey = ARMOR))
 
         assertSoftly { softly ->
             softly.assertThat(yaml).contains("pgp:")
@@ -78,7 +78,7 @@ class GenerateJreleaserConfigTaskTest {
 
     @Test
     fun `sequences use indented indicators`() {
-        val yaml = MavenCentralWiring.buildYaml(centralConfig())
+        val yaml = JreleaserYaml.buildYaml(centralConfig())
 
         assertSoftly { softly ->
             // JReleaser rejects indicators at the parent key indent - guard the indented form.
@@ -88,7 +88,7 @@ class GenerateJreleaserConfigTaskTest {
 
     @Test
     fun `yaml parses back to expected structure`() {
-        val parsed: Map<String, Any> = yamlReader.readValue(MavenCentralWiring.buildYaml(centralConfig()))
+        val parsed: Map<String, Any> = yamlReader.readValue(JreleaserYaml.buildYaml(centralConfig()))
 
         @Suppress("UNCHECKED_CAST")
         val maven = ((parsed["deploy"] as Map<String, Any>)["maven"] as Map<String, Any>)
@@ -116,7 +116,7 @@ class GenerateJreleaserConfigTaskTest {
             projectName = "demo",
             projectVersion = "1.0.0",
             projectGroupId = "com.example",
-            stagingDir = "build/stagingRepo",
+            stagingDirs = listOf("build/stagingRepo"),
             gpgPublicKey = gpgPublicKey,
             gpgPrivateKey = gpgPrivateKey,
             gpgPassphrase = "dummy-gpg-passphrase",

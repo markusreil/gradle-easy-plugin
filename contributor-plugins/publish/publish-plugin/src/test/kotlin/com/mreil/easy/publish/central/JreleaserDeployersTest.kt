@@ -1,6 +1,6 @@
-package com.mreil.easy.publish
+package com.mreil.easy.publish.central
 
-import com.mreil.easy.publish.MavenCentralWiring.Config
+import com.mreil.easy.publish.central.JreleaserYaml.Config
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.Test
 
@@ -32,23 +32,36 @@ class JreleaserDeployersTest {
     @Test
     fun `each deployer renders its unique keys plus shared keys`() {
         assertSoftly { softly ->
-            softly.assertThat(MavenCentralDeployer("RELEASE", "build/stagingRepo", "u", "p").toMap()).containsKeys(
+            softly.assertThat(MavenCentralDeployer("RELEASE", listOf("build/stagingRepo"), "u", "p").toMap()).containsKeys(
                 "active",
                 "url",
                 "stagingRepositories",
                 "username",
                 "password",
             )
-            val nexus2 = Nexus2SnapshotsDeployer("SNAPSHOT", "build/stagingRepo", "u", "p").toMap()
+            val nexus2 = Nexus2SnapshotsDeployer("SNAPSHOT", listOf("build/stagingRepo"), "u", "p").toMap()
             softly.assertThat(nexus2).containsEntry("snapshotSupported", true)
             softly.assertThat(nexus2).containsEntry("url", CENTRAL_SNAPSHOTS_URL)
             softly.assertThat(nexus2).containsEntry("snapshotUrl", CENTRAL_SNAPSHOTS_URL)
             softly
                 .assertThat(
-                    Nexus3TestDeployer("http://localhost:8081", "build/stagingRepo", "u", "p").toMap(),
+                    Nexus3TestDeployer("http://localhost:8081", listOf("build/stagingRepo"), "u", "p").toMap(),
                 ).containsEntry("authorization", "BASIC")
             softly.assertThat(nexus2).containsEntry("closeRepository", false)
             softly.assertThat(nexus2).containsEntry("releaseRepository", false)
+        }
+    }
+
+    @Test
+    fun `stagingRepositories lists every module staging dir`() {
+        val deployers = deployersFor(config().copy(stagingDirs = listOf("root/build/stagingRepo", "child/build/stagingRepo")))
+
+        assertSoftly { softly ->
+            deployers.forEach { deployer ->
+                softly.assertThat(deployer.toMap()["stagingRepositories"]).isEqualTo(
+                    listOf("root/build/stagingRepo", "child/build/stagingRepo"),
+                )
+            }
         }
     }
 
@@ -57,7 +70,7 @@ class JreleaserDeployersTest {
             projectName = "demo",
             projectVersion = "1.0.0",
             projectGroupId = "com.example",
-            stagingDir = "build/stagingRepo",
+            stagingDirs = listOf("build/stagingRepo"),
             gpgPublicKey = "pub",
             gpgPrivateKey = "priv",
             gpgPassphrase = "pass",

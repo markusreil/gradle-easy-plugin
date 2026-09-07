@@ -1,6 +1,5 @@
 package com.mreil.easy.codemeta
 
-import com.mreil.easy.isExtensionEnabled
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 
@@ -11,8 +10,6 @@ import org.gradle.api.provider.Provider
  * and parsing are hidden inside the plugin's [CodemetaService].
  */
 object EasyCodemeta {
-    fun isEnabled(project: Project): Boolean = project.isExtensionEnabled(EasyCodemetaExtension::class)
-
     /**
      * Lazily reads `codemeta.json` from the root project directory.
      *

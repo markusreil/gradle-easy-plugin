@@ -56,7 +56,7 @@ class ExtensionRegistrarInjectionTest {
     }
 
     @Test
-    fun `does not inject to subprojects when called via ExtensionAware reference`() {
+    fun `creates extension on single target only`() {
         val root = ProjectBuilder.builder().withName("root").build()
         val sub =
             ProjectBuilder
@@ -69,8 +69,7 @@ class ExtensionRegistrarInjectionTest {
                 registerExtension(TestSubExtension::class)
             }
 
-        val target: ExtensionAware = root
-        ExtensionRegistrar.createExtension(target, registry)
+        ExtensionRegistrar(root, root.providers).createExtension(registry)
 
         assertSoftly { softly ->
             softly.assertThat(sub.extensions.findByName(EasyExtension.name)).isNull()
@@ -98,7 +97,8 @@ class ExtensionRegistrarInjectionTest {
                 registerExtension(OtherTestSubExtension::class)
             }
 
-        val rootExt = ExtensionRegistrar.createExtensionWithSubprojects(root, registry)
+        val rootExt = ExtensionRegistrar(root, root.providers).createExtension(registry)
+        injectEasyExtensions(root, registry, rootExt)
 
         assertSoftly { softly ->
             softly.assertThat(root.extensions.findByName(EasyExtension.name)).isSameAs(rootExt)
@@ -118,7 +118,7 @@ class ExtensionRegistrarInjectionTest {
             SimplePluginRegistry().apply {
                 registerExtension(TestSubExtension::class)
             }
-        val parentExt = ExtensionRegistrar.createExtension(parentHolder as ExtensionAware, parentRegistry)
+        val parentExt = ExtensionRegistrar(parentHolder, parentHolder.providers).createExtension(parentRegistry)
         parentExt.extensions
             .getByType(TestSubExtension::class.java)
             .enabled
@@ -136,7 +136,8 @@ class ExtensionRegistrarInjectionTest {
                 registerExtension(TestSubExtension::class)
             }
 
-        val rootExt = ExtensionRegistrar.createExtensionWithSubprojects(root, registry, parentHolder as ExtensionAware)
+        val rootExt = ExtensionRegistrar(root, root.providers).createExtension(registry, parentHolder)
+        injectEasyExtensions(root, registry, rootExt)
         val subEasy = sub.extensions.getByName(EasyExtension.name) as ExtensionAware
         val subSub = subEasy.extensions.getByType(TestSubExtension::class.java)
 
@@ -167,13 +168,14 @@ class ExtensionRegistrarInjectionTest {
             }
 
         val subRegistry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
-        val existing = ExtensionRegistrar.createExtensionWithSubprojects(sub, subRegistry)
+        val existing = ExtensionRegistrar(sub, sub.providers).createExtension(subRegistry)
         existing.extensions
             .getByType(TestSubExtension::class.java)
             .enabled
             .set(false)
 
-        val rootExt = ExtensionRegistrar.createExtensionWithSubprojects(root, registry)
+        val rootExt = ExtensionRegistrar(root, root.providers).createExtension(registry)
+        injectEasyExtensions(root, registry, rootExt)
         rootExt.extensions
             .getByType(TestSubExtension::class.java)
             .enabled
@@ -210,7 +212,8 @@ class ExtensionRegistrarInjectionTest {
                 .withParent(freshRoot)
                 .build()
 
-        ExtensionRegistrar.createExtensionWithSubprojects(freshSub1, registry)
+        val subEasy = ExtensionRegistrar(freshSub1, freshSub1.providers).createExtension(registry)
+        injectEasyExtensions(freshSub1, registry, subEasy)
 
         assertSoftly { softly ->
             softly.assertThat(freshSub1.extensions.findByName(EasyExtension.name)).isNotNull

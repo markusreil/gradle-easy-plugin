@@ -11,6 +11,22 @@ import org.junit.jupiter.api.extension.ExtendWith
 class SettingsPluginFuncTest {
     lateinit var project: GradleTestProject
 
+    private fun GradleTestProject.stageCodemetaJson() {
+        // pre-create codemeta.json so generateCodemeta (auto-wired into every task) does not fail the build
+        file(
+            "codemeta.json",
+            """
+            {
+              "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+              "@type": "SoftwareSourceCode",
+              "name": "test",
+              "description": "test",
+              "version": "1.0.0"
+            }
+            """.trimIndent(),
+        )
+    }
+
     @Test
     fun `settings plugin creates easy extension on settings and copies to root project`() {
         val extensionProbe =
@@ -60,27 +76,15 @@ class SettingsPluginFuncTest {
     fun `settings plugin activates project plugins when extension enabled`() {
         val probe =
             probeTask("verifyProjectPlugin") {
-                taskExists("HAS_GENERATE_CODEMETA", "generateCodemeta")
-                expect(
-                    "HAS_CODEMETA_EXT",
-                    "(project.extensions.findByName(\"easy\") as? org.gradle.api.plugins.ExtensionAware)?.extensions?.findByName(\"codemeta\") != null",
-                    "true",
+                prelude(
+                    "val easy = project.extensions.findByName(\"easy\") as? org.gradle.api.plugins.ExtensionAware",
+                    "val codemeta = easy?.extensions?.findByName(\"codemeta\")",
                 )
+                taskExists("HAS_GENERATE_CODEMETA", "generateCodemeta")
+                expect("HAS_CODEMETA_EXT", "codemeta != null", "true")
             }
         project.configure {
-            // pre-create codemeta.json so generateCodemeta does not fail the build
-            file(
-                "codemeta.json",
-                """
-                {
-                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
-                  "@type": "SoftwareSourceCode",
-                  "name": "test",
-                  "description": "test",
-                  "version": "1.0.0"
-                }
-                """.trimIndent(),
-            )
+            stageCodemetaJson()
             settings(
                 """
                 plugins {
@@ -124,19 +128,7 @@ class SettingsPluginFuncTest {
                 taskExists("CHILD_HAS_PUBLISH_TASK", "publish", inProject = ":child")
             }
         project.configure {
-            // pre-create codemeta.json so generateCodemeta (auto-wired into every task) does not fail the build
-            file(
-                "codemeta.json",
-                """
-                {
-                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
-                  "@type": "SoftwareSourceCode",
-                  "name": "test",
-                  "description": "test",
-                  "version": "1.0.0"
-                }
-                """.trimIndent(),
-            )
+            stageCodemetaJson()
             settings(
                 """
                 plugins {

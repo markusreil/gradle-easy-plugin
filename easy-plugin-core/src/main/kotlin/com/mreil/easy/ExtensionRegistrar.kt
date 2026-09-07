@@ -1,107 +1,52 @@
 package com.mreil.easy
 
-import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.plugins.ExtensionContainer
+import org.gradle.api.provider.ProviderFactory
 import kotlin.reflect.KClass
 
 /**
+ * Creates and configures the `easy` extension on a single [target].
+ *
  * Central utility responsible for instantiating and configuring [EasyExtension] instances and their contributed child extensions.
  *
  * It manages:
- * - Registering the root [EasyExtension] container on target Gradle objects (such as `Settings` or `Project`).
+ * - Registering the root [EasyExtension] container on the target Gradle object (such as `Settings` or `Project`).
  * - Discovering and instantiating modular [EasyPluginExtension] child extensions provided via [PluginRegistry].
  * - Propagating and copying configuration state from a parent [ExtensionAware] scope (e.g. from `Settings` to root `Project`)
  *   using [ExtensionCopier].
- * - Injecting extension copies to subprojects when the contributor is annotated with [ApplyToSubprojects]
- *   (mirroring [PluginRegistrar] plugin application). Currently the injection is unguarded — all
- *   registered extensions are copied to subprojects — and can be narrowed to per-extension
- *   contributors later.
+ *
+ * Single-target by construction — subproject fan-out is explicit at the call site
+ * (see `ProjectPlugin`), never hidden in here. The `easy.disableAllPlugins` kill-switch
+ * is read via [providers] so configuration-cache tracking applies.
  *
  * Note: Extension creation is eager — done directly in `ProjectPlugin`/`SettingsPlugin.apply`
  * so `easy { }` is available immediately during script evaluation. Only plugin *behaviour*
  * (`AbstractEasyProjectPlugin.afterEnabled` / `AbstractEasySettingsPlugin.afterEnabled`) is
  * deferred via `afterEvaluate` / `settingsEvaluated` to respect `easy { }` configuration.
  */
-object ExtensionRegistrar {
+class ExtensionRegistrar(
+    private val target: ExtensionAware,
+    private val providers: ProviderFactory,
+) {
     /**
-     * Creates and registers the root [EasyExtension] on the provided [target] [ExtensionAware] instance.
-     *
-     * Creates the extension on this target only — no subproject fan-out. For [Project] targets
-     * that need extension copies injected into subprojects, use [createExtensionWithSubprojects].
-     *
-     * @param target The Gradle entity hosting extensions (e.g., [org.gradle.api.Project] or [org.gradle.api.initialization.Settings]).
-     * @param registry The [PluginRegistry] containing registered [EasyPluginExtension] classes to attach as child extensions.
-     * @param parent An optional parent [ExtensionAware] or [CanBeCopied] instance from which existing configuration is copied.
-     * @return The created and configured [EasyExtension] instance.
-     */
-    fun createExtension(
-        target: ExtensionAware,
-        registry: PluginRegistry,
-        parent: ExtensionAware? = null,
-    ): EasyExtension = createExtension(target.extensions, registry, parent)
-
-    /**
-     * Creates and registers the root [EasyExtension] on the given [project] and, if the project
-     * is the root, injects copies into all subprojects.
-     *
-     * Deliberately named differently from [createExtension]: the overloads would otherwise differ
-     * only by parameter type, letting a named-argument call silently select the non-injecting
-     * variant (see SettingsPlugin history). The distinct name forces call sites to state intent.
-     *
-     * For now the injection is unconditional for all registered extensions (the plugin-side
-     * guard `ApplyToSubprojects` is not yet mirrored for extensions). This ensures a plugin
-     * applied to subprojects via [PluginRegistrar] always finds its `easy.*` extension in the
-     * target project, with values copied from the parent `easy` (typically the root or `Settings`).
-     *
-     * @param project The project requesting extension creation.
-     * @param registry The registry containing registered child extension types.
-     * @param parent Optional parent for the root project (usually the `Settings` `easy`).
-     * @return The created `EasyExtension` for `project`.
-     */
-    fun createExtensionWithSubprojects(
-        project: Project,
-        registry: PluginRegistry,
-        parent: ExtensionAware? = null,
-    ): EasyExtension {
-        val extension = createExtension(project as ExtensionAware, registry, parent)
-        injectExtensionsToSubprojects(project, registry, extension)
-        return extension
-    }
-
-    private fun injectExtensionsToSubprojects(
-        project: Project,
-        registry: PluginRegistry,
-        parentExtension: EasyExtension,
-    ) {
-        if (project != project.gradle.rootProject) return
-        val allProjects = orderedAllProjects(project)
-        for (subproject in allProjects) {
-            if (subproject == project || subproject.hasEasyExtension()) continue
-            createExtension(subproject as ExtensionAware, registry, parentExtension as ExtensionAware)
-        }
-    }
-
-    /**
-     * Creates and registers the root [EasyExtension] within the specified [extensions] container.
+     * Creates and registers the root [EasyExtension] on [target].
      *
      * In addition to creating the root extension, this method:
      * 1. Iterates over all contributed extension classes in [registry] and attaches them to [EasyExtension.extensions].
      * 2. If [parent] is supplied, extracts the source [CanBeCopied] configuration and copies its values into the new extension.
      *
-     * @param extensions The [ExtensionContainer] where [EasyExtension] will be created.
      * @param registry The [PluginRegistry] holding registered child extension types.
      * @param parent An optional parent [ExtensionAware] or [CanBeCopied] instance used as the source for copying configuration.
      * @return The created and populated [EasyExtension] instance.
      */
     fun createExtension(
-        extensions: ExtensionContainer,
         registry: PluginRegistry,
         parent: ExtensionAware? = null,
     ): EasyExtension {
         val extension =
             createExtensionAs(
-                extensions,
+                target.extensions,
                 EasyExtension::class,
                 DefaultEasyExtension::class,
             )
@@ -127,7 +72,7 @@ object ExtensionRegistrar {
     }
 
     private fun KClass<out EasyPluginExtension>.resolvePublicType(): KClass<out EasyPluginExtension> {
-        val annotation = this.annotations.filterIsInstance<PublicType>().firstOrNull() ?: return this
+        val annotation = annotations.firstOrNull { it is PublicType } as? PublicType ?: return this
         val publicType = annotation.value
         require(publicType.java.isAssignableFrom(this.java)) {
             "Implementation ${this.qualifiedName} annotated with @PublicType(${publicType.qualifiedName}) must implement that type"
@@ -136,23 +81,19 @@ object ExtensionRegistrar {
     }
 
     private fun applyEnabledDefaults(extension: EasyExtension) {
-        extension.extensions.extensionsSchema.forEach { schema ->
-            val ext = extension.extensions.findByName(schema.name)
-            if (ext is CanBeEnabled) {
-                check(ext.enabled.orNull != null) {
-                    "Extension '${schema.name}' (${ext::class.qualifiedName}) must provide a convention for 'enabled' " +
-                        "during initialization (e.g. enabled.convention(true) in init block)."
-                }
+        val enabledExtensions =
+            extension.extensions.extensionsSchema.mapNotNull { schema ->
+                (extension.extensions.findByName(schema.name) as? CanBeEnabled)?.let { schema.name to it }
+            }
+        enabledExtensions.forEach { (name, ext) ->
+            check(ext.enabled.orNull != null) {
+                "Extension '$name' (${ext::class.qualifiedName}) must provide a convention for 'enabled' " +
+                    "during initialization (e.g. enabled.convention(true) in init block)."
             }
         }
-        val disable = System.getProperty("easy.disableAllPlugins")?.toBoolean() == true
+        val disable = providers.systemProperty("easy.disableAllPlugins").getOrElse("false").toBoolean()
         if (disable) {
-            extension.extensions.extensionsSchema.forEach { schema ->
-                val ext = extension.extensions.findByName(schema.name)
-                if (ext is CanBeEnabled) {
-                    ext.enabled.convention(false)
-                }
-            }
+            enabledExtensions.forEach { (_, ext) -> ext.enabled.convention(false) }
         }
     }
 
@@ -167,9 +108,7 @@ object ExtensionRegistrar {
             } else {
                 parent.extensions.findByType(EasyExtension::class.java) as? CanBeCopied
             }
-        if (source != null) {
-            ExtensionCopier.copy(source, extension)
-        }
+        source?.let { ExtensionCopier.copy(it, extension) }
     }
 
     /**

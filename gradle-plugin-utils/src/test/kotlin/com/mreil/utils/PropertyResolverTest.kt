@@ -28,7 +28,7 @@ class PropertyResolverTest {
     fun `get returns original value`() {
         val project = ProjectBuilder.builder().build()
         val delegate = project.providers.provider { "hello" }
-        val provider = PropertyResolver.StringProvider(delegate)
+        val provider = PropertyResolver.StringProvider(delegate, project.providers)
 
         assertThat(provider.get()).isEqualTo("hello")
         assertThat(provider.isPresent).isTrue()
@@ -38,7 +38,7 @@ class PropertyResolverTest {
     fun `isPresent is false when delegate is absent`() {
         val project = ProjectBuilder.builder().build()
         val delegate = project.providers.gradleProperty("missing.key.12345")
-        val provider = PropertyResolver.StringProvider(delegate)
+        val provider = PropertyResolver.StringProvider(delegate, project.providers)
 
         assertThat(provider.isPresent).isFalse()
         assertThat(provider.base64Decode().isPresent).isFalse()
@@ -49,7 +49,7 @@ class PropertyResolverTest {
         val project = ProjectBuilder.builder().build()
         val encoded = Base64.getEncoder().encodeToString("hello world".toByteArray())
         val delegate = project.providers.provider { encoded }
-        val provider = PropertyResolver.StringProvider(delegate)
+        val provider = PropertyResolver.StringProvider(delegate, project.providers)
 
         assertThat(provider.base64Decode().get()).isEqualTo("hello world")
     }
@@ -58,7 +58,7 @@ class PropertyResolverTest {
     fun `base64Decode is lazy and absent when delegate absent`() {
         val project = ProjectBuilder.builder().build()
         val delegate = project.providers.gradleProperty("absent.base64")
-        val provider = PropertyResolver.StringProvider(delegate)
+        val provider = PropertyResolver.StringProvider(delegate, project.providers)
 
         assertThat(provider.base64Decode().isPresent).isFalse()
     }
@@ -90,7 +90,7 @@ class PropertyResolverTest {
         val project = ProjectBuilder.builder().build()
         val encoded = Base64.getEncoder().encodeToString("gradle".toByteArray())
         val delegate = project.providers.provider { encoded }
-        val provider = PropertyResolver.StringProvider(delegate)
+        val provider = PropertyResolver.StringProvider(delegate, project.providers)
 
         val upper = provider.base64Decode().map { it.uppercase() }
 
@@ -101,8 +101,8 @@ class PropertyResolverTest {
     fun `StringProvider alias resolves`() {
         val project = ProjectBuilder.builder().build()
         val delegate = project.providers.provider { "hello" }
-        val viaAlias = StringProvider(delegate)
-        val viaNested = PropertyResolver.StringProvider(delegate)
+        val viaAlias = StringProvider(delegate, project.providers)
+        val viaNested = PropertyResolver.StringProvider(delegate, project.providers)
 
         assertThat(viaAlias.get()).isEqualTo(viaNested.get())
     }

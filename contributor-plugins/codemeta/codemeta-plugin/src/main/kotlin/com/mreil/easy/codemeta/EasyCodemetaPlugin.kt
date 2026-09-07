@@ -1,10 +1,10 @@
 package com.mreil.easy.codemeta
 
 import com.mreil.easy.AbstractEasyProjectPlugin
-import com.mreil.easy.EasyExtension
 import com.mreil.easy.EnabledBy
+import com.mreil.easy.findEasyChild
+import com.mreil.easy.isRoot
 import org.gradle.api.Project
-import org.gradle.api.plugins.ExtensionAware
 
 /**
  * Easy plugin that handles CodeMeta generation.
@@ -23,11 +23,9 @@ class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {
      * Only wiring — parameters stay lazy [org.gradle.api.provider.Provider]s and
      * task registration remains in [afterEnabled] behind the enabled flag.
      */
-    @Suppress("ReturnCount")
     override fun init(target: Project) {
-        if (target != target.rootProject) return
-        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
-        val codemetaExt = easy.extensions.findByType(EasyCodemetaExtension::class.java) as? DefaultEasyCodemetaExtension ?: return
+        if (!target.isRoot()) return
+        val codemetaExt = target.findEasyChild<EasyCodemetaExtension, DefaultEasyCodemetaExtension>() ?: return
 
         val codemetaFile =
             codemetaExt.filename.map {
@@ -40,11 +38,9 @@ class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {
         }
     }
 
-    @Suppress("ReturnCount")
     override fun afterEnabled(target: Project) {
-        if (target != target.rootProject) return
-        val easy = target.extensions.findByType(EasyExtension::class.java) as? ExtensionAware ?: return
-        val codemetaExt = easy.extensions.findByType(EasyCodemetaExtension::class.java) as? DefaultEasyCodemetaExtension ?: return
+        if (!target.isRoot()) return
+        val codemetaExt = target.findEasyChild<EasyCodemetaExtension, DefaultEasyCodemetaExtension>() ?: return
 
         val codemetaFile =
             codemetaExt.filename.map {

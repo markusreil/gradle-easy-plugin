@@ -1,4 +1,4 @@
-package com.mreil.easy.publish
+package com.mreil.easy.publish.central
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -11,9 +11,9 @@ import org.gradle.api.tasks.TaskAction
 /**
  * Validates generated Maven POMs against the Maven Central metadata requirements.
  *
- * Registered only on the root project and enabled only when `toMavenCentral` is set.
- * Inputs are the `GenerateMavenPom` outputs of all projects, so this runs before any
- * upload task and fails fast instead of deploying a subset of repositories first.
+ * Registered in every enabled project (see [PomCheckWiring]) with that project's
+ * `GenerateMavenPom` outputs as inputs, so invalid POMs fail fast at upload time.
+ * Skips silently when the project has no POM files (`onlyIf` in the wiring).
  * Missing developer emails are warnings; everything else fails the build.
  */
 abstract class CheckCentralPomsTask : DefaultTask() {
@@ -28,15 +28,10 @@ abstract class CheckCentralPomsTask : DefaultTask() {
 
     @TaskAction
     fun check() {
-        // Inputs are GenerateMavenPom destinations by construction (`pom-default.xml`);
-        // no extension filtering - any generated file is validated.
+        // Inputs are this project's GenerateMavenPom destinations by construction
+        // (`pom-default.xml`); no extension filtering - any generated file is validated.
+        // Empty is unreachable via normal wiring (`onlyIf` skips first).
         val files = pomFiles.files.filter { it.isFile }.sorted()
-        if (files.isEmpty()) {
-            throw GradleException(
-                "checkCentralPoms found no POM files - ensure publications exist " +
-                    "and generatePom tasks ran before this task.",
-            )
-        }
         val failures = mutableListOf<String>()
         files.forEach { file ->
             val violation = PomRequirementsChecker.check(file)

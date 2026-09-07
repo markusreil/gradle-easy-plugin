@@ -331,7 +331,7 @@ naming:
     minimumFunctionNameLength: 3
   FunctionNaming:
     active: true
-    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**']
+    excludes: ['**/test/**', '**/functionalTest/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**']
     functionPattern: '[a-z][a-zA-Z0-9]*'
     excludeClassPattern: '$^'
   FunctionParameterNaming:
@@ -708,6 +708,9 @@ style:
     allowNonStandardGrouping: false
   UnnecessaryAbstractClass:
     active: true
+    # Test/fixture scaffolding declares abstract bases without abstract members by necessity
+    # (Gradle decoration, SAM-by-convention); production bases carry an explicit @Suppress instead.
+    excludes: ['**/test/**', '**/functionalTest/**', '**/testFixtures/**']
   UnnecessaryAnnotationUseSiteTarget:
     active: false
   UnnecessaryApply:

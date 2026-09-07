@@ -1,0 +1,97 @@
+package com.mreil.easy.publish.central
+
+import com.mreil.easy.isEnabled
+import com.mreil.easy.isRoot
+import com.mreil.easy.publish.publishExtension
+import com.mreil.utils.PropertyResolver
+import org.gradle.api.Project
+
+/**
+ * Root-only registration of `generateJreleaserConfig` (JReleaser YAML generation).
+ *
+ * Registered lazily with convention defaults; disabled until `toMavenCentral`.
+ * Config generation explicitly waits for every project's `checkCentralPoms`
+ * (see [PomCheckWiring]) so POM validation stays a separate step before any
+ * config is generated for upload.
+ */
+internal object JreleaserConfigWiring {
+    @Suppress("LongMethod")
+    fun wire(
+        target: Project,
+        propertyResolver: PropertyResolver,
+    ) {
+        if (!target.isRoot()) return
+        val publishExt = target.publishExtension() ?: return
+
+        // Register lazily on root only; disabled until toMavenCentral is true. Uses convention defaults.
+        val taskProvider =
+            target.tasks.register(
+                "generateJreleaserConfig",
+                GenerateJreleaserConfigTask::class.java,
+            ) { task ->
+                task.projectName.convention(target.provider { target.name })
+                task.projectVersion.convention(target.provider { target.version.toString() })
+                task.projectGroupId.convention(target.provider { target.group.toString() })
+                task.outputFile.convention(
+                    target.layout.buildDirectory.file("jreleaser/jreleaser.yml"),
+                )
+                // Per-project staging dirs, resolved eagerly: extension values are final once
+                // afterEnabled runs post-evaluation, and inheritance is live provider linkage
+                // (see ExtensionCopier), so root-set values are visible here. Only enabled
+                // projects are included (mirroring addStagingRepository); a child disabling
+                // itself in its own later-evaluated script may still contribute a dangling
+                // entry — same tolerance as the previous single shared dir.
+                // Default staging path is "stagingRepo" when central is enabled without explicit staging.
+                val stagingDirs =
+                    target.allprojects
+                        .sortedBy { it.path }
+                        .mapNotNull { project ->
+                            project
+                                .publishExtension()
+                                ?.takeIf { it.isEnabled() }
+                                ?.let { ext ->
+                                    val path = ext.stagingPath.orNull ?: "stagingRepo"
+                                    project.layout.buildDirectory
+                                        .dir(path)
+                                        .get()
+                                        .asFile.invariantSeparatorsPath
+                                }
+                        }.distinct()
+                task.stagingDirs.convention(stagingDirs)
+                task.gpgPublicKey.convention(
+                    propertyResolver.get("jreleaser.gpg.publicKey").base64Decode(),
+                )
+                task.gpgPrivateKey.convention(
+                    propertyResolver.get("jreleaser.gpg.privateKey").base64Decode(),
+                )
+                task.gpgPassphrase.convention(
+                    propertyResolver.get("jreleaser.gpg.passphrase"),
+                )
+                task.mavenCentralUsername.convention(
+                    propertyResolver.get("jreleaser.mavencentral.username"),
+                )
+                task.mavenCentralPassword.convention(
+                    propertyResolver.get("jreleaser.mavencentral.password"),
+                )
+                task.nexusUrl.convention(propertyResolver.get("jreleaser.testNexusUrl"))
+                task.nexusUsername.convention(
+                    propertyResolver.get("jreleaser.nexus.username"),
+                )
+                task.nexusPassword.convention(
+                    propertyResolver.get("jreleaser.nexus.password"),
+                )
+                task.onlyIf { publishExt.toMavenCentral.get() }
+            }
+
+        // Eager: only an extension value is read (final once afterEnabled runs
+        // post-evaluation), so no afterEvaluate deferral is needed.
+        taskProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
+
+        // Explicit validation step (kept separate by design): config generation waits
+        // for every project's POM check. Live collection — no eager realization, picks
+        // up checks registered later regardless of evaluation order.
+        target.allprojects { project ->
+            taskProvider.configure { it.dependsOn(project.tasks.withType(CheckCentralPomsTask::class.java)) }
+        }
+    }
+}

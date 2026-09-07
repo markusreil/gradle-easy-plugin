@@ -11,7 +11,10 @@ import org.gradle.api.Project
  * [afterEnabled] is called only when the extension referenced by [EnabledBy] is enabled
  * (or immediately if no [EnabledBy] is present). The check is deferred via [Project.afterEvaluate]
  * so `easy { ... }` configuration is respected without forcing every plugin to handle [CanBeEnabled].
+ *
+ * Abstract for subclassing (Gradle instantiates concrete contributors); no abstract members by design.
  */
+@Suppress("UnnecessaryAbstractClass")
 abstract class AbstractEasyProjectPlugin :
     Plugin<Project>,
     PluginLifecycle<Project> {

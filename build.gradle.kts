@@ -66,4 +66,20 @@ subprojects {
             endWithNewline()
         }
     }
+    // The detekt task defaults to main+test sources only — include every Kotlin source set
+    // (functionalTest, testFixtures, ...) so `check` (which depends on detekt) guards all code.
+    // NOTE: detektMain/detektTest (type-resolution rules) are deliberately NOT wired into check:
+    // they are EXPERIMENTAL in detekt 1.x and crash analyzing some files under Kotlin 2.3
+    // (e.g. EasyCodemetaPlugin.kt). Run them manually; the abstract-base @Suppress annotations
+    // keep them clean when they do run. Revisit with detekt 2.x.
+    pluginManager.withPlugin("io.gitlab.arturbosch.detekt") {
+        tasks.named("detekt") {
+            val sourceTask = this as org.gradle.api.tasks.SourceTask
+            project.extensions.getByType<org.gradle.api.tasks.SourceSetContainer>().forEach { sourceSet ->
+                (sourceSet.extensions.findByName("kotlin") as? org.gradle.api.file.SourceDirectorySet)
+                    ?.srcDirs
+                    ?.forEach { sourceTask.source(it) }
+            }
+        }
+    }
 }

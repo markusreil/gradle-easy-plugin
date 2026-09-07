@@ -10,7 +10,10 @@ import org.gradle.api.plugins.ExtensionAware
  *
  * [init] is called eagerly during [apply]. [afterEnabled] is deferred via [Settings.gradle]
  * `settingsEvaluated` so `easy { ... }` in `settings.gradle.kts` is respected.
+ *
+ * Abstract for subclassing (Gradle instantiates concrete contributors); no abstract members by design.
  */
+@Suppress("UnnecessaryAbstractClass")
 abstract class AbstractEasySettingsPlugin :
     Plugin<Settings>,
     PluginLifecycle<Settings> {

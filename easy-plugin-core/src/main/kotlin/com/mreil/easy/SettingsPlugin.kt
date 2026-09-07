@@ -10,8 +10,7 @@ class SettingsPlugin : Plugin<Settings> {
         registry.loadFromServiceLoader(javaClass.classLoader)
 
         val extension =
-            ExtensionRegistrar.createExtension(
-                settings,
+            ExtensionRegistrar(settings, settings.providers).createExtension(
                 registry,
             )
 
@@ -20,10 +19,9 @@ class SettingsPlugin : Plugin<Settings> {
         // has finished. At that point any `easy { ... }` configuration in settings has already
         // been applied, so the copy receives the configured values.
         settings.gradle.beforeProject {
-            if (it == it.rootProject) {
+            if (it.isRoot()) {
                 if (!it.hasEasyExtension()) {
-                    ExtensionRegistrar.createExtensionWithSubprojects(
-                        project = it,
+                    ExtensionRegistrar(it, it.providers).createExtension(
                         registry = registry,
                         parent = extension,
                     )

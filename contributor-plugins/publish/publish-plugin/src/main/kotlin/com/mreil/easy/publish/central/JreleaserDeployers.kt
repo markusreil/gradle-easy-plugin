@@ -1,4 +1,4 @@
-package com.mreil.easy.publish
+package com.mreil.easy.publish.central
 
 internal const val CENTRAL_SNAPSHOTS_URL = "https://central.sonatype.com/repository/maven-snapshots/"
 
@@ -19,7 +19,7 @@ internal sealed interface JreleaserMavenDeployer {
 
 internal data class MavenCentralDeployer(
     val active: String,
-    val stagingDir: String,
+    val stagingDirs: List<String>,
     val username: String,
     val password: String,
 ) : JreleaserMavenDeployer {
@@ -30,12 +30,12 @@ internal data class MavenCentralDeployer(
         linkedMapOf<String, Any>(
             "active" to active,
             "url" to "https://central.sonatype.com/api/v1/publisher",
-        ).also { it.putAll(commonDeployerMap(stagingDir, username, password)) }
+        ).also { it.putAll(commonDeployerMap(stagingDirs, username, password)) }
 }
 
 internal data class Nexus2SnapshotsDeployer(
     val active: String,
-    val stagingDir: String,
+    val stagingDirs: List<String>,
     val username: String,
     val password: String,
 ) : JreleaserMavenDeployer {
@@ -55,12 +55,12 @@ internal data class Nexus2SnapshotsDeployer(
             "snapshotSupported" to true,
             "closeRepository" to false,
             "releaseRepository" to false,
-        ).also { it.putAll(commonDeployerMap(stagingDir, username, password)) }
+        ).also { it.putAll(commonDeployerMap(stagingDirs, username, password)) }
 }
 
 internal data class Nexus3TestDeployer(
     val url: String,
-    val stagingDir: String,
+    val stagingDirs: List<String>,
     val username: String,
     val password: String,
     val active: String = "ALWAYS",
@@ -74,39 +74,39 @@ internal data class Nexus3TestDeployer(
             "url" to url,
             "authorization" to "BASIC",
             "applyMavenCentralRules" to true,
-        ).also { it.putAll(commonDeployerMap(stagingDir, username, password)) }
+        ).also { it.putAll(commonDeployerMap(stagingDirs, username, password)) }
 }
 
 internal fun commonDeployerMap(
-    stagingDir: String,
+    stagingDirs: List<String>,
     username: String,
     password: String,
 ): Map<String, Any> =
     linkedMapOf(
-        "stagingRepositories" to listOf(stagingDir),
+        "stagingRepositories" to stagingDirs,
         "username" to username,
         "password" to password,
     )
 
 /**
- * Resolves the deployer list for a [MavenCentralWiring.Config].
+ * Resolves the deployer list for a [JreleaserYaml.Config].
  *
  * JReleaser dispatches on version: releases go to the Portal, snapshots to the snapshots
  * repo. In nexus test mode everything remote is NEVER so smoke runs stay local-only.
  */
-internal fun deployersFor(config: MavenCentralWiring.Config): List<JreleaserMavenDeployer> {
+internal fun deployersFor(config: JreleaserYaml.Config): List<JreleaserMavenDeployer> {
     val testMode = config.nexusUrl != null
     val deployers =
         mutableListOf(
             MavenCentralDeployer(
                 active = if (testMode) "NEVER" else "RELEASE",
-                stagingDir = config.stagingDir,
+                stagingDirs = config.stagingDirs,
                 username = config.mavenCentralUsername,
                 password = config.mavenCentralPassword,
             ),
             Nexus2SnapshotsDeployer(
                 active = if (testMode) "NEVER" else "SNAPSHOT",
-                stagingDir = config.stagingDir,
+                stagingDirs = config.stagingDirs,
                 username = config.mavenCentralUsername,
                 password = config.mavenCentralPassword,
             ),
@@ -115,7 +115,7 @@ internal fun deployersFor(config: MavenCentralWiring.Config): List<JreleaserMave
         deployers +=
             Nexus3TestDeployer(
                 url = config.nexusUrl,
-                stagingDir = config.stagingDir,
+                stagingDirs = config.stagingDirs,
                 username = config.nexusUsername,
                 password = config.nexusPassword,
             )

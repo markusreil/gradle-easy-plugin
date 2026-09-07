@@ -1,4 +1,4 @@
-package com.mreil.easy.publish
+package com.mreil.easy.publish.central
 
 import org.w3c.dom.Element
 import java.io.File

@@ -1,6 +1,6 @@
-package com.mreil.easy.publish
+package com.mreil.easy.publish.central
 
-import com.mreil.easy.publish.MavenCentralWiring.Config
+import com.mreil.easy.publish.central.JreleaserYaml.Config
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.URIish
@@ -25,13 +25,13 @@ class JreleaserConfigValidationTest {
 
     @Test
     fun `central config passes jreleaser validation`() {
-        validate(MavenCentralWiring.buildYaml(centralConfig()))
+        validate(JreleaserYaml.buildYaml(centralConfig()))
     }
 
     @Test
     fun `nexus config passes jreleaser validation`() {
         validate(
-            MavenCentralWiring.buildYaml(
+            JreleaserYaml.buildYaml(
                 centralConfig().copy(
                     nexusUrl = "http://localhost:8081/service/rest/v1/components?repository=maven-releases",
                     nexusUsername = "admin",
@@ -39,6 +39,26 @@ class JreleaserConfigValidationTest {
                 ),
             ),
         )
+    }
+
+    /**
+     * Multi-module smoke proof: every module stages into its own dir and JReleaser
+     * accepts the whole collection in `stagingRepositories` (see `deployersFor`).
+     */
+    @Test
+    fun `multi-dir staging config passes jreleaser validation`() {
+        val rootStaging = File(tempDir, "root-staging").apply { mkdirs() }
+        val childStaging = File(tempDir, "child-staging").apply { mkdirs() }
+        val yaml =
+            JreleaserYaml.buildYaml(
+                centralConfig().copy(stagingDirs = listOf(rootStaging.absolutePath, childStaging.absolutePath)),
+            )
+
+        assertSoftly { softly ->
+            softly.assertThat(yaml).contains(rootStaging.absolutePath)
+            softly.assertThat(yaml).contains(childStaging.absolutePath)
+        }
+        validate(yaml)
     }
 
     private fun validate(yaml: String) {
@@ -110,7 +130,7 @@ class JreleaserConfigValidationTest {
             projectVersion = "1.0.0",
             projectGroupId = "com.example",
             // Point at a real (empty) dir in case validation requires staging to exist.
-            stagingDir = File(tempDir, "staging").absolutePath,
+            stagingDirs = listOf(File(tempDir, "staging").absolutePath),
             gpgPublicKey = ARMOR,
             gpgPrivateKey = ARMOR,
             gpgPassphrase = "dummy-gpg-passphrase",

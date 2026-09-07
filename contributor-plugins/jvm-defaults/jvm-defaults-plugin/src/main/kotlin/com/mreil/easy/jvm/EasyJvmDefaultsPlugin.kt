@@ -11,31 +11,21 @@ import org.gradle.api.plugins.JavaPluginExtension
 class EasyJvmDefaultsPlugin : AbstractEasyProjectPlugin() {
     override fun afterEnabled(target: Project) {
         target.pluginManager.withPlugin("java") {
-            val javaExtension = target.extensions.getByType(JavaPluginExtension::class.java)
-            ensureSourcesJar(target, javaExtension)
-            ensureJavadocJar(target, javaExtension)
+            ensureJarTask(target, "sourcesJar", "withSourcesJar()", JavaPluginExtension::withSourcesJar)
+            ensureJarTask(target, "javadocJar", "withJavadocJar()", JavaPluginExtension::withJavadocJar)
         }
     }
 
-    private fun ensureSourcesJar(
+    private fun ensureJarTask(
         target: Project,
-        javaExtension: JavaPluginExtension,
+        taskName: String,
+        configSnippet: String,
+        enable: JavaPluginExtension.() -> Unit,
     ) {
-        if (target.tasks.findByName("sourcesJar") == null) {
-            javaExtension.withSourcesJar()
+        if (target.tasks.findByName(taskName) == null) {
+            target.extensions.getByType(JavaPluginExtension::class.java).enable()
         } else {
-            target.notifyRedundantConfig("sourcesJar", "withSourcesJar()")
-        }
-    }
-
-    private fun ensureJavadocJar(
-        target: Project,
-        javaExtension: JavaPluginExtension,
-    ) {
-        if (target.tasks.findByName("javadocJar") == null) {
-            javaExtension.withJavadocJar()
-        } else {
-            target.notifyRedundantConfig("javadocJar", "withJavadocJar()")
+            target.notifyRedundantConfig(taskName, configSnippet)
         }
     }
 }

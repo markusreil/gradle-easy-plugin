@@ -70,17 +70,19 @@ class CheckCentralPomsFuncTest {
             }
         }
 
-        val result = project.build("publish", "--info")
+        // `publish` includes the JReleaser deploy via `publishToMavenCentral`, which needs
+        // real credentials — excluded here to keep this staging/validation test hermetic.
+        val result = project.build("publish", "--info", "-x", "publishToMavenCentral")
 
         val stagingRepo = project.file("build/stagingRepo")
+        val childStagingRepo = project.file("child/build/stagingRepo")
         assertSoftly { softly ->
             softly.assertThat(result.output).contains(":checkCentralPoms")
             softly.assertThat(result.output).contains(":child:publish")
             softly.assertThat(result.output).contains(":child:generatePomFileForMavenPublication")
             softly.assertThat(project).hasArtifact(stagingRepo, MavenCoordinates(name = rootName))
-            // The child module must stage into the shared root staging dir as well —
-            // root-only staging would leave :child:publish with nowhere to upload to.
-            softly.assertThat(project).hasArtifact(stagingRepo, MavenCoordinates(name = "child"))
+            // Each module stages into its own build dir; JReleaser deploys the collection.
+            softly.assertThat(project).hasArtifact(childStagingRepo, MavenCoordinates(name = "child"))
         }
     }
 
@@ -120,7 +122,7 @@ class CheckCentralPomsFuncTest {
             javaSource()
         }
 
-        val result = project.buildAndFail("publish", "--info")
+        val result = project.buildAndFail("publish", "--info", "-x", "publishToMavenCentral")
 
         val stagingRepo = project.file("build/stagingRepo")
         val stagedPom = project.mavenArtifact(stagingRepo, MavenCoordinates(name = rootName, extension = "pom"))
@@ -170,7 +172,8 @@ class CheckCentralPomsFuncTest {
             javaSource()
         }
 
-        project.build("publish", "--info")
+        // Excluded deploy: see above — this test only asserts POM content after staging.
+        project.build("publish", "--info", "-x", "publishToMavenCentral")
 
         val stagingRepo = project.file("build/stagingRepo")
         assertSoftly { softly ->

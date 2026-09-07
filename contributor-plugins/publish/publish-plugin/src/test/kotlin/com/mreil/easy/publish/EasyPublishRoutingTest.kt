@@ -27,24 +27,9 @@ class EasyPublishRoutingTest {
         expected: Boolean,
     ) {
         val isSnapshot = isSnapshotParam.takeIf { it != "null" }?.toBooleanStrict()
-        val result = invokeShouldPublishToRepo(repoName, isSnapshot)
+        val result = RepoRouting.shouldPublishToRepo(repoName, isSnapshot)
         assertSoftly { softly ->
             softly.assertThat(result).isEqualTo(expected)
         }
-    }
-
-    private fun invokeShouldPublishToRepo(
-        repoName: String,
-        isSnapshot: Boolean?,
-    ): Boolean {
-        val method =
-            EasyPublishPlugin::class.java.getDeclaredMethod(
-                "shouldPublishToRepo",
-                String::class.java,
-                Boolean::class.javaObjectType,
-            )
-        method.isAccessible = true
-        val plugin = EasyPublishPlugin::class.java.getDeclaredConstructor().newInstance()
-        return method.invoke(plugin, repoName, isSnapshot) as Boolean
     }
 }

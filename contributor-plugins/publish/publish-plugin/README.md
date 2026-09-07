@@ -18,8 +18,11 @@ plugin infrastructure. It only activates when `easy.publish` is explicitly enabl
   does not create a conflicting default publication.
 * **Consistent coordinates** – `groupId`/`artifactId`/`version` are derived from the
   project; publishing fails fast with a clear error if `group`/`version` are unset.
-* **POM metadata** – every publication gets a POM with name, description, URL,
-  MIT license and SCM metadata plus dependency version mapping.
+* **POM metadata** – every publication gets a POM with name, description, URL
+  (from Codemeta when enabled, else `codeRepository`), license, developers and SCM
+  metadata plus dependency version mapping. Without Codemeta, `url`/`scm` are left
+  unset rather than invented — `checkCentralPoms` reports them when deploying to
+  Maven Central.
 * **Declarative repositories** – the `easy.publish.mavenRepo(...)` DSL attaches
   named Maven repositories to the `publishing` extension lazily (both `Action<MavenRepoSpec>` and convenience `mavenRepo(name, url, withPasswordCredentials)` overloads).
 * **Password credentials** – opt-in per repository via `passwordCredentials` (or `withPasswordCredentials = true`).
@@ -135,10 +138,26 @@ Example for a repository named `releases`:
 > Note: `file://` repositories do not support credentials; use an `http(s)://` URL
 > (or a real remote) when enabling `passwordCredentials`.
 
+## Module overview
+
+```text
+EasyPublishPlugin (@ApplyToSubprojects)
+├── MavenPublicationConfigurer (coordinates, POM, versionMapping)
+├── PomCheckWiring -> CheckCentralPomsTask -> PomRequirementsChecker
+└── mavenStaging repo + RepoRouting (release/snapshot filtering)
+
+EasyJreleaserPlugin (root-only)
+├── JreleaserConfigWiring -> GenerateJreleaserConfigTask -> JreleaserYaml + JreleaserDeployers
+├── PublishAggregationWiring -> root `publish` (see ensureRootPublishTask)
+└── JreleaserDeployWiring -> publishToMavenCentral (JreleaserPublishTask)
+
+Shared: PublishExtensions.publishExtension() + central.ensureRootPublishTask()
+```
+
 ## How it works
 
  `EasyPublishPlugin` (in
-`contributor-plugins/publish-plugin/src/main/kotlin/com/mreil/easy/publish/EasyPublishPlugin.kt`) +
+`contributor-plugins/publish/publish-plugin/src/main/kotlin/com/mreil/easy/publish/EasyPublishPlugin.kt`) +
 `DefaultEasyPublishExtension` (`@PublicType(EasyPublishExtension::class)`, discovered via `EasyPublishContributor`):
 
 1. `EasyPublishContributor` contributes `DefaultEasyPublishExtension::class` via `pluginExtensions()`; `ExtensionRegistrar` resolves the public type via `@PublicType` and calls `createExtensionAs(publicType, implType)` so the extension is reachable as `easy.publish` (public interface) but instantiated as the implementation.
@@ -148,7 +167,9 @@ Example for a repository named `releases`:
    markers).
 4. Normalizes every publication (regular and plugin marker): fills in missing
    coordinates/version, populates the POM, and configures version mapping.
+   `url`/`scm` come from Codemeta only — without it they stay unset (never a
+   hardcoded placeholder) and `checkCentralPoms` reports them before Central upload.
 5. If `stagingPath` is present (`toMavenStaging`), creates `mavenStaging` via helper `mavenRepo("mavenStaging", buildDirectory/dir(path))` per-project.
-6. Resolves semver lazily via `EasySemver.of(target).orNull` (`semver4j`, strict parse, `isExtensionEnabled(EasySemverExtension::class)` guard) — `null` → no filtering. Otherwise `isSnapshot = !semver.isStable`; `shouldPublishToRepo(name, isSnapshot)` skips `*release*` repos for snapshots and `*snapshot*` repos for releases (case-insensitive); neutral names always added.
+6. Resolves semver lazily via `EasySemver.of(target).orNull` (`semver4j`, strict parse, `isExtensionEnabled(EasySemverExtension::class)` guard) — `null` → no filtering. Otherwise `isSnapshot = RepoRouting.isSnapshot(semver)`; `RepoRouting.shouldPublishToRepo(name, isSnapshot)` skips `*release*` repos for snapshots and `*snapshot*` repos for releases (case-insensitive); neutral names always added.
 7. Attaches filtered `mavenRepos` to `publishing.repositories` (`spec.configure(target, repo)`), enabling `PasswordCredentials` when requested.
 8. If `toMavenLocal` is true, wires `publish -> publishToMavenLocal` eagerly via `tasks.named("publish").configure { dependsOn("publishToMavenLocal") }` (CC-safe, one-shot; no `afterEvaluate` needed since only final extension values are read).
