@@ -75,6 +75,9 @@ object PluginRegistrar {
      * will be applied to all projects in the build (root and subprojects). Otherwise,
      * it will only be applied to the current project.
      *
+     * Snapshot semantics (mirroring [injectEasyExtensions]): only projects in [allProjects]
+     * at call time are covered — projects added later are missed by both fan-outs.
+     *
      * @param kclass The plugin class to determine targets for.
      * @param project The current project requesting plugin application.
      * @param allProjects A sorted list of all projects in the build (root + subprojects).
@@ -86,8 +89,5 @@ object PluginRegistrar {
         project: Project,
         allProjects: List<Project>,
         registry: PluginRegistry,
-    ): List<Project> {
-        val toSubprojects = registry.shouldApplyToSubprojects(kclass)
-        return if (toSubprojects) allProjects else listOf(project)
-    }
+    ): List<Project> = if (registry.shouldApplyToSubprojects(kclass)) allProjects else listOf(project)
 }

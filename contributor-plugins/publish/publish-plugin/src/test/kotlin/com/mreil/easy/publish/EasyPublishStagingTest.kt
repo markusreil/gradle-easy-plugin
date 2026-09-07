@@ -53,12 +53,17 @@ class EasyPublishStagingTest {
             root.layout.buildDirectory
                 .get()
                 .asFile.invariantSeparatorsPath
+        val childBuild =
+            child.layout.buildDirectory
+                .get()
+                .asFile.invariantSeparatorsPath
         assertSoftly { softly ->
             softly.assertThat(rootRepo.url.toString()).contains(rootBuild)
-            // Every module stages into the shared root staging dir JReleaser deploys.
+            // Every module stages into its own build dir; JReleaser deploys the collection.
             softly.assertThat(childRepo).isNotNull()
-            softly.assertThat(childRepo?.url.toString()).contains(rootBuild)
+            softly.assertThat(childRepo?.url.toString()).contains(childBuild)
             softly.assertThat(childRepo?.url.toString()).contains("stagingRepo")
+            softly.assertThat(childBuild).isNotEqualTo(rootBuild)
         }
     }
 

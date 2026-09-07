@@ -38,35 +38,54 @@ object ExtensionCopier {
         to: ExtensionAware,
     ) {
         from.extensions.extensionsSchema.elements.forEach { schema ->
-            val name = schema.name
-            val fromChild = from.extensions.findByName(name)
-            val toChild = to.extensions.findByName(name)
-            if (fromChild is CanBeCopied && toChild is CanBeCopied) {
-                copy(fromChild, toChild)
-            }
+            copyChildren(from.extensions.findByName(schema.name), to.extensions.findByName(schema.name))
         }
     }
 
-    @Suppress("ReturnCount")
+    private fun copyChildren(
+        fromChild: Any?,
+        toChild: Any?,
+    ) {
+        if (fromChild !is CanBeCopied) return
+        if (toChild !is CanBeCopied) return
+        copy(fromChild, toChild)
+    }
+
     private fun copyMember(
         prop: KProperty1<Any, *>,
         from: CanBeCopied,
         to: CanBeCopied,
     ) {
-        if (prop.visibility == KVisibility.PRIVATE) return
-        if (prop.getter.visibility == KVisibility.PRIVATE) return
-        if (prop.isExtensionsProperty()) return
+        if (prop.isSkippable()) return
         val mode = modeOf(prop, from) ?: CopyMode.Mode.DEEP
         if (mode == CopyMode.Mode.NONE) return
+        copyRaws(prop, from, to, mode)
+    }
 
+    private fun KProperty1<Any, *>.isSkippable(): Boolean =
+        visibility == KVisibility.PRIVATE || getter.visibility == KVisibility.PRIVATE || isExtensionsProperty()
+
+    private fun copyRaws(
+        prop: KProperty1<Any, *>,
+        from: CanBeCopied,
+        to: CanBeCopied,
+        mode: CopyMode.Mode,
+    ) {
         val fromRaw = prop.get(from)
         val toRaw = prop.get(to)
-
-        if (fromRaw != null && toRaw != null) {
-            dispatchCopy(prop, fromRaw, toRaw, mode, to)
+        if (fromRaw == null || toRaw == null) {
+            copyNullableRaw(prop, to, fromRaw, mode)
             return
         }
+        dispatchCopy(prop, fromRaw, toRaw, mode, to)
+    }
 
+    private fun copyNullableRaw(
+        prop: KProperty1<Any, *>,
+        to: CanBeCopied,
+        fromRaw: Any?,
+        mode: CopyMode.Mode,
+    ) {
         if (prop is KMutableProperty1<Any, *> && fromRaw !is CanBeCopied) {
             copyMutableProperty(prop, to, fromRaw, mode)
         }

@@ -1,7 +1,9 @@
-package com.mreil.easy.publish
+package com.mreil.easy.publish.central
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
@@ -21,21 +23,26 @@ import org.gradle.api.tasks.TaskAction
 @CacheableTask
 abstract class GenerateJreleaserConfigTask : DefaultTask() {
     @get:Input
-    abstract val stagingDirectory: Property<String>
+    abstract val stagingDirs: ListProperty<String>
 
     @get:Input
+    @get:Optional
     abstract val gpgPublicKey: Property<String>
 
     @get:Input
+    @get:Optional
     abstract val gpgPrivateKey: Property<String>
 
     @get:Input
+    @get:Optional
     abstract val gpgPassphrase: Property<String>
 
     @get:Input
+    @get:Optional
     abstract val mavenCentralUsername: Property<String>
 
     @get:Input
+    @get:Optional
     abstract val mavenCentralPassword: Property<String>
 
     @get:Input
@@ -52,9 +59,11 @@ abstract class GenerateJreleaserConfigTask : DefaultTask() {
     abstract val nexusUrl: Property<String>
 
     @get:Input
+    @get:Optional
     abstract val nexusUsername: Property<String>
 
     @get:Input
+    @get:Optional
     abstract val nexusPassword: Property<String>
 
     @get:OutputFile
@@ -62,30 +71,40 @@ abstract class GenerateJreleaserConfigTask : DefaultTask() {
 
     init {
         group = "publishing"
-        description = "Generates JReleaser config for Maven Central (staging at stagingDirectory)"
+        description = "Generates JReleaser config for Maven Central (staging at stagingDirs)"
     }
 
     @TaskAction
+    // UseOrEmpty does not apply: Gradle Property has no orEmpty(), orNull ?: "" is the idiom.
+    @Suppress("UseOrEmpty")
     fun generate() {
+        // Fail fast with actionable messages instead of Gradle's generic missing-value
+        // error. Conventions must stay absent-able: a throwing provider (e.g. via
+        // orElse) would detonate at configuration-cache store time, where TestKit-style
+        // -D flags are not yet visible to not-yet-realized providers.
         val file = outputFile.get().asFile
         file.parentFile.mkdirs()
         file.writeText(
-            MavenCentralWiring.buildYaml(
-                MavenCentralWiring.Config(
+            JreleaserYaml.buildYaml(
+                JreleaserYaml.Config(
                     projectName = projectName.get(),
                     projectVersion = projectVersion.get(),
                     projectGroupId = projectGroupId.get(),
-                    stagingDir = stagingDirectory.get(),
-                    gpgPublicKey = gpgPublicKey.get(),
-                    gpgPrivateKey = gpgPrivateKey.get(),
-                    gpgPassphrase = gpgPassphrase.get(),
-                    mavenCentralUsername = mavenCentralUsername.get(),
-                    mavenCentralPassword = mavenCentralPassword.get(),
+                    stagingDirs = stagingDirs.get(),
+                    gpgPublicKey = gpgPublicKey.required("GPG public key is required"),
+                    gpgPrivateKey = gpgPrivateKey.required("GPG private key is required"),
+                    gpgPassphrase = gpgPassphrase.required("GPG passphrase is required"),
+                    mavenCentralUsername =
+                        mavenCentralUsername.required("Maven Central username is required"),
+                    mavenCentralPassword =
+                        mavenCentralPassword.required("Maven Central password is required"),
                     nexusUrl = nexusUrl.orNull,
-                    nexusUsername = nexusUsername.get(),
-                    nexusPassword = nexusPassword.get(),
+                    nexusUsername = nexusUsername.orNull ?: "",
+                    nexusPassword = nexusPassword.orNull ?: "",
                 ),
             ),
         )
     }
+
+    private fun Property<String>.required(message: String): String = orNull ?: throw GradleException(message)
 }

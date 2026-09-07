@@ -1,5 +1,6 @@
 package com.mreil.utils
 
+import org.gradle.api.internal.provider.ProviderInternal
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import java.util.Base64
@@ -33,7 +34,7 @@ class PropertyResolver(
      * The result is a [StringProvider] that still implements [Provider] but adds convenience
      * helpers such as [StringProvider.base64Decode].
      */
-    fun get(name: String): StringProvider {
+    operator fun get(name: String): StringProvider {
         require(name.isNotBlank()) { "name must not be blank" }
         val envKey = toEnvKey(name)
         val propertyKey = toPropertyKey(name)
@@ -55,29 +56,49 @@ class PropertyResolver(
             candidates += providers.gradleProperty(key)
         }
 
-        return StringProvider(candidates.reduce { acc, next -> acc.orElse(next) })
+        return StringProvider(
+            candidates.reduce { acc, next -> acc.orElse(next) },
+            providers,
+        )
     }
 
     /**
      * Custom [Provider] for `String` values with convenience transformations.
      *
-     * Wraps a delegate [Provider] and delegates all [Provider] operations to it while exposing
-     * additional helpers such as [base64Decode]. The implementation is configuration-cache compatible
-     * because transformations are implemented via [Provider.map].
+     * Plain nested (static) class holding the delegate [Provider] and the [ProviderFactory]
+     * (an injected Gradle service reference, safe to hold for configuration-cache
+     * purposes). Deliberately not `inner` so it can be constructed as
+     * `PropertyResolver.StringProvider(delegate, providers)` without an outer instance.
+     * Exposes additional helpers such as [base64Decode]; transformations
+     * stay lazy and CC-compatible because they are built via [Provider.map]/[Provider.orElse].
+     *
+     * Implements Gradle's internal [ProviderInternal] by delegating to the (likewise
+     * internal) delegate, so instances can go directly into `Property.convention(...)`
+     * without unwrapping. This couples to Gradle-internal API — acceptable here since
+     * the build pins the Gradle version via the wrapper; re-evaluate on Gradle upgrades.
+     *
+     * Note: do NOT add fail-fast helpers based on `orElse` with a throwing provider —
+     * a throwing fallback detonates at configuration-cache store time (not-yet-realized
+     * system-property providers read absent there), failing every build whose task graph
+     * contains the task. Validate required values at task execution time instead.
      */
     class StringProvider(
         private val delegate: Provider<String>,
-    ) : Provider<String> by delegate {
+        private val providers: ProviderFactory,
+    ) : ProviderInternal<String> by (delegate as ProviderInternal<String>) {
         /**
-         * Returns a [Provider] whose value is the Base64-decoded form of this provider's value.
+         * Returns a [StringProvider] whose value is the Base64-decoded form of this provider's value.
          *
          * Uses [Base64.getDecoder] with UTF-8. If this provider is absent the result is absent.
          * Decoding is lazy and CC-compatible via [Provider.map].
          */
-        fun base64Decode(): Provider<String> =
-            delegate.map { encoded ->
-                String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
-            }
+        fun base64Decode(): StringProvider =
+            StringProvider(
+                delegate.map { encoded ->
+                    String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
+                },
+                providers,
+            )
     }
 
     companion object {

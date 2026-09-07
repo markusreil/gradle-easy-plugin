@@ -14,6 +14,18 @@ import org.junit.jupiter.api.extension.ExtendWith
 class SemverFuncTest {
     lateinit var project: GradleTestProject
 
+    private fun failingLookupProbe() =
+        probeTask("verifySemver") {
+            prelude(
+                "try {",
+                "    com.mreil.easy.semver.EasySemver.of(project).get()",
+                "    println(\"UNEXPECTED_SUCCESS\")",
+                "} catch (e: Exception) {",
+                "    println(\"ERROR=\" + (e.message ?: \"null\"))",
+                "}",
+            )
+        }
+
     @Test
     fun `easySemver of returns lazy semver`() {
         val semverProbe =
@@ -50,12 +62,7 @@ class SemverFuncTest {
 
     @Test
     fun `easySemver of fails on unspecified version`() {
-        val semverProbe =
-            probeTask("verifySemver") {
-                prelude(
-                    "try { com.mreil.easy.semver.EasySemver.of(project).get(); println(\"UNEXPECTED_SUCCESS\") } catch (e: Exception) { println(\"ERROR=\" + (e.message ?: \"null\")) }",
-                )
-            }
+        val semverProbe = failingLookupProbe()
         project.configure {
             // no version staged - defaults to unspecified
             version = null
@@ -83,12 +90,7 @@ class SemverFuncTest {
 
     @Test
     fun `easySemver of fails on invalid semver`() {
-        val semverProbe =
-            probeTask("verifySemver") {
-                prelude(
-                    "try { com.mreil.easy.semver.EasySemver.of(project).get(); println(\"UNEXPECTED_SUCCESS\") } catch (e: Exception) { println(\"ERROR=\" + (e.message ?: \"null\")) }",
-                )
-            }
+        val semverProbe = failingLookupProbe()
         project.configure {
             version = "not-semver"
             buildGradle(
@@ -115,12 +117,7 @@ class SemverFuncTest {
 
     @Test
     fun `easySemver of fails when semver not enabled`() {
-        val semverProbe =
-            probeTask("verifySemver") {
-                prelude(
-                    "try { com.mreil.easy.semver.EasySemver.of(project).get(); println(\"UNEXPECTED_SUCCESS\") } catch (e: Exception) { println(\"ERROR=\" + (e.message ?: \"null\")) }",
-                )
-            }
+        val semverProbe = failingLookupProbe()
         project.configure {
             version = "1.2.3"
             buildGradle(

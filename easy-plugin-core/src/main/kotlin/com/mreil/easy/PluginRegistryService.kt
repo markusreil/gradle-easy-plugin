@@ -7,6 +7,7 @@ import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import java.util.ServiceConfigurationError
 import java.util.ServiceLoader
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.reflect.KClass
 
 /**
@@ -26,6 +27,7 @@ abstract class PluginRegistryService :
         java.util.Collections.synchronizedSet(mutableSetOf<KClass<out EasyPluginExtension>>())
     private val extensionToContributor =
         java.util.Collections.synchronizedMap(mutableMapOf<KClass<out EasyPluginExtension>, EasyPluginContributor>())
+    private val loaded = AtomicBoolean(false)
 
     override fun registerProjectPlugin(pluginClass: KClass<out Plugin<Project>>) {
         projectPlugins.add(pluginClass)
@@ -48,8 +50,9 @@ abstract class PluginRegistryService :
     /** Returns the contributor that provided [pluginClass], or null if unknown. */
     fun getContributorFor(pluginClass: KClass<out Plugin<*>>): EasyPluginContributor? = pluginToContributor[pluginClass]
 
-    /** Loads contributors via ServiceLoader using [classLoader]. */
+    /** Loads contributors via ServiceLoader using [classLoader]. First call wins; repeat calls are no-ops. */
     fun loadFromServiceLoader(classLoader: ClassLoader) {
+        if (!loaded.compareAndSet(false, true)) return
         synchronized(this) {
             try {
                 ServiceLoader

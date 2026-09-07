@@ -67,7 +67,7 @@ class ExtensionRegistrarCreationTest {
                 registerExtension(OtherTestSubExtension::class)
             }
 
-        val extension = ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
+        val extension = ExtensionRegistrar(project, project.providers).createExtension(registry)
 
         assertSoftly { softly ->
             softly.assertThat(extension).isNotNull
@@ -78,14 +78,14 @@ class ExtensionRegistrarCreationTest {
     }
 
     @Test
-    fun `creates EasyExtension directly on ExtensionContainer`() {
+    fun `creates EasyExtension on ExtensionAware target`() {
         val project = ProjectBuilder.builder().build()
         val registry =
             SimplePluginRegistry().apply {
                 registerExtension(TestSubExtension::class)
             }
 
-        val extension = ExtensionRegistrar.createExtension(project.extensions, registry)
+        val extension = ExtensionRegistrar(project, project.providers).createExtension(registry)
 
         assertSoftly { softly ->
             softly.assertThat(extension).isNotNull
@@ -103,13 +103,13 @@ class ExtensionRegistrarCreationTest {
             }
 
         assertThatThrownBy {
-            ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
+            ExtensionRegistrar(project, project.providers).createExtension(registry)
         }.isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("must have a companion object implementing Named")
     }
 
     @Test
-    fun `creates EasyExtension on ExtensionAware delegates to ExtensionContainer overload`() {
+    fun `creates EasyExtension on ExtensionAware reference`() {
         val project = ProjectBuilder.builder().build()
         val target: ExtensionAware = project
         val registry =
@@ -118,7 +118,7 @@ class ExtensionRegistrarCreationTest {
                 registerExtension(OtherTestSubExtension::class)
             }
 
-        val extension = ExtensionRegistrar.createExtension(target, registry)
+        val extension = ExtensionRegistrar(target, project.providers).createExtension(registry)
 
         assertSoftly { softly ->
             softly.assertThat(extension).isNotNull

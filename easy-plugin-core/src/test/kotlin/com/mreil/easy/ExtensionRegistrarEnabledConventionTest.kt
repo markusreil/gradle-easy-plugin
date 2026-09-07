@@ -59,7 +59,7 @@ class ExtensionRegistrarEnabledConventionTest {
         val project = ProjectBuilder.builder().build()
         val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
 
-        val ext = ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
+        val ext = ExtensionRegistrar(project, project.providers).createExtension(registry)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)
 
         assertSoftly { softly ->
@@ -74,7 +74,7 @@ class ExtensionRegistrarEnabledConventionTest {
         val project = ProjectBuilder.builder().build()
         val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
 
-        val ext = ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
+        val ext = ExtensionRegistrar(project, project.providers).createExtension(registry)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)
 
         assertSoftly { softly ->
@@ -89,7 +89,7 @@ class ExtensionRegistrarEnabledConventionTest {
         val project = ProjectBuilder.builder().build()
         val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
 
-        val ext = ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
+        val ext = ExtensionRegistrar(project, project.providers).createExtension(registry)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)
         // late override, as done in build script easy { sub { enabled.set(true) } }
         sub.enabled.set(true)
@@ -105,7 +105,7 @@ class ExtensionRegistrarEnabledConventionTest {
         val project = ProjectBuilder.builder().build()
         val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
 
-        val ext = ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
+        val ext = ExtensionRegistrar(project, project.providers).createExtension(registry)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)
         sub.enabled.set(false)
 
@@ -122,13 +122,13 @@ class ExtensionRegistrarEnabledConventionTest {
         val child = ProjectBuilder.builder().build()
         val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
 
-        val parentExt = ExtensionRegistrar.createExtensionWithSubprojects(parent, registry)
+        val parentExt = ExtensionRegistrar(parent, parent.providers).createExtension(registry)
         parentExt.extensions
             .getByType(TestSubExtension::class.java)
             .enabled
             .set(false)
 
-        val childExt = ExtensionRegistrar.createExtensionWithSubprojects(child, registry, parent)
+        val childExt = ExtensionRegistrar(child, child.providers).createExtension(registry, parent)
         val childSub = childExt.extensions.getByType(TestSubExtension::class.java)
 
         assertSoftly { softly ->
@@ -143,10 +143,10 @@ class ExtensionRegistrarEnabledConventionTest {
         val child = ProjectBuilder.builder().build()
         val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
 
-        val parentExt = ExtensionRegistrar.createExtensionWithSubprojects(parent, registry)
+        val parentExt = ExtensionRegistrar(parent, parent.providers).createExtension(registry)
         // parent already has convention false due to system prop
 
-        val childExt = ExtensionRegistrar.createExtensionWithSubprojects(child, registry, parent)
+        val childExt = ExtensionRegistrar(child, child.providers).createExtension(registry, parent)
         val childSub = childExt.extensions.getByType(TestSubExtension::class.java)
 
         // Even though child would get convention false itself, explicit test of copy path:
@@ -169,13 +169,13 @@ class ExtensionRegistrarEnabledConventionTest {
         val child = ProjectBuilder.builder().build()
         val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
 
-        val parentExt = ExtensionRegistrar.createExtensionWithSubprojects(parent, registry)
+        val parentExt = ExtensionRegistrar(parent, parent.providers).createExtension(registry)
         parentExt.extensions
             .getByType(TestSubExtension::class.java)
             .enabled
             .set(false)
 
-        val childExt = ExtensionRegistrar.createExtensionWithSubprojects(child, registry, parent)
+        val childExt = ExtensionRegistrar(child, child.providers).createExtension(registry, parent)
         val childSub = childExt.extensions.getByType(TestSubExtension::class.java)
         // late re-enable in child (easy { sub { enabled.set(true) } })
         childSub.enabled.set(true)
@@ -192,7 +192,7 @@ class ExtensionRegistrarEnabledConventionTest {
 
         org.assertj.core.api.Assertions
             .assertThatThrownBy {
-                ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
+                ExtensionRegistrar(project, project.providers).createExtension(registry)
             }.isInstanceOf(IllegalStateException::class.java)
             .hasMessageContaining("must provide a convention for 'enabled'")
             .hasMessageContaining("missing")
@@ -206,7 +206,7 @@ class ExtensionRegistrarEnabledConventionTest {
 
         org.assertj.core.api.Assertions
             .assertThatThrownBy {
-                ExtensionRegistrar.createExtensionWithSubprojects(project, registry)
+                ExtensionRegistrar(project, project.providers).createExtension(registry)
             }.isInstanceOf(IllegalStateException::class.java)
             .hasMessageContaining("must provide a convention for 'enabled'")
             .hasMessageContaining("missing")

@@ -4,7 +4,6 @@ import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
-import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.provider.Property
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
@@ -65,11 +64,11 @@ class ExtensionRegistrarCopyTest {
                 registerExtension(TestSubExtension::class)
             }
 
-        val parentExt = ExtensionRegistrar.createExtensionWithSubprojects(parentProject, registry)
+        val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         val parentSub = parentExt.extensions.getByType(TestSubExtension::class.java)
         parentSub.enabled.set(true)
 
-        val childExt = ExtensionRegistrar.createExtensionWithSubprojects(childProject, registry, parentProject)
+        val childExt = ExtensionRegistrar(childProject, childProject.providers).createExtension(registry, parentProject)
         val childSub = childExt.extensions.getByType(TestSubExtension::class.java)
 
         assertSoftly { softly ->
@@ -87,11 +86,11 @@ class ExtensionRegistrarCopyTest {
                 registerExtension(TestSubExtension::class)
             }
 
-        val parentExt = ExtensionRegistrar.createExtensionWithSubprojects(parentProject, registry)
+        val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         val parentSub = parentExt.extensions.getByType(TestSubExtension::class.java)
         parentSub.enabled.set(true)
 
-        val childExt = ExtensionRegistrar.createExtensionWithSubprojects(childProject, registry, parentExt)
+        val childExt = ExtensionRegistrar(childProject, childProject.providers).createExtension(registry, parentExt)
         val childSub = childExt.extensions.getByType(TestSubExtension::class.java)
 
         assertSoftly { softly ->
@@ -108,12 +107,11 @@ class ExtensionRegistrarCopyTest {
                 registerExtension(TestSubExtension::class)
             }
 
-        val parentExt = ExtensionRegistrar.createExtension(parentProject as ExtensionAware, registry)
+        val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         val parentSub = parentExt.extensions.getByType(TestSubExtension::class.java)
         parentSub.enabled.set(true)
 
-        val childTarget: ExtensionAware = childHolder
-        val childExt = ExtensionRegistrar.createExtension(childTarget, registry, parentProject as ExtensionAware)
+        val childExt = ExtensionRegistrar(childHolder, childHolder.providers).createExtension(registry, parentProject)
         val childSub = childExt.extensions.getByType(TestSubExtension::class.java)
 
         assertSoftly { softly ->
@@ -130,12 +128,11 @@ class ExtensionRegistrarCopyTest {
                 registerExtension(TestSubExtension::class)
             }
 
-        val parentExt = ExtensionRegistrar.createExtension(parentProject as ExtensionAware, registry)
+        val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         val parentSub = parentExt.extensions.getByType(TestSubExtension::class.java)
         parentSub.enabled.set(true)
 
-        val childTarget: ExtensionAware = childHolder
-        val childExt = ExtensionRegistrar.createExtension(childTarget, registry, parentExt as ExtensionAware)
+        val childExt = ExtensionRegistrar(childHolder, childHolder.providers).createExtension(registry, parentExt)
         val childSub = childExt.extensions.getByType(TestSubExtension::class.java)
 
         assertSoftly { softly ->
@@ -152,13 +149,13 @@ class ExtensionRegistrarCopyTest {
                 registerExtension(TestSubExtension::class)
             }
 
-        val parentExt = ExtensionRegistrar.createExtensionWithSubprojects(parentProject, registry)
+        val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         parentExt.extensions
             .getByType(TestSubExtension::class.java)
             .enabled
             .set(false)
 
-        val childExt = ExtensionRegistrar.createExtensionWithSubprojects(childProject, registry, parentProject)
+        val childExt = ExtensionRegistrar(childProject, childProject.providers).createExtension(registry, parentProject)
         val childSub = childExt.extensions.getByType(TestSubExtension::class.java)
 
         assertSoftly { softly ->
@@ -174,7 +171,7 @@ class ExtensionRegistrarCopyTest {
                 registerExtension(TestSubExtension::class)
             }
 
-        val ext = ExtensionRegistrar.createExtensionWithSubprojects(project, registry, parent = null)
+        val ext = ExtensionRegistrar(project, project.providers).createExtension(registry, parent = null)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)
 
         assertSoftly { softly ->

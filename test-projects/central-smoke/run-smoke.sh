@@ -22,7 +22,7 @@ die() {
     exit 1
 }
 
-for cmd in docker java gpg curl; do
+for cmd in docker java gpg curl python3 base64; do
     command -v "$cmd" >/dev/null 2>&1 || die "missing prerequisite: $cmd"
 done
 docker compose version >/dev/null 2>&1 || die "missing prerequisite: docker compose v2"
@@ -59,13 +59,22 @@ for _ in $(seq 1 30); do
 done
 [ "$ready" = "1" ] || die "Nexus did not become ready in time"
 
+echo "==> accepting Nexus EULA (recent Nexus 3 refuses deploys with 403 until accepted)"
+EULA_DISCLAIMER="$(curl -sf -u "$NEXUS_USER:$NEXUS_PASSWORD" "$NEXUS_URL/service/rest/v1/system/eula" | python3 -c "import json,sys; print(json.load(sys.stdin)['disclaimer'])")"
+python3 -c "import json; print(json.dumps({'accepted': True, 'disclaimer': '''$EULA_DISCLAIMER'''}))" >"$WORKDIR/eula.json"
+curl -sf -u "$NEXUS_USER:$NEXUS_PASSWORD" -X POST "$NEXUS_URL/service/rest/v1/system/eula" \
+    -H "Content-Type: application/json" -d @"$WORKDIR/eula.json" -o /dev/null || die "failed to accept Nexus EULA"
+
 echo "==> publishing to staging and deploying via JReleaser"
+# base64-encoded: the wiring decodes them (PropertyResolver.base64Decode) so the
+# multiline armor survives env transport as a single line.
 export JRELEASER_GPG_PUBLIC_KEY
-JRELEASER_GPG_PUBLIC_KEY="$(cat "$WORKDIR/public.asc")"
+JRELEASER_GPG_PUBLIC_KEY="$(base64 -w0 "$WORKDIR/public.asc")"
 export JRELEASER_GPG_PRIVATE_KEY
-JRELEASER_GPG_PRIVATE_KEY="$(cat "$WORKDIR/private.asc")"
+JRELEASER_GPG_PRIVATE_KEY="$(base64 -w0 "$WORKDIR/private.asc")"
 export JRELEASER_GPG_PASSPHRASE="$GPG_PASSPHRASE"
-./gradlew --refresh-dependencies publish publishToMavenCentral \
+# `publish` includes the JReleaser deploy via `publishToMavenCentral`.
+./gradlew --refresh-dependencies publish \
     "-Pjreleaser.testNexusUrl=$NEXUS_URL/service/rest/v1/components?repository=$NEXUS_REPO" \
     "-Pjreleaser.nexus.username=$NEXUS_USER" \
     "-Pjreleaser.nexus.password=$NEXUS_PASSWORD"

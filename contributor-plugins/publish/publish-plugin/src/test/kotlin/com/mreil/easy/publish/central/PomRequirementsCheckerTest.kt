@@ -1,4 +1,4 @@
-package com.mreil.easy.publish
+package com.mreil.easy.publish.central
 
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.Test

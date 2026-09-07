@@ -1,11 +1,14 @@
-package com.mreil.easy.publish
+package com.mreil.easy.publish.central
 
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.publish.DefaultEasyPublishExtension
+import com.mreil.easy.publish.EasyPublishExtension
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
+import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -63,7 +66,11 @@ class EasyPublishCentralTest {
                         ?.asFile
                         ?.invariantSeparatorsPath,
                 ).contains("build/jreleaser/jreleaser.yml")
-            softly.assertThat(rootTask?.stagingDirectory?.get()).contains("build/stagingRepo")
+            softly.assertThat(rootTask?.stagingDirs?.get()).contains(
+                root.project.layout.buildDirectory
+                    .get()
+                    .asFile.invariantSeparatorsPath + "/stagingRepo",
+            )
         }
     }
 
@@ -79,8 +86,35 @@ class EasyPublishCentralTest {
 
         val task = project.project.tasks.getByName("generateJreleaserConfig") as GenerateJreleaserConfigTask
         assertSoftly { softly ->
-            softly.assertThat(task.stagingDirectory.get()).contains("myCustomStaging")
-            softly.assertThat(task.stagingDirectory.get()).doesNotContain("build/stagingRepo")
+            softly.assertThat(task.stagingDirs.get()).containsExactly(
+                project.project.layout.buildDirectory
+                    .get()
+                    .asFile.invariantSeparatorsPath + "/myCustomStaging",
+            )
+        }
+    }
+
+    @Test
+    fun `generateJreleaserConfig collects every enabled project's staging dir`() {
+        val root = ProjectBuilderHelper.createRootWithChild("root")
+        val child = root.child
+        root.publish.enabled.set(true)
+        root.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(root.project)
+        ProjectBuilderHelper.evaluate(child.project)
+
+        val task = root.project.tasks.getByName("generateJreleaserConfig") as GenerateJreleaserConfigTask
+        val rootStaging =
+            root.project.layout.buildDirectory
+                .get()
+                .asFile.invariantSeparatorsPath + "/stagingRepo"
+        val childStaging =
+            child.project.layout.buildDirectory
+                .get()
+                .asFile.invariantSeparatorsPath + "/stagingRepo"
+        assertSoftly { softly ->
+            softly.assertThat(task.stagingDirs.get()).containsExactly(rootStaging, childStaging)
         }
     }
 
@@ -101,7 +135,7 @@ class EasyPublishCentralTest {
     }
 
     @Test
-    fun `publish does not depend on generateJreleaserConfig yet`() {
+    fun `publish does not directly depend on generateJreleaserConfig`() {
         val project = ProjectBuilderHelper.createSingleProject()
         val publish = project.publish
         publish.enabled.set(true)
@@ -121,7 +155,7 @@ class EasyPublishCentralTest {
     }
 
     @Test
-    fun `checkCentralPoms is registered on root only and enabled with toMavenCentral`() {
+    fun `checkCentralPoms is registered in every enabled project and enabled with toMavenCentral`() {
         val root = ProjectBuilderHelper.createRootWithChild("root")
         val child = root.child
         root.publish.enabled.set(true)
@@ -131,11 +165,34 @@ class EasyPublishCentralTest {
         ProjectBuilderHelper.evaluate(child.project)
 
         val rootTask = root.project.tasks.findByName("checkCentralPoms") as CheckCentralPomsTask?
-        val childTask = child.project.tasks.findByName("checkCentralPoms")
+        val childTask = child.project.tasks.findByName("checkCentralPoms") as CheckCentralPomsTask?
         assertSoftly { softly ->
             softly.assertThat(rootTask).isNotNull()
-            softly.assertThat(childTask).isNull()
+            softly.assertThat(childTask).isNotNull()
             softly.assertThat(rootTask?.enabled).isTrue()
+            softly.assertThat(childTask?.enabled).isTrue()
+        }
+    }
+
+    @Test
+    fun `checkCentralPoms skips silently without publications`() {
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        val publish =
+            (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
+                .extensions
+                .getByType(EasyPublishExtension::class.java) as DefaultEasyPublishExtension
+        publish.enabled.set(true)
+        publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(project)
+
+        val checker = project.tasks.getByName("checkCentralPoms") as CheckCentralPomsTask
+        assertSoftly { softly ->
+            softly.assertThat(checker.enabled).isTrue()
+            softly.assertThat(checker.pomFiles.files).isEmpty()
         }
     }
 
@@ -206,7 +263,7 @@ class EasyPublishCentralTest {
     }
 
     @Test
-    fun `checkCentralPoms covers child generatePom tasks`() {
+    fun `each project's checkCentralPoms covers only its own generatePom tasks`() {
         val root = ProjectBuilderHelper.createRootWithChild("root")
         val child = root.child
         root.publish.enabled.set(true)
@@ -215,17 +272,31 @@ class EasyPublishCentralTest {
         ProjectBuilderHelper.evaluate(root.project)
         ProjectBuilderHelper.evaluate(child.project)
 
-        val checker = root.project.tasks.getByName("checkCentralPoms")
-        val deps = checker.taskDependencies.getDependencies(checker).map { it.path }
+        val rootPomPath =
+            root.project.tasks
+                .getByName("generatePomFileForMavenPublication")
+                .path
+        val childPomPath =
+            child.project.tasks
+                .getByName("generatePomFileForMavenPublication")
+                .path
+        val rootDeps =
+            root.project.tasks
+                .getByName("checkCentralPoms")
+                .taskDependencies
+                .getDependencies(root.project.tasks.getByName("checkCentralPoms"))
+                .map { it.path }
+        val childDeps =
+            child.project.tasks
+                .getByName("checkCentralPoms")
+                .taskDependencies
+                .getDependencies(child.project.tasks.getByName("checkCentralPoms"))
+                .map { it.path }
         assertSoftly { softly ->
-            softly.assertThat(deps).contains(
-                root.project.tasks
-                    .getByName("generatePomFileForMavenPublication")
-                    .path,
-                child.project.tasks
-                    .getByName("generatePomFileForMavenPublication")
-                    .path,
-            )
+            softly.assertThat(rootDeps).contains(rootPomPath)
+            softly.assertThat(rootDeps).doesNotContain(childPomPath)
+            softly.assertThat(childDeps).contains(childPomPath)
+            softly.assertThat(childDeps).doesNotContain(rootPomPath)
         }
     }
 
@@ -241,6 +312,30 @@ class EasyPublishCentralTest {
         val deps = configTask.taskDependencies.getDependencies(configTask).map { it.name }
         assertSoftly { softly ->
             softly.assertThat(deps).contains("checkCentralPoms")
+        }
+    }
+
+    @Test
+    fun `generateJreleaserConfig waits for every project's checkCentralPoms`() {
+        val root = ProjectBuilderHelper.createRootWithChild("root")
+        val child = root.child
+        root.publish.enabled.set(true)
+        root.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(root.project)
+        ProjectBuilderHelper.evaluate(child.project)
+
+        val configTask = root.project.tasks.getByName("generateJreleaserConfig")
+        val deps = configTask.taskDependencies.getDependencies(configTask).map { it.path }
+        assertSoftly { softly ->
+            softly.assertThat(deps).contains(
+                root.project.tasks
+                    .getByName("checkCentralPoms")
+                    .path,
+                child.project.tasks
+                    .getByName("checkCentralPoms")
+                    .path,
+            )
         }
     }
 
@@ -293,17 +388,50 @@ class EasyPublishCentralTest {
     }
 
     @Test
-    fun `publishToMavenCentral depends on publish and generateJreleaserConfig`() {
+    fun `publishToMavenCentral stages uploads and config without depending on publish`() {
         val project = ProjectBuilderHelper.createSingleProject()
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
+        project.publish.mavenRepo("testRepo", "file:///tmp/test-repo")
 
         ProjectBuilderHelper.evaluate(project.project)
 
         val task = project.project.tasks.getByName("publishToMavenCentral")
         val deps = task.taskDependencies.getDependencies(task).map { it.name }
         assertSoftly { softly ->
-            softly.assertThat(deps).contains("publish", "generateJreleaserConfig")
+            softly.assertThat(deps).contains("generateJreleaserConfig")
+            softly.assertThat(deps).contains("publishMavenPublicationToTestRepoRepository")
+            softly.assertThat(deps).doesNotContain("publish")
+        }
+    }
+
+    @Test
+    fun `publish depends on publishToMavenCentral`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val publish = project.project.tasks.getByName("publish")
+        val deps = publish.taskDependencies.getDependencies(publish).map { it.name }
+        assertSoftly { softly ->
+            softly.assertThat(deps).contains("publishToMavenCentral")
+        }
+    }
+
+    @Test
+    fun `publish omits publishToMavenCentral without toMavenCentral`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenStaging()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val publish = project.project.tasks.getByName("publish")
+        val deps = publish.taskDependencies.getDependencies(publish).map { it.name }
+        assertSoftly { softly ->
+            softly.assertThat(deps).doesNotContain("publishToMavenCentral")
         }
     }
 
