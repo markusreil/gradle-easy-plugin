@@ -11,6 +11,7 @@ import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.StopExecutionException
 import org.gradle.api.tasks.TaskAction
 
 /**
@@ -41,6 +42,16 @@ abstract class JreleaserPublishTask : JavaExec() {
     @get:Optional
     abstract val deployerName: Property<String>
 
+    /**
+     * Whether any `PublishToMavenRepository` upload task stages artifacts for this deploy.
+     *
+     * Resolved once the task graph is final (see `JreleaserDeployWiring`) and read as a
+     * plain task input — querying `taskDependencies` at execution time is unsupported
+     * with the configuration cache. Unset means staged (convention `true` in the wiring).
+     */
+    @get:Input
+    abstract val hasStagedUploads: Property<Boolean>
+
     init {
         group = "publishing"
         description = "Deploys staged artifacts to Maven Central via JReleaser (deploy)"
@@ -49,10 +60,20 @@ abstract class JreleaserPublishTask : JavaExec() {
 
     @TaskAction
     override fun exec() {
+        ensureStagedUploads()
         setClasspath(jreleaserClasspath)
         args = buildArgs()
         environment("JRELEASER_PROJECT_VERSION", projectVersion.get())
         super.exec()
+    }
+
+    internal fun ensureStagedUploads() {
+        if (!hasStagedUploads.getOrElse(true)) {
+            logger.warn(
+                "publishToMavenCentral: no PublishToMavenRepository tasks found - nothing staged, skipping deploy.",
+            )
+            throw StopExecutionException("Nothing staged for Maven Central deployment.")
+        }
     }
 
     internal fun buildArgs(): List<String> =

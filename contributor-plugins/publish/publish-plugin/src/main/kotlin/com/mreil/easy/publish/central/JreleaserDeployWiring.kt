@@ -5,7 +5,6 @@ import com.mreil.easy.isRoot
 import com.mreil.easy.publish.publishExtension
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
-import org.gradle.api.tasks.StopExecutionException
 
 /**
  * Root-only registration of `publishToMavenCentral` running the JReleaser CLI via `JavaExec`.
@@ -46,6 +45,7 @@ internal object JreleaserDeployWiring {
                 )
                 task.projectVersion.convention(target.provider { target.version.toString() })
                 task.dryRun.convention(false)
+                task.hasStagedUploads.convention(true)
                 task.onlyIf { publishExt.toMavenCentral.get() }
             }
 
@@ -64,15 +64,14 @@ internal object JreleaserDeployWiring {
         }
         // Empty-everywhere guard: when central is on but no project stages anything
         // (e.g. no publications at all), skip deploy with a warning instead of failing.
-        // Resolved in doFirst, when the upload task graph is final.
-        deployProvider.configure { deploy ->
-            deploy.doFirst("warn when nothing staged") {
-                if (it.taskDependencies.getDependencies(it).isEmpty()) {
-                    it.logger.warn(
-                        "publishToMavenCentral: no PublishToMavenRepository tasks found - nothing staged, skipping deploy.",
-                    )
-                    throw StopExecutionException("Nothing staged for Maven Central deployment.")
-                }
+        // Resolved once the task graph is final: `whenReady` runs before
+        // configuration-cache storage, so the outcome is a plain task input — the task
+        // itself only reads its own property, never `taskDependencies` at execution
+        // time (unsupported with the configuration cache).
+        target.gradle.taskGraph.whenReady { graph ->
+            val deploy = deployProvider.get()
+            if (graph.hasTask(deploy)) {
+                deploy.hasStagedUploads.set(graph.allTasks.any { it is PublishToMavenRepository })
             }
         }
         // A single `./gradlew publish` stages, validates and deploys — but only when

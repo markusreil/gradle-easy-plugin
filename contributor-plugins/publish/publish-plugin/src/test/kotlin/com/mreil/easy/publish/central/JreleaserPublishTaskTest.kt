@@ -1,6 +1,8 @@
 package com.mreil.easy.publish.central
 
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
+import org.gradle.api.tasks.StopExecutionException
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -53,6 +55,24 @@ class JreleaserPublishTaskTest {
         assertSoftly { softly ->
             softly.assertThat(task.mainClass.get()).isEqualTo("org.jreleaser.cli.Main")
         }
+    }
+
+    @Test
+    fun `ensureStagedUploads skips friendly when nothing staged`() {
+        val task = createTask()
+        task.hasStagedUploads.set(false)
+
+        assertThatThrownBy { task.ensureStagedUploads() }
+            .isInstanceOf(StopExecutionException::class.java)
+            .hasMessageContaining("Nothing staged")
+    }
+
+    @Test
+    fun `ensureStagedUploads passes when staged`() {
+        val task = createTask()
+        task.hasStagedUploads.set(true)
+
+        task.ensureStagedUploads()
     }
 
     private fun createTask(): JreleaserPublishTask {
