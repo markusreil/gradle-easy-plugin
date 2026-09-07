@@ -62,18 +62,24 @@ internal object SigningWiring {
         }
 
         // Execution-time validation for Sign tasks: fail with actionable message if enabled but keys missing.
+        // CC-safe: task actions must capture only CC-serializable values. Project objects (`target`,
+        // `publishExt`) and the custom `StringProvider` are not serializable (captured provider fields
+        // come back null after a cache round-trip), so key presence is resolved eagerly here — provider
+        // reads at configuration time are CC-tracked inputs, so changed properties still invalidate the
+        // cache — and only plain Booleans reach the action. Logging goes through the task's own logger.
+        val signingEnabledValue = publishExt.signingEnabled.get()
+        val hasPrivate = privateKeyProvider.orNull != null
+        val hasPassphrase = passphraseProvider.orNull != null
         target.tasks.withType(Sign::class.java).configureEach { signTask ->
-            signTask.doFirst {
-                val hasPrivate = privateKeyProvider.orNull != null
-                val hasPassphrase = passphraseProvider.orNull != null
-                if (publishExt.signingEnabled.get() && (!hasPrivate || !hasPassphrase)) {
+            signTask.doFirst("validateSigningKeys") { task ->
+                if (signingEnabledValue && (!hasPrivate || !hasPassphrase)) {
                     val missing =
                         buildList {
                             if (!hasPrivate) add("jreleaser.gpg.privateKey (base64 armored private key)")
                             if (!hasPassphrase) add("jreleaser.gpg.passphrase")
                         }.joinToString(", ")
                     // GradleException fails the task; logger.warn also emitted for visibility.
-                    target.logger.warn(
+                    task.logger.warn(
                         "Signing is enabled (easy.publish.signingEnabled=true) but missing GPG properties: $missing. " +
                             "Provide them via -P/gradle.properties/env (see PropertyResolver) or disable signing with " +
                             "easy { publish { signingEnabled.set(false) } }.",
