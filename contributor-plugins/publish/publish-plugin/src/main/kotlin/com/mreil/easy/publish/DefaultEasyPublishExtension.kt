@@ -6,6 +6,9 @@ import org.gradle.api.Action
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.provider.Property
 
+internal const val SONATYPE_SNAPSHOTS_REPO = "sonatypeSnapshots"
+internal const val SONATYPE_SNAPSHOTS_URL = "https://central.sonatype.com/repository/maven-snapshots/"
+
 /**
  * Internal implementation of [EasyPublishExtension].
  *
@@ -19,6 +22,7 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
         enabled.convention(false)
         toMavenLocal.convention(false)
         toMavenCentral.convention(false)
+        sonatypeSnapshots.convention(false)
         signingEnabled.convention(true)
     }
 
@@ -42,6 +46,16 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
 
     override fun toMavenCentral() {
         toMavenCentral.set(true)
+    }
+
+    @get:CopyMode(CopyMode.Mode.READ_ONLY)
+    abstract val sonatypeSnapshots: Property<Boolean>
+
+    override fun toSonatypeSnapshots() {
+        sonatypeSnapshots.set(true)
+        if (mavenRepos.findByName(SONATYPE_SNAPSHOTS_REPO) == null) {
+            mavenRepo(SONATYPE_SNAPSHOTS_REPO, SONATYPE_SNAPSHOTS_URL, true)
+        }
     }
 
     abstract override val signingEnabled: Property<Boolean>

@@ -30,15 +30,16 @@ class GenerateJreleaserConfigTaskTest {
     }
 
     @Test
-    fun `yaml includes nexus2 snapshots deployer`() {
+    fun `yaml omits snapshots deployer`() {
         val yaml = JreleaserYaml.buildYaml(centralConfig())
 
         assertSoftly { softly ->
-            softly.assertThat(yaml).contains("nexus2:")
-            softly.assertThat(yaml).contains("sonatype-snapshots:")
-            softly.assertThat(yaml).contains("active: SNAPSHOT")
-            softly.assertThat(yaml).contains("https://central.sonatype.com/repository/maven-snapshots/")
-            softly.assertThat(yaml).contains("snapshotSupported: true")
+            // Snapshots publish directly via maven-publish (toSonatypeSnapshots), never via JReleaser.
+            softly.assertThat(yaml).doesNotContain("nexus2:")
+            softly.assertThat(yaml).doesNotContain("sonatype-snapshots:")
+            softly.assertThat(yaml).doesNotContain("active: SNAPSHOT")
+            softly.assertThat(yaml).doesNotContain("https://central.sonatype.com/repository/maven-snapshots/")
+            softly.assertThat(yaml).doesNotContain("snapshotSupported")
         }
     }
 

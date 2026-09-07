@@ -97,10 +97,11 @@ class EasyPublishCentralFuncTest {
             softly.assertThat(text).contains("deploy:")
             softly.assertThat(text).contains("mavenCentral:")
             softly.assertThat(text).contains("active: RELEASE")
-            softly.assertThat(text).contains("nexus2:")
-            softly.assertThat(text).contains("sonatype-snapshots:")
-            softly.assertThat(text).contains("active: SNAPSHOT")
-            softly.assertThat(text).contains("snapshotSupported: true")
+            // Snapshots publish directly via maven-publish (toSonatypeSnapshots), never via JReleaser.
+            softly.assertThat(text).doesNotContain("nexus2:")
+            softly.assertThat(text).doesNotContain("sonatype-snapshots:")
+            softly.assertThat(text).doesNotContain("active: SNAPSHOT")
+            softly.assertThat(text).doesNotContain("snapshotSupported")
             softly.assertThat(text).contains("stagingRepositories:")
             softly.assertThat(text).contains(project.file("build/stagingRepo").invariantSeparatorsPath)
             // JReleaser rejects sequences whose indicator sits at the parent key indent -

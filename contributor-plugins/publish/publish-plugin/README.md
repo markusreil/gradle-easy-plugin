@@ -29,6 +29,7 @@ plugin infrastructure. It only activates when `easy.publish` is explicitly enabl
 * **Staging repository** – `toMavenStaging(path)` creates a `mavenStaging` file repo under `build/<path>` (default `build/stagingRepo`).
 * **Maven local wiring** – `toMavenLocal()` makes `publish` depend on `publishToMavenLocal`.
 * **Semver-aware routing** – when `easy.semver` is enabled (`easy { semver {} }`), the version is parsed via `semver4j` (`EasySemver.of(project)`). Snapshots (`!isStable`) skip `*release*` repos, releases skip `*snapshot*` repos; neutral names always publish. Without semver, all repos are used.
+* **Sonatype snapshots** – `toSonatypeSnapshots()` publishes snapshots directly to Central's snapshot repository via `maven-publish` (parallel, no JReleaser round-trip). Creates the `sonatypeSnapshots` repo (`https://central.sonatype.com/repository/maven-snapshots/` with standard `sonatypeSnapshotsUsername`/`sonatypeSnapshotsPassword` credentials) unless already declared manually. Requires `easy.semver` — fails fast otherwise, since routing needs it.
 
 ## Usage
 
@@ -94,6 +95,18 @@ easy {
 }
 ```
 
+Snapshots to Maven Central (requires `easy.semver` for routing):
+
+```kotlin
+easy {
+    semver { enabled.set(true) }
+    publish {
+        enabled.set(true)
+        toSonatypeSnapshots() // -> sonatypeSnapshots repo, parallel maven-publish
+    }
+}
+```
+
 ## Extension reference
 
 ### `easy.publish`
@@ -110,6 +123,7 @@ implementation and not part of the public API – consumers use `mavenRepo(name)
 | `mavenRepo(name, url, withPasswordCredentials = false)` | Convenience overload — creates `MavenRepoSpec` with `url`/`passwordCredentials` without exposing spec type. |
 | `toMavenStaging(path = "stagingRepo")` | Creates `mavenStaging` file repo under `build/<path>` via `Property<MavenRepoSpec>` (`stagingPath`) + helper `mavenRepo`. |
 | `toMavenLocal()` | One-shot flag (`Property<Boolean> toMavenLocal`) — makes `publish` depend on `publishToMavenLocal`. |
+| `toSonatypeSnapshots()` | One-shot flag (`Property<Boolean> sonatypeSnapshots`) — creates the `sonatypeSnapshots` repo (Central snapshots URL + password credentials) unless present; requires `easy.semver`. |
 | `mavenRepos` | `NamedDomainObjectContainer<MavenRepoSpec>` of declared repositories (internal, on `DefaultEasyPublishExtension`). |
 | `stagingPath` | `Property<MavenRepoSpec>` holding staging template (creates `mavenStaging` per-project via `buildDirectory`). |
 

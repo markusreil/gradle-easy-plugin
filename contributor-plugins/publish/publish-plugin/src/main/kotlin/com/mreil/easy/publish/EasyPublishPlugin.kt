@@ -8,6 +8,7 @@ import com.mreil.easy.publish.central.PomCheckWiring
 import com.mreil.easy.publish.central.SigningWiring
 import com.mreil.easy.semver.EasySemver
 import com.mreil.easy.semver.EasySemverExtension
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -136,10 +137,28 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         publishing: PublishingExtension,
     ) {
         val publishExt = target.publishExtension() ?: return
+        requireSemverForSnapshots(target, publishExt)
         val isSnapshot = resolveIsSnapshot(target)
         publishExt.mavenRepos
             .filter { RepoRouting.shouldPublishToRepo(it.name, isSnapshot) }
             .forEach { spec -> publishing.repositories.maven { repo -> spec.configure(target, repo) } }
+    }
+
+    /**
+     * Snapshot routing ([RepoRouting]) only filters repositories when a semver version is
+     * resolvable. Without `easy.semver` every repo — release and snapshot alike — would
+     * receive every version, so `toSonatypeSnapshots()` fails fast instead.
+     */
+    private fun requireSemverForSnapshots(
+        target: Project,
+        publishExt: DefaultEasyPublishExtension,
+    ) {
+        if (publishExt.sonatypeSnapshots.get() && !target.isEasyChildEnabled<EasySemverExtension>()) {
+            throw GradleException(
+                "easy.publish.toSonatypeSnapshots() requires semver for snapshot/release routing. " +
+                    "Enable it via easy { semver { enabled.set(true) } }.",
+            )
+        }
     }
 
     /**

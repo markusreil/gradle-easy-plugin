@@ -30,6 +30,19 @@ interface EasyPublishExtension :
 
     fun toMavenCentral()
 
+    /**
+     * Publishes snapshots directly to Sonatype's snapshot repository via `maven-publish`
+     * (parallel, no JReleaser round-trip).
+     *
+     * Creates the `sonatypeSnapshots` repository
+     * (`https://central.sonatype.com/repository/maven-snapshots/` with standard
+     * `sonatypeSnapshotsUsername`/`sonatypeSnapshotsPassword` credentials) unless it
+     * already exists, so a manual `mavenRepo("sonatypeSnapshots", ...)` declaration
+     * keeps working. Requires `easy.semver` to be enabled for snapshot/release
+     * routing — fails fast otherwise.
+     */
+    fun toSonatypeSnapshots()
+
     val signingEnabled: Property<Boolean>
 
     /**

@@ -35,6 +35,7 @@ testing {
                 implementation(libs.assertj.core)
                 implementation(libs.jreleaser)
                 implementation(project(":easy-plugin-core"))
+                implementation(project(":contributor-plugins:semver:semver-plugin"))
                 implementation(gradleTestKit())
             }
         }
