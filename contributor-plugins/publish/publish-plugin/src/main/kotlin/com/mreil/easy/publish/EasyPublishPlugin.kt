@@ -75,8 +75,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             target.plugins.withId("maven-publish") {
                 withMavenPublish(target)
             }
-            // TODO - move jreleaser.gpg.* property names to EasyPublishExtension later.
-            // Keep JReleaser signing active until Gradle signing is proven (dual-sign for now).
+            // Signing is handled by the Gradle `signing` plugin (see SigningWiring).
             SigningWiring.wire(target, propertyResolver)
         }
         PomCheckWiring.wire(target)

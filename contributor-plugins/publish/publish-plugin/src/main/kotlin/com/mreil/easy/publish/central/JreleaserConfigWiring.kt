@@ -49,15 +49,6 @@ internal object JreleaserConfigWiring {
                         .mapNotNull { stagingDirFor(it) }
                         .distinct()
                 task.stagingDirs.convention(stagingDirs)
-                task.gpgPublicKey.convention(
-                    propertyResolver.get("jreleaser.gpg.publicKey").base64Decode(),
-                )
-                task.gpgPrivateKey.convention(
-                    propertyResolver.get("jreleaser.gpg.privateKey").base64Decode(),
-                )
-                task.gpgPassphrase.convention(
-                    propertyResolver.get("jreleaser.gpg.passphrase"),
-                )
                 task.mavenCentralUsername.convention(
                     propertyResolver.get("jreleaser.mavencentral.username"),
                 )

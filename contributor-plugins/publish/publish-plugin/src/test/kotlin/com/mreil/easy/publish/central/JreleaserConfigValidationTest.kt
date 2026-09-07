@@ -131,22 +131,7 @@ class JreleaserConfigValidationTest {
             projectGroupId = "com.example",
             // Point at a real (empty) dir in case validation requires staging to exist.
             stagingDirs = listOf(File(tempDir, "staging").absolutePath),
-            gpgPublicKey = ARMOR,
-            gpgPrivateKey = ARMOR,
-            gpgPassphrase = "dummy-gpg-passphrase",
             mavenCentralUsername = "dummy-mavencentral-username",
             mavenCentralPassword = "dummy-mavencentral-password",
         )
-
-    companion object {
-        private val ARMOR =
-            """
-            -----BEGIN PGP PUBLIC KEY BLOCK-----
-
-            mQGNBGqc2WkBDAC2/bkL2S1zt8gkGpghh3wNXgfjxUs8V0nj8yKYx0vg/gCkDV21
-            0fgkrfu4DbTqmV9xcphYjGPOGlrgBbG7HAeKkxk4lt081tY27JfssZIGObtz0ocW
-            =5Y9d
-            -----END PGP PUBLIC KEY BLOCK-----
-            """.trimIndent()
-    }
 }

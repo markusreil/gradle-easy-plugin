@@ -27,18 +27,6 @@ abstract class GenerateJreleaserConfigTask : DefaultTask() {
 
     @get:Input
     @get:Optional
-    abstract val gpgPublicKey: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val gpgPrivateKey: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val gpgPassphrase: Property<String>
-
-    @get:Input
-    @get:Optional
     abstract val mavenCentralUsername: Property<String>
 
     @get:Input
@@ -91,9 +79,6 @@ abstract class GenerateJreleaserConfigTask : DefaultTask() {
                     projectVersion = projectVersion.get(),
                     projectGroupId = projectGroupId.get(),
                     stagingDirs = stagingDirs.get(),
-                    gpgPublicKey = gpgPublicKey.required("GPG public key is required"),
-                    gpgPrivateKey = gpgPrivateKey.required("GPG private key is required"),
-                    gpgPassphrase = gpgPassphrase.required("GPG passphrase is required"),
                     mavenCentralUsername =
                         mavenCentralUsername.required("Maven Central username is required"),
                     mavenCentralPassword =

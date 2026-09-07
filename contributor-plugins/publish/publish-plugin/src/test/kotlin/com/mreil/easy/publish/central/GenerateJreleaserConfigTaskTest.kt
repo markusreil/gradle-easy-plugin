@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test
 
 class GenerateJreleaserConfigTaskTest {
     @Test
-    fun `central yaml has project signing and mavenCentral deployer`() {
+    fun `central yaml has mavenCentral deployer and no signing`() {
         val yaml = JreleaserYaml.buildYaml(centralConfig())
 
         assertSoftly { softly ->
@@ -17,8 +17,7 @@ class GenerateJreleaserConfigTaskTest {
             softly.assertThat(yaml).contains("version: 1.0.0")
             softly.assertThat(yaml).contains("languages:")
             softly.assertThat(yaml).contains("groupId: com.example")
-            softly.assertThat(yaml).contains("signing:")
-            softly.assertThat(yaml).contains("armored: true")
+            softly.assertThat(yaml).doesNotContain("signing:")
             softly.assertThat(yaml).contains("mavenCentral:")
             softly.assertThat(yaml).contains("active: RELEASE")
             softly.assertThat(yaml).contains("https://central.sonatype.com/api/v1/publisher")
@@ -66,18 +65,6 @@ class GenerateJreleaserConfigTaskTest {
     }
 
     @Test
-    fun `multiline keys use block scalars`() {
-        val yaml = JreleaserYaml.buildYaml(centralConfig(gpgPublicKey = ARMOR, gpgPrivateKey = ARMOR))
-
-        assertSoftly { softly ->
-            softly.assertThat(yaml).contains("pgp:")
-            softly.assertThat(yaml).contains("publicKey: |-")
-            softly.assertThat(yaml).contains("secretKey: |-")
-            softly.assertThat(yaml).contains("-----BEGIN PGP PUBLIC KEY BLOCK-----")
-        }
-    }
-
-    @Test
     fun `sequences use indented indicators`() {
         val yaml = JreleaserYaml.buildYaml(centralConfig())
 
@@ -109,33 +96,17 @@ class GenerateJreleaserConfigTaskTest {
         }
     }
 
-    private fun centralConfig(
-        gpgPublicKey: String = "dummy-gpg-public-key",
-        gpgPrivateKey: String = "dummy-gpg-private-key",
-    ): Config =
+    private fun centralConfig(): Config =
         Config(
             projectName = "demo",
             projectVersion = "1.0.0",
             projectGroupId = "com.example",
             stagingDirs = listOf("build/stagingRepo"),
-            gpgPublicKey = gpgPublicKey,
-            gpgPrivateKey = gpgPrivateKey,
-            gpgPassphrase = "dummy-gpg-passphrase",
             mavenCentralUsername = "dummy-mavencentral-username",
             mavenCentralPassword = "dummy-mavencentral-password",
         )
 
     companion object {
         private val yamlReader = ObjectMapper(YAMLFactory())
-
-        private val ARMOR =
-            """
-            -----BEGIN PGP PUBLIC KEY BLOCK-----
-
-            mQGNBGqc2WkBDAC2/bkL2S1zt8gkGpghh3wNXgfjxUs8V0nj8yKYx0vg/gCkDV21
-            0fgkrfu4DbTqmV9xcphYjGPOGlrgBbG7HAeKkxk4lt081tY27JfssZIGObtz0ocW
-            =5Y9d
-            -----END PGP PUBLIC KEY BLOCK-----
-            """.trimIndent()
     }
 }

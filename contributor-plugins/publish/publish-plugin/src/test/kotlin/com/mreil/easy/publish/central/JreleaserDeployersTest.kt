@@ -63,9 +63,6 @@ class JreleaserDeployersTest {
             projectVersion = "1.0.0",
             projectGroupId = "com.example",
             stagingDirs = listOf("build/stagingRepo"),
-            gpgPublicKey = "pub",
-            gpgPrivateKey = "priv",
-            gpgPassphrase = "pass",
             mavenCentralUsername = "central-user",
             mavenCentralPassword = "central-pass",
         )

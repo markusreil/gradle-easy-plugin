@@ -43,9 +43,6 @@ class JreleaserDeployFuncTest {
                 }
                 """.trimIndent(),
             )
-            systemProperty("jreleaser.gpg.publicKey", "dGVzdC1ncGctcHVibGljLWtleQ==")
-            systemProperty("jreleaser.gpg.privateKey", "dGVzdC1ncGctcHJpdmF0ZS1rZXk=")
-            systemProperty("jreleaser.gpg.passphrase", "test-gpg-passphrase")
             systemProperty("jreleaser.mavencentral.username", "test-central-username")
             systemProperty("jreleaser.mavencentral.password", "test-central-password")
         }

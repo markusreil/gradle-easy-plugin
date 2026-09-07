@@ -32,6 +32,9 @@ internal data class MavenCentralDeployer(
         linkedMapOf<String, Any>(
             "active" to active,
             "url" to "https://central.sonatype.com/api/v1/publisher",
+            // Signing is handled by Gradle's `signing` plugin (SigningWiring); JReleaser must not
+            // sign or its validation fails on a `sign: true` deployer with no `signing` block.
+            "sign" to false,
         ).also { it.putAll(commonDeployerMap(stagingDirs, username, password)) }
 }
 
@@ -51,6 +54,9 @@ internal data class Nexus3TestDeployer(
             "url" to url,
             "authorization" to "BASIC",
             "applyMavenCentralRules" to true,
+            // Signing is handled by Gradle's `signing` plugin (SigningWiring); JReleaser must not
+            // sign or its validation fails on a `sign: true` deployer with no `signing` block.
+            "sign" to false,
         ).also { it.putAll(commonDeployerMap(stagingDirs, username, password)) }
 }
 

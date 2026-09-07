@@ -12,7 +12,7 @@ import java.io.File
 /**
  * Smoke test for Maven Central publishing via JReleaser.
  *
- * Verifies YAML generation (signing + staging, no `release` block). Inheritance, task registration,
+ * Verifies YAML generation (staging deploy config, no `signing`/`release` blocks). Inheritance, task registration,
  * and wiring are covered by fast unit tests in `publish-plugin`.
  */
 @ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
@@ -44,18 +44,14 @@ class EasyPublishCentralFuncTest {
     private fun stageCentralCredentials() {
         project.configure {
             // Credentials are required at execution time: the fixture must supply them.
-            // GPG keys are base64-encoded, the wiring decodes them before rendering.
-            systemProperty("jreleaser.gpg.publicKey", "dGVzdC1ncGctcHVibGljLWtleQ==")
-            systemProperty("jreleaser.gpg.privateKey", "dGVzdC1ncGctcHJpdmF0ZS1rZXk=")
-            systemProperty("jreleaser.gpg.passphrase", "test-gpg-passphrase")
             systemProperty("jreleaser.mavencentral.username", "test-central-username")
             systemProperty("jreleaser.mavencentral.password", "test-central-password")
         }
     }
 
-    /** Generated JReleaser YAML contains signing and staging-deploy config and no `release` block. */
+    /** Generated JReleaser YAML contains staging-deploy config and no `signing`/`release` blocks. */
     @Test
-    fun `generateJreleaserConfig creates yaml with signing and staging and no release`() {
+    fun `generateJreleaserConfig creates yaml with staging and no signing and no release`() {
         project.configure {
             stageCodemetaJson()
             buildGradle(
@@ -84,16 +80,7 @@ class EasyPublishCentralFuncTest {
             softly.assertThat(result.output).contains("generateJreleaserConfig")
             softly.assertThat(yaml).exists()
             val text = yaml.readText()
-            softly.assertThat(text).contains("signing:")
-            softly.assertThat(text).contains("active: ALWAYS")
-            softly.assertThat(text).contains("armored: true")
-            softly.assertThat(text).contains("pgp:")
-            softly.assertThat(text).contains("publicKey:")
-            softly.assertThat(text).contains("secretKey:")
-            softly.assertThat(text).contains("passphrase:")
-            softly.assertThat(text).contains("test-gpg-public-key")
-            softly.assertThat(text).contains("test-gpg-private-key")
-            softly.assertThat(text).contains("test-gpg-passphrase")
+            softly.assertThat(text).doesNotContain("signing:")
             softly.assertThat(text).contains("deploy:")
             softly.assertThat(text).contains("mavenCentral:")
             softly.assertThat(text).contains("active: RELEASE")
@@ -151,9 +138,6 @@ class EasyPublishCentralFuncTest {
                 """.trimIndent(),
             )
             javaSource()
-            systemProperty("jreleaser.gpg.publicKey", "dGVzdC1ncGctcHVibGljLWtleQ==")
-            systemProperty("jreleaser.gpg.privateKey", "dGVzdC1ncGctcHJpdmF0ZS1rZXk=")
-            systemProperty("jreleaser.gpg.passphrase", "test-gpg-passphrase")
             systemProperty("jreleaser.mavencentral.username", "test-central-username")
             systemProperty("jreleaser.mavencentral.password", "test-central-password")
             systemProperty(
