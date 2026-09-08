@@ -19,16 +19,6 @@ easy {
         enabled.set(true)
         toMavenStaging()
         toMavenCentral()
-        mavenRepo(
-            "mreilComGradlePluginsSnapshots",
-            "https://repo.mreil.com/gradle-plugins-snapshots",
-            true
-        )
-        mavenRepo(
-            "sonatypeSnapshots",
-            "https://central.sonatype.com/repository/maven-snapshots/",
-            true
-        )
     }
 }
 
