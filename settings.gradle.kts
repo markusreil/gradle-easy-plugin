@@ -7,19 +7,30 @@
  */
 pluginManagement {
     repositories {
-        mavenLocal() // for local iteration, else remote snapshots
         gradlePluginPortal()
         maven { url = uri("https://repo.mreil.com/gradle-plugins-snapshots") }
     }
 }
 
-//plugins { id("com.mreil.easy.settings") version "0.0.100-SNAPSHOT" }
-//
-//easy {
-//    codemeta {
-//        enabled = true
-//    }
-//}
+plugins { id("com.mreil.easy.settings") version "0.0.100-SNAPSHOT" }
+
+easy {
+    publish {
+        enabled.set(true)
+        toMavenStaging()
+        toMavenCentral()
+        mavenRepo(
+            "mreilComGradlePluginsSnapshots",
+            "https://repo.mreil.com/gradle-plugins-snapshots",
+            true
+        )
+        mavenRepo(
+            "sonatypeSnapshots",
+            "https://central.sonatype.com/repository/maven-snapshots/",
+            true
+        )
+    }
+}
 
 rootProject.name = "gradle-easy-plugin-new"
 include("easy-plugin")

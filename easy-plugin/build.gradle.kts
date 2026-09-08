@@ -6,8 +6,6 @@
  * This project uses @Incubating APIs which are subject to change.
  */
 
-import org.gradle.api.artifacts.repositories.PasswordCredentials
-
 plugins {
     // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
     `java-gradle-plugin`
@@ -118,15 +116,5 @@ tasks.named<JacocoReport>("jacocoTestReport") {
     reports {
         xml.required.set(true)
         html.required.set(true)
-    }
-}
-
-publishing {
-    repositories {
-        maven {
-            name = "mreilComGradlePluginsSnapshots"
-            url = uri("https://repo.mreil.com/gradle-plugins-snapshots")
-            credentials(PasswordCredentials::class)
-        }
     }
 }
