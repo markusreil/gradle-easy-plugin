@@ -58,7 +58,7 @@ class GenerateJreleaserConfigTaskTest {
             softly.assertThat(yaml).contains("local-test:")
             softly.assertThat(yaml).contains("http://localhost:8081/service/rest/v1/components?repository=maven-releases")
             softly.assertThat(yaml).contains("authorization: BASIC")
-            softly.assertThat(yaml).contains("applyMavenCentralRules: true")
+            softly.assertThat(yaml).doesNotContain("applyMavenCentralRules")
             softly.assertThat(yaml).contains("active: NEVER")
             softly.assertThat(yaml).doesNotContain("active: SNAPSHOT")
         }

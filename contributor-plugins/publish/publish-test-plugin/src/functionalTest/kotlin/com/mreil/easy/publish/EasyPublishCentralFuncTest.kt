@@ -1,5 +1,8 @@
 package com.mreil.easy.publish
 
+import com.mreil.easy.publish.central.JreleaserVersions.PROPERTY_MAVENCENTRAL_PASSWORD
+import com.mreil.easy.publish.central.JreleaserVersions.PROPERTY_MAVENCENTRAL_USERNAME
+import com.mreil.easy.publish.central.JreleaserVersions.PROPERTY_TEST_NEXUS_URL
 import com.mreil.easy.test.support.DisableAllEasyPlugins
 import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
 import com.mreil.gradletest.project.GradleTestProject
@@ -44,8 +47,8 @@ class EasyPublishCentralFuncTest {
     private fun stageCentralCredentials() {
         project.configure {
             // Credentials are required at execution time: the fixture must supply them.
-            systemProperty("jreleaser.mavencentral.username", "test-central-username")
-            systemProperty("jreleaser.mavencentral.password", "test-central-password")
+            systemProperty(PROPERTY_MAVENCENTRAL_USERNAME, "test-central-username")
+            systemProperty(PROPERTY_MAVENCENTRAL_PASSWORD, "test-central-password")
         }
     }
 
@@ -138,10 +141,10 @@ class EasyPublishCentralFuncTest {
                 """.trimIndent(),
             )
             javaSource()
-            systemProperty("jreleaser.mavencentral.username", "test-central-username")
-            systemProperty("jreleaser.mavencentral.password", "test-central-password")
+            systemProperty(PROPERTY_MAVENCENTRAL_USERNAME, "test-central-username")
+            systemProperty(PROPERTY_MAVENCENTRAL_PASSWORD, "test-central-password")
             systemProperty(
-                "jreleaser.testNexusUrl",
+                PROPERTY_TEST_NEXUS_URL,
                 "http://localhost:8081/service/rest/v1/components?repository=maven-releases",
             )
         }
@@ -155,7 +158,7 @@ class EasyPublishCentralFuncTest {
             softly.assertThat(text).contains("nexus3:")
             softly.assertThat(text).contains("local-test:")
             softly.assertThat(text).contains("http://localhost:8081/service/rest/v1/components?repository=maven-releases")
-            softly.assertThat(text).contains("applyMavenCentralRules: true")
+            softly.assertThat(text).doesNotContain("applyMavenCentralRules")
             softly.assertThat(text).contains("NEVER")
             softly.assertThat(text).doesNotContain("SNAPSHOT")
             softly.assertThat(text).contains("\n          - ")

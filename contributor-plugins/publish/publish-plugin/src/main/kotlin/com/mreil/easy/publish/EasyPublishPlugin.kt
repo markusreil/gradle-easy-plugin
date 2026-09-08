@@ -174,13 +174,13 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     private fun addStagingRepository(target: Project) {
         val publishExt = target.publishExtension() ?: return
         publishExt.stagingPath.orNull?.let { path ->
-            if (publishExt.mavenRepos.findByName("mavenStaging") == null) {
+            if (publishExt.mavenRepos.findByName(MAVEN_STAGING_REPO) == null) {
                 val url =
                     target.layout.buildDirectory
                         .dir(path)
                         .get()
                         .asFile.invariantSeparatorsPath
-                publishExt.mavenRepo("mavenStaging", url)
+                publishExt.mavenRepo(MAVEN_STAGING_REPO, url)
             }
         }
     }

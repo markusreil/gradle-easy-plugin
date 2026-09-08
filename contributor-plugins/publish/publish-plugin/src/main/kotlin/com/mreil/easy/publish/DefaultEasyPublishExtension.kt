@@ -8,6 +8,7 @@ import org.gradle.api.provider.Property
 
 internal const val SONATYPE_SNAPSHOTS_REPO = "sonatypeSnapshots"
 internal const val SONATYPE_SNAPSHOTS_URL = "https://central.sonatype.com/repository/maven-snapshots/"
+internal const val MAVEN_STAGING_REPO = "mavenStaging"
 
 /**
  * Internal implementation of [EasyPublishExtension].
@@ -44,8 +45,17 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     @get:CopyMode(CopyMode.Mode.READ_ONLY)
     abstract val toMavenCentral: Property<Boolean>
 
+    /**
+     * Enables Maven Central deployment and, unless a staging path is already set,
+     * defaults it to [toMavenStaging]'s `stagingRepo` so a lone `toMavenCentral()`
+     * yields a complete stage → config → deploy pipeline. An explicit
+     * `toMavenStaging(path)` keeps overriding the path regardless of call order.
+     */
     override fun toMavenCentral() {
         toMavenCentral.set(true)
+        if (stagingPath.orNull == null) {
+            toMavenStaging()
+        }
     }
 
     @get:CopyMode(CopyMode.Mode.READ_ONLY)

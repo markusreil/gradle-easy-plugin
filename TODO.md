@@ -5,8 +5,8 @@ This document keeps track of tasks that need to be completed.
 ## Contributor plugins
 
 * jvm-defaults: detect and configure test suites
-* publish: applyMavenCentralRules: false to speed up deployment
-* publish: make system property keys for gpg signing and maven central credentials configurable.
+* publish: make sure sonatypeSnapshots is guarded by release/snapshots logic
+* publish: publishToMavenCentral should only depend on toMavenStaging, not on other publish tasks
 
 ## Architecture changes / fixes
 

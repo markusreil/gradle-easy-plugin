@@ -40,6 +40,7 @@ testing {
             useJUnitJupiter()
             dependencies {
                 implementation(project())
+                implementation(project(":contributor-plugins:publish:publish-plugin"))
                 implementation(gradleTestKit())
                 implementation(project(":gradle-plugin-testutils"))
                 implementation(project(":easy-test-support"))

@@ -1,5 +1,7 @@
 package com.mreil.easy.publish
 
+import com.mreil.easy.publish.central.JreleaserVersions.PROPERTY_GPG_PASSPHRASE
+import com.mreil.easy.publish.central.JreleaserVersions.PROPERTY_GPG_PRIVATE_KEY
 import com.mreil.easy.test.support.DisableAllEasyPlugins
 import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
 import com.mreil.gradletest.project.GradleTestProject
@@ -29,8 +31,8 @@ class SigningFuncTest {
         project.configure {
             buildGradle(publishBuild())
             javaSource()
-            systemProperty("jreleaser.gpg.privateKey", testPrivateKeyBase64())
-            systemProperty("jreleaser.gpg.passphrase", "easy-test-passphrase")
+            systemProperty(PROPERTY_GPG_PRIVATE_KEY, testPrivateKeyBase64())
+            systemProperty(PROPERTY_GPG_PASSPHRASE, "easy-test-passphrase")
         }
 
         val result = project.build("publish", "--info")
@@ -91,8 +93,8 @@ class SigningFuncTest {
                     }
                     """.trimIndent(),
             )
-            systemProperty("jreleaser.gpg.privateKey", testPrivateKeyBase64())
-            systemProperty("jreleaser.gpg.passphrase", "easy-test-passphrase")
+            systemProperty(PROPERTY_GPG_PRIVATE_KEY, testPrivateKeyBase64())
+            systemProperty(PROPERTY_GPG_PASSPHRASE, "easy-test-passphrase")
         }
 
         val result = project.build("publish", "--info")

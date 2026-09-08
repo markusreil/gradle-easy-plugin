@@ -2,6 +2,7 @@ package com.mreil.easy.publish.central
 
 import com.mreil.easy.catalogVersionOrDefault
 import com.mreil.easy.isRoot
+import com.mreil.easy.publish.MAVEN_STAGING_REPO
 import com.mreil.easy.publish.publishExtension
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
@@ -10,12 +11,13 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
  * Root-only registration of `publishToMavenCentral` running the JReleaser CLI via `JavaExec`.
  *
  * The CLI jar (`org.jreleaser.cli.Main`) resolves from the resolve-only `jreleaser`
- * configuration at execution time. The deploy task depends on every
- * `PublishToMavenRepository` upload task (all projects, live) and the generated
- * JReleaser config — deliberately not on the root `publish` lifecycle task, so
- * `publish` itself can depend on the deploy task without a task cycle. Either
- * entry point (`publish` or `publishToMavenCentral`) stages everything first;
- * a lone `publish` stays deploy-free unless `toMavenCentral` (deploy skipped).
+ * configuration at execution time. The deploy task depends on the `mavenStaging`
+ * upload tasks (`PublishToMavenRepository` targeting the staging repository, all
+ * projects, live) and the generated JReleaser config — deliberately not on the root
+ * `publish` lifecycle task, so `publish` itself can depend on the deploy task without
+ * a task cycle. Either entry point (`publish` or `publishToMavenCentral`) stages
+ * everything first; a lone `publish` stays deploy-free unless `toMavenCentral`
+ * (deploy skipped).
  */
 internal object JreleaserDeployWiring {
     fun wire(target: Project) {
@@ -54,9 +56,19 @@ internal object JreleaserDeployWiring {
         // task collection keeps task avoidance and picks up upload tasks for repositories
         // declared later, regardless of evaluation order. Configured once here — never
         // from inside a task-creation callback (illegal mutation context).
+        //
+        // Only upload tasks targeting the `mavenStaging` repository are prerequisites:
+        // those are the uploads that stage artifacts JReleaser deploys to Central. Other
+        // repositories (snapshot, release, test) are unrelated to the deploy and must not
+        // run as a side effect of `publishToMavenCentral` (nor of `publish`, which depends
+        // on it). The filter runs lazily via `matching`, so it stays task-avoidance/CC-safe.
         target.allprojects { project ->
             deployProvider.configure { deploy ->
-                deploy.dependsOn(project.tasks.withType(PublishToMavenRepository::class.java))
+                deploy.dependsOn(
+                    project.tasks
+                        .withType(PublishToMavenRepository::class.java)
+                        .matching { it.repository.name == MAVEN_STAGING_REPO },
+                )
             }
         }
         deployProvider.configure {
@@ -71,7 +83,9 @@ internal object JreleaserDeployWiring {
         target.gradle.taskGraph.whenReady { graph ->
             val deploy = deployProvider.get()
             if (graph.hasTask(deploy)) {
-                deploy.hasStagedUploads.set(graph.allTasks.any { it is PublishToMavenRepository })
+                deploy.hasStagedUploads.set(
+                    graph.allTasks.any { it is PublishToMavenRepository && it.repository.name == MAVEN_STAGING_REPO },
+                )
             }
         }
         // A single `./gradlew publish` stages, validates and deploys — but only when

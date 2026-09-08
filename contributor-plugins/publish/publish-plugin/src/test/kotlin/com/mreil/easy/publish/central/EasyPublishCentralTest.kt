@@ -4,8 +4,10 @@ import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.publish.DefaultEasyPublishExtension
 import com.mreil.easy.publish.EasyPublishExtension
+import com.mreil.easy.publish.MAVEN_STAGING_REPO
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.PublishingExtension
@@ -40,6 +42,26 @@ class EasyPublishCentralTest {
             }
         assertSoftly { softly ->
             softly.assertThat(ex.message?.lowercase()).contains("cannot")
+        }
+    }
+
+    @Test
+    fun `toMavenCentral alone creates the default staging repo`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val stagingRepo =
+            project.project.extensions
+                .getByType(PublishingExtension::class.java)
+                .repositories
+                .findByName(MAVEN_STAGING_REPO) as? MavenArtifactRepository
+        assertSoftly { softly ->
+            softly.assertThat(project.publish.stagingPath.get()).isEqualTo("stagingRepo")
+            softly.assertThat(stagingRepo).isNotNull()
+            softly.assertThat(stagingRepo?.url?.toString()).contains("stagingRepo")
         }
     }
 
@@ -431,6 +453,7 @@ class EasyPublishCentralTest {
         val project = ProjectBuilderHelper.createSingleProject()
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
+        project.publish.toMavenStaging("stagingRepo")
         project.publish.mavenRepo("testRepo", "file:///tmp/test-repo")
 
         ProjectBuilderHelper.evaluate(project.project)
@@ -439,7 +462,9 @@ class EasyPublishCentralTest {
         val deps = task.taskDependencies.getDependencies(task).map { it.name }
         assertSoftly { softly ->
             softly.assertThat(deps).contains("generateJreleaserConfig")
-            softly.assertThat(deps).contains("publishMavenPublicationToTestRepoRepository")
+            // Only the mavenStaging upload stages what the deploy pushes; other repos are unrelated.
+            softly.assertThat(deps).contains("publishMavenPublicationToMavenStagingRepository")
+            softly.assertThat(deps).doesNotContain("publishMavenPublicationToTestRepoRepository")
             softly.assertThat(deps).doesNotContain("publish")
         }
     }

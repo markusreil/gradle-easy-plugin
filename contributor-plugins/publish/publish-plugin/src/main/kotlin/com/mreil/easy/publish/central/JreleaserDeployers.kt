@@ -53,7 +53,6 @@ internal data class Nexus3TestDeployer(
             "active" to active,
             "url" to url,
             "authorization" to "BASIC",
-            "applyMavenCentralRules" to true,
             // Signing is handled by Gradle's `signing` plugin (SigningWiring); JReleaser must not
             // sign or its validation fails on a `sign: true` deployer with no `signing` block.
             "sign" to false,

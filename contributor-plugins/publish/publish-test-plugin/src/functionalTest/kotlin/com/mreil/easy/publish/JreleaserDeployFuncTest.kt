@@ -1,5 +1,7 @@
 package com.mreil.easy.publish
 
+import com.mreil.easy.publish.central.JreleaserVersions.PROPERTY_MAVENCENTRAL_PASSWORD
+import com.mreil.easy.publish.central.JreleaserVersions.PROPERTY_MAVENCENTRAL_USERNAME
 import com.mreil.easy.test.support.DisableAllEasyPlugins
 import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
 import com.mreil.gradletest.project.GradleTestProject
@@ -43,8 +45,8 @@ class JreleaserDeployFuncTest {
                 }
                 """.trimIndent(),
             )
-            systemProperty("jreleaser.mavencentral.username", "test-central-username")
-            systemProperty("jreleaser.mavencentral.password", "test-central-password")
+            systemProperty(PROPERTY_MAVENCENTRAL_USERNAME, "test-central-username")
+            systemProperty(PROPERTY_MAVENCENTRAL_PASSWORD, "test-central-password")
         }
 
         val first = project.build("publishToMavenCentral")

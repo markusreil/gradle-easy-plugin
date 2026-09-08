@@ -32,8 +32,8 @@ internal object SigningWiring {
         val publishExt = target.publishExtension() ?: return
         if (!publishExt.signingEnabled.get()) return
 
-        val privateKeyProvider = propertyResolver.get("jreleaser.gpg.privateKey").base64Decode()
-        val passphraseProvider = propertyResolver.get("jreleaser.gpg.passphrase")
+        val privateKeyProvider = propertyResolver.get(JreleaserVersions.PROPERTY_GPG_PRIVATE_KEY).base64Decode()
+        val passphraseProvider = propertyResolver.get(JreleaserVersions.PROPERTY_GPG_PASSPHRASE)
 
         // Apply signing plugin eagerly so SigningExtension + Sign tasks are available.
         target.plugins.apply("signing")
@@ -75,8 +75,8 @@ internal object SigningWiring {
                 if (signingEnabledValue && (!hasPrivate || !hasPassphrase)) {
                     val missing =
                         buildList {
-                            if (!hasPrivate) add("jreleaser.gpg.privateKey (base64 armored private key)")
-                            if (!hasPassphrase) add("jreleaser.gpg.passphrase")
+                            if (!hasPrivate) add("${JreleaserVersions.PROPERTY_GPG_PRIVATE_KEY} (base64 armored private key)")
+                            if (!hasPassphrase) add(JreleaserVersions.PROPERTY_GPG_PASSPHRASE)
                         }.joinToString(", ")
                     // GradleException fails the task; logger.warn also emitted for visibility.
                     task.logger.warn(
@@ -86,8 +86,8 @@ internal object SigningWiring {
                     )
                     throw GradleException(
                         "Signing is enabled but missing GPG properties: $missing. " +
-                            "Provide jreleaser.gpg.privateKey and jreleaser.gpg.passphrase or set " +
-                            "easy.publish.signingEnabled to false.",
+                            "Provide ${JreleaserVersions.PROPERTY_GPG_PRIVATE_KEY} and " +
+                            "${JreleaserVersions.PROPERTY_GPG_PASSPHRASE} or set easy.publish.signingEnabled to false.",
                     )
                 }
             }

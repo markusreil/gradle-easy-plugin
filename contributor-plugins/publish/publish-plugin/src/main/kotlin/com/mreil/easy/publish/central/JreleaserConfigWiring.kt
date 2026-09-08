@@ -50,17 +50,17 @@ internal object JreleaserConfigWiring {
                         .distinct()
                 task.stagingDirs.convention(stagingDirs)
                 task.mavenCentralUsername.convention(
-                    propertyResolver.get("jreleaser.mavencentral.username"),
+                    propertyResolver.get(JreleaserVersions.PROPERTY_MAVENCENTRAL_USERNAME),
                 )
                 task.mavenCentralPassword.convention(
-                    propertyResolver.get("jreleaser.mavencentral.password"),
+                    propertyResolver.get(JreleaserVersions.PROPERTY_MAVENCENTRAL_PASSWORD),
                 )
-                task.nexusUrl.convention(propertyResolver.get("jreleaser.testNexusUrl"))
+                task.nexusUrl.convention(propertyResolver.get(JreleaserVersions.PROPERTY_TEST_NEXUS_URL))
                 task.nexusUsername.convention(
-                    propertyResolver.get("jreleaser.nexus.username"),
+                    propertyResolver.get(JreleaserVersions.PROPERTY_NEXUS_USERNAME),
                 )
                 task.nexusPassword.convention(
-                    propertyResolver.get("jreleaser.nexus.password"),
+                    propertyResolver.get(JreleaserVersions.PROPERTY_NEXUS_PASSWORD),
                 )
                 task.onlyIf { publishExt.toMavenCentral.get() }
             }
