@@ -7,6 +7,7 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.tasks.Delete
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -183,6 +184,32 @@ class EasyPublishStagingTest {
                     .get()
                     .asFile.invariantSeparatorsPath,
             )
+        }
+    }
+
+    @Test
+    fun `staging upload tasks depend on cleanStagingRepo wiping the staging dir`() {
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.pluginManager.apply("java-library")
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        val publish =
+            (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
+                .extensions
+                .getByType(EasyPublishExtension::class.java) as DefaultEasyPublishExtension
+        publish.enabled.set(true)
+        publish.toMavenStaging()
+
+        evaluate(project)
+
+        val upload = project.tasks.getByName("publishMavenPublicationToMavenStagingRepository")
+        val uploadDeps = upload.taskDependencies.getDependencies(upload).map { it.name }
+        assertSoftly { softly ->
+            softly
+                .assertThat(project.tasks.findByName("cleanStagingRepo"))
+                .isInstanceOf(Delete::class.java)
+            softly.assertThat(uploadDeps).contains("cleanStagingRepo")
         }
     }
 

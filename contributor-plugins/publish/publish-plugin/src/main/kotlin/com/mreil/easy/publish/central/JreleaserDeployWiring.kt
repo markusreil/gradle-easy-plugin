@@ -11,13 +11,14 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
  * Root-only registration of `publishToMavenCentral` running the JReleaser CLI via `JavaExec`.
  *
  * The CLI jar (`org.jreleaser.cli.Main`) resolves from the resolve-only `jreleaser`
- * configuration at execution time. The deploy task depends on the `mavenStaging`
- * upload tasks (`PublishToMavenRepository` targeting the staging repository, all
- * projects, live) and the generated JReleaser config — deliberately not on the root
- * `publish` lifecycle task, so `publish` itself can depend on the deploy task without
- * a task cycle. Either entry point (`publish` or `publishToMavenCentral`) stages
- * everything first; a lone `publish` stays deploy-free unless `toMavenCentral`
- * (deploy skipped).
+ * configuration at execution time. The deploy task depends on every `mavenStaging`
+ * `PublishToMavenRepository` upload task (all projects, live) and the generated
+ * JReleaser config — deliberately not on the root `publish` lifecycle task, so
+ * `publish` itself can depend on the deploy task without a task cycle. Only staging
+ * uploads feed the deploy: JReleaser uploads the `stagingRepositories` collection, so
+ * other repos (e.g. `sonatypeSnapshots`) must neither gate nor precede it. Either
+ * entry point (`publish` or `publishToMavenCentral`) stages everything first;
+ * a lone `publish` stays deploy-free unless `toMavenCentral` (deploy skipped).
  */
 internal object JreleaserDeployWiring {
     fun wire(target: Project) {
@@ -52,22 +53,20 @@ internal object JreleaserDeployWiring {
             }
 
         target.ensureRootPublishTask()
-        // Stage first, without going through the root `publish` task (see KDoc). A live
-        // task collection keeps task avoidance and picks up upload tasks for repositories
-        // declared later, regardless of evaluation order. Configured once here — never
-        // from inside a task-creation callback (illegal mutation context).
-        //
-        // Only upload tasks targeting the `mavenStaging` repository are prerequisites:
-        // those are the uploads that stage artifacts JReleaser deploys to Central. Other
-        // repositories (snapshot, release, test) are unrelated to the deploy and must not
-        // run as a side effect of `publishToMavenCentral` (nor of `publish`, which depends
-        // on it). The filter runs lazily via `matching`, so it stays task-avoidance/CC-safe.
+        // Stage first, without going through the root `publish` task (see KDoc). Only the
+        // `mavenStaging` uploads feed the JReleaser deploy (it uploads the staging
+        // collection); other repos are excluded. A live task collection keeps task
+        // avoidance and picks up upload tasks for repositories declared later,
+        // regardless of evaluation order. Configured once here — never from inside a
+        // task-creation callback (illegal mutation context).
         target.allprojects { project ->
             deployProvider.configure { deploy ->
                 deploy.dependsOn(
                     project.tasks
                         .withType(PublishToMavenRepository::class.java)
-                        .matching { it.repository.name == MAVEN_STAGING_REPO },
+                        // Null-safe: `repository` is unassigned while implicit upload tasks are
+                        // being created, and the spec may be evaluated mid-creation.
+                        .matching { it.repository?.name == MAVEN_STAGING_REPO },
                 )
             }
         }
@@ -84,7 +83,9 @@ internal object JreleaserDeployWiring {
             val deploy = deployProvider.get()
             if (graph.hasTask(deploy)) {
                 deploy.hasStagedUploads.set(
-                    graph.allTasks.any { it is PublishToMavenRepository && it.repository.name == MAVEN_STAGING_REPO },
+                    graph.allTasks.any {
+                        it is PublishToMavenRepository && it.repository?.name == MAVEN_STAGING_REPO
+                    },
                 )
             }
         }

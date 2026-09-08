@@ -38,7 +38,7 @@ import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
  * | Phase | What runs | Why |
  * | ----- | --------- | --- |
  * | `init` | `withId + afterEvaluate { ensureDefaultPublication }` | Final plugin set visible, enable-gate deferred |
- * | `afterEnabled` | staging repo, `maven-publish`, `PomCheckWiring` | Eager reads only, no `afterEvaluate` needed |
+ * | `afterEnabled` | staging repo + cleanup, `maven-publish`, `PomCheckWiring` | Eager reads only, no `afterEvaluate` needed |
  */
 @EnabledBy(EasyPublishExtension::class)
 @ApplyToSubprojects
@@ -70,6 +70,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         // Staging is a publish concern, not a java concern: every enabled project stages into
         // the shared root staging dir (see addStagingRepository), whether or not it has publications.
         addStagingRepository(target)
+        StagingCleanupWiring.wire(target)
         if (target.plugins.hasPlugin("java")) {
             target.plugins.apply("maven-publish")
             target.plugins.withId("maven-publish") {

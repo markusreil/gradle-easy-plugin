@@ -462,7 +462,7 @@ class EasyPublishCentralTest {
         val deps = task.taskDependencies.getDependencies(task).map { it.name }
         assertSoftly { softly ->
             softly.assertThat(deps).contains("generateJreleaserConfig")
-            // Only the mavenStaging upload stages what the deploy pushes; other repos are unrelated.
+            // JReleaser deploys the staging collection only — non-staging repos are excluded.
             softly.assertThat(deps).contains("publishMavenPublicationToMavenStagingRepository")
             softly.assertThat(deps).doesNotContain("publishMavenPublicationToTestRepoRepository")
             softly.assertThat(deps).doesNotContain("publish")

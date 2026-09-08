@@ -46,10 +46,9 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     abstract val toMavenCentral: Property<Boolean>
 
     /**
-     * Enables Maven Central deployment and, unless a staging path is already set,
-     * defaults it to [toMavenStaging]'s `stagingRepo` so a lone `toMavenCentral()`
-     * yields a complete stage → config → deploy pipeline. An explicit
-     * `toMavenStaging(path)` keeps overriding the path regardless of call order.
+     * Enables the JReleaser Central deploy. Unless another staging repo was already chosen,
+     * also stages to the default `build/stagingRepo` — a Central deploy needs something to
+     * upload, and JReleaser builds its `stagingRepositories` list from this.
      */
     override fun toMavenCentral() {
         toMavenCentral.set(true)
