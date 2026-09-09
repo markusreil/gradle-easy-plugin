@@ -11,7 +11,7 @@ import org.gradle.api.tasks.TaskAction
 /**
  * Validates generated Maven POMs against the Maven Central metadata requirements.
  *
- * Registered in every enabled project (see [PomCheckWiring]) with that project's
+ * Registered in every enabled project (see [CentralPublishingWiring]) with that project's
  * `GenerateMavenPom` outputs as inputs, so invalid POMs fail fast at upload time.
  * Skips silently when the project has no POM files (`onlyIf` in the wiring).
  * Missing developer emails are warnings; everything else fails the build.

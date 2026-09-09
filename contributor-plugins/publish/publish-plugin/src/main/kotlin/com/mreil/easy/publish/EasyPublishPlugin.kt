@@ -4,7 +4,7 @@ import com.mreil.easy.AbstractEasyProjectPlugin
 import com.mreil.easy.ApplyToSubprojects
 import com.mreil.easy.EnabledBy
 import com.mreil.easy.isEasyChildEnabled
-import com.mreil.easy.publish.central.PomCheckWiring
+import com.mreil.easy.publish.central.CentralPublishingWiring
 import com.mreil.easy.publish.central.SigningWiring
 import com.mreil.easy.semver.EasySemver
 import com.mreil.easy.semver.EasySemverExtension
@@ -38,7 +38,7 @@ import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
  * | Phase | What runs | Why |
  * | ----- | --------- | --- |
  * | `init` | `withId + afterEvaluate { ensureDefaultPublication }` | Final plugin set visible, enable-gate deferred |
- * | `afterEnabled` | staging repo + cleanup, `maven-publish`, `PomCheckWiring` | Eager reads only, no `afterEvaluate` needed |
+ * | `afterEnabled` | staging repo + cleanup, `maven-publish`, `CentralPublishingWiring` | Eager reads only, no `afterEvaluate` needed |
  */
 @EnabledBy(EasyPublishExtension::class)
 @ApplyToSubprojects
@@ -79,7 +79,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             // Signing is handled by the Gradle `signing` plugin (see SigningWiring).
             SigningWiring.wire(target, propertyResolver)
         }
-        PomCheckWiring.wire(target)
+        CentralPublishingWiring.wire(target)
     }
 
     /**

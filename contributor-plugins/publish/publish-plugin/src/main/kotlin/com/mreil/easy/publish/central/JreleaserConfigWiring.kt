@@ -12,7 +12,7 @@ import org.gradle.api.publish.PublishingExtension
  *
  * Registered lazily with convention defaults; disabled until `toMavenCentral`.
  * Config generation explicitly waits for every project's `checkCentralPoms`
- * (see [PomCheckWiring]) so POM validation stays a separate step before any
+ * (see [CentralPublishingWiring]) so POM validation stays a separate step before any
  * config is generated for upload.
  */
 internal object JreleaserConfigWiring {

@@ -216,6 +216,21 @@ class EasyPublishCentralTest {
     }
 
     @Test
+    fun `stripSignatureChecksums is registered when toMavenCentral is set and depends on staging upload`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val strip = project.project.tasks.getByName("stripSignatureChecksums") as? StripSignatureChecksumsTask
+        assertSoftly { softly ->
+            softly.assertThat(strip).isNotNull()
+            softly.assertThat(strip?.enabled).isTrue()
+        }
+    }
+
+    @Test
     fun `checkCentralPoms is registered in every enabled project and enabled with toMavenCentral`() {
         val root = ProjectBuilderHelper.createRootWithChild("root")
         val child = root.child

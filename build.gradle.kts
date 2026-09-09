@@ -1,4 +1,5 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 plugins {
     `lifecycle-base`
@@ -43,10 +44,18 @@ tasks.named("check") {
     dependsOn("testAggregateTestReport")
 }
 
-// Centralized Spotless config — single source for Kotlin formatting (leaf projects only;
-// intermediate containers like :contributor-plugins have no build file/repositories,
-// so Spotless can't resolve ktlint there)
+// Build everything for Java 17 bytecode regardless of the JDK running Gradle (which may be 21).
+// `jvmToolchain` sets the Java toolchain (source/target 17) AND aligns Kotlin's jvmTarget to 17,
+// so no explicit sourceCompatibility/targetCompatibility/jvmTarget are needed. The Gradle daemon
+// itself is unaffected — only the compile/test toolchain is pinned to 17 (auto-provisioned if absent).
+// Version is single-sourced from gradle.properties (java.toolchainVersion).
 subprojects {
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        extensions.configure<KotlinJvmProjectExtension> {
+            jvmToolchain(providers.gradleProperty("java.toolchainVersion").get().toInt())
+        }
+    }
+    // Leaf-project block: Spotless config, maven-publish, detekt source wiring.
     if (childProjects.isNotEmpty()) return@subprojects
     if (project.path != ":test-fixtures") {
         apply(plugin = "maven-publish")
