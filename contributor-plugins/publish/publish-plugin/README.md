@@ -157,7 +157,8 @@ Example for a repository named `releases`:
 ```text
 EasyPublishPlugin (@ApplyToSubprojects)
 ├── MavenPublicationConfigurer (coordinates, POM, versionMapping)
-├── PomCheckWiring -> CheckCentralPomsTask -> PomRequirementsChecker
+├── CentralPublishingWiring -> CheckCentralPomsTask -> PomRequirementsChecker
+│   └── CentralPublishingWiring -> StripSignatureChecksumsTask (strips signature + SHA-256/512 checksums after staging, before deploy)
 └── mavenStaging repo + RepoRouting (release/snapshot filtering)
 
 EasyJreleaserPlugin (root-only)

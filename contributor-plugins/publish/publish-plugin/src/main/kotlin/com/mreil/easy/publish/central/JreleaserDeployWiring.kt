@@ -68,6 +68,8 @@ internal object JreleaserDeployWiring {
                         // being created, and the spec may be evaluated mid-creation.
                         .matching { it.repository?.name == MAVEN_STAGING_REPO },
                 )
+                // Strip unnecessary checksums after staging, before deploy.
+                deploy.dependsOn(project.tasks.withType(StripSignatureChecksumsTask::class.java))
             }
         }
         deployProvider.configure {

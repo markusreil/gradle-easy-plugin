@@ -14,7 +14,7 @@ import org.gradle.api.Project
  *   becomes active when that extension is enabled (see [EnabledBy]).
  *
  * Deliberately NOT annotated with `ApplyToSubprojects`: all wiring owned here
- * ([JreleaserConfigWiring], [CentralPomCheckWiring], [JreleaserDeployWiring]) is
+ * ([JreleaserConfigWiring], [JreleaserDeployWiring]) is
  * root-only by construction (see `PluginRegistrar.targetsFor`), so the plugin is
  * applied to the root project only instead of fanning out and no-op-ing on every
  * subproject. The root guards inside the wiring units remain as safety for
@@ -24,7 +24,7 @@ import org.gradle.api.Project
  * `checkCentralPoms`), the root `publish` aggregation over subproject `publish`
  * tasks, and `publishToMavenCentral` (JReleaser `deploy`), all disabled until
  * `toMavenCentral` is set on the shared publish extension. Per-project POM checks
- * themselves live in [EasyPublishPlugin] (see [PomCheckWiring]), so invalid POMs
+ * themselves live in [EasyPublishPlugin] (see [CentralPublishingWiring]), so invalid POMs
  * fail fast at upload time with module-scoped errors.
  */
 @EnabledBy(EasyPublishExtension::class)

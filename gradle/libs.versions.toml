@@ -7,7 +7,9 @@ jackson = "2.18.2"
 jreleaser = "1.25.0"
 junit-jupiter = "5.11.3"
 junit-pioneer = "2.3.0"
+plugin-publish = "2.1.1"
 semver4j = "5.3.0"
+shadow = "9.6.1"
 spotless = "7.0.2"
 commons-configuration = "2.15.1"
 
@@ -27,4 +29,6 @@ junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version.ref = "jun
 [plugins]
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.3.0" }
+plugin-publish = { id = "com.gradle.plugin-publish", version.ref = "plugin-publish" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

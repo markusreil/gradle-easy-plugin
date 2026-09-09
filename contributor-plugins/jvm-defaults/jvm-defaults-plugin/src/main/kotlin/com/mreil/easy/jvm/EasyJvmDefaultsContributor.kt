@@ -8,4 +8,6 @@ import kotlin.reflect.KClass
 /** Contributor that provides [EasyJvmDefaultsPlugin] via ServiceLoader. */
 class EasyJvmDefaultsContributor : EasyPluginContributor {
     override fun projectPlugins(): Set<KClass<out Plugin<Project>>> = setOf(EasyJvmDefaultsPlugin::class)
+
+    override fun pluginExtensions() = setOf(DefaultEasyJvmDefaultsExtension::class)
 }

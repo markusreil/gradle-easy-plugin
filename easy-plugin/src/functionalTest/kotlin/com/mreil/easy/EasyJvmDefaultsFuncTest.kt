@@ -22,6 +22,9 @@ class EasyJvmDefaultsFuncTest {
                     `java-library`
                     id("com.mreil.easy.project")
                 }
+                easy {
+                    jvmDefaults { enabled.set(true) }
+                }
                 """.trimIndent(),
             )
         }

@@ -6,6 +6,8 @@
  * This project uses @Incubating APIs which are subject to change.
  */
 
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
     `java-gradle-plugin`
@@ -14,6 +16,8 @@ plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.plugin.publish)
 }
 
 repositories {
@@ -79,6 +83,9 @@ testing {
 }
 
 gradlePlugin {
+    website.set("https://github.com/markusreil/gradle-easy-plugin")
+    vcsUrl.set("https://github.com/markusreil/gradle-easy-plugin")
+
     // NOTE: impl classes live in :easy-plugin-core, so :easy-plugin:jar warns
     // "implementation class ... was not found in the jar". Expected and benign: the
     // classes resolve from :easy-plugin-core on the runtime classpath. Do not move
@@ -88,10 +95,18 @@ gradlePlugin {
     val easyProject by plugins.creating {
         id = providers.gradleProperty("plugin.project").get()
         implementationClass = "com.mreil.easy.ProjectPlugin"
+        displayName = "Easy Project Plugin"
+        description =
+            "A Gradle plugin framework that simplifies plugin development with modular contributors and convention-based configuration"
+        tags.set(listOf("kotlin", "conventions", "plugin-development", "modular"))
     }
     val easySettings by plugins.creating {
         id = providers.gradleProperty("plugin.settings").get()
         implementationClass = "com.mreil.easy.SettingsPlugin"
+        displayName = "Easy Settings Plugin"
+        description =
+            "A Gradle plugin framework that simplifies plugin development with modular contributors and convention-based configuration"
+        tags.set(listOf("kotlin", "conventions", "plugin-development", "modular"))
     }
 }
 
@@ -103,6 +118,20 @@ tasks.named<PluginUnderTestMetadata>("pluginUnderTestMetadata") {
 
 detekt {
     config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml"))
+}
+
+tasks.named<ShadowJar>("shadowJar") {
+    archiveClassifier = ""
+
+    // Shadow 9.x applies duplicatesStrategy before resource transformers, so we must
+    // explicitly allow duplicates for the paths the transformers merge.
+    val transformedPaths = listOf("META-INF/services/**", "META-INF/*.kotlin_module")
+    filesMatching(transformedPaths) {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+    inputs.property("transformedPathsDuplicatesStrategy", "$transformedPaths=INCLUDE")
+
+    mergeServiceFiles()
 }
 
 tasks.named<Task>("check") {
