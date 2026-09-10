@@ -3,6 +3,7 @@ package com.mreil.easy.publish.central
 import com.mreil.easy.publish.DefaultEasyPublishExtension
 import com.mreil.easy.publish.EasyPublishPlugin
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
+import com.mreil.easy.publish.isCentralEnabled
 import com.mreil.easy.publish.publishExtension
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.tasks.GenerateMavenPom
@@ -21,12 +22,14 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
  *   (3) root `publishToMavenCentral` deploys the cleaned staging dirs.
  *   Contrast `cleanStagingRepo`, which runs *before* the staging upload.
  *
- * Both tasks run in every enabled project (see [EasyPublishPlugin]). The wiring only
- * runs when [com.mreil.easy.publish.EasyPublishExtension.toMavenCentral] is set — see
- * [EasyJreleaserPlugin] for the gating rule.
+ * Both tasks run in every central-enabled project (see [EasyPublishPlugin]). The wiring
+ * only runs when any project opts into Maven Central — root-inherited or a single
+ * subproject — see [EasyJreleaserPlugin] for the ANY gating rule. Non-central projects
+ * (no `toMavenCentral`) get no `checkCentralPoms`/`stripSignatureChecksums`.
  */
 internal object CentralPublishingWiring {
     fun wire(target: Project) {
+        if (!target.isCentralEnabled()) return
         val publishExt = target.publishExtension() ?: return
         wirePomCheck(target)
         wireStagingCleanup(target, publishExt)

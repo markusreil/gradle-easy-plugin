@@ -3,6 +3,7 @@ package com.mreil.easy.publish.central
 import com.mreil.easy.catalogVersionOrDefault
 import com.mreil.easy.isRoot
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
+import com.mreil.easy.publish.isCentralEnabled
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 
@@ -11,14 +12,14 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
  *
  * The CLI jar (`org.jreleaser.cli.Main`) resolves from the resolve-only `jreleaser`
  * configuration at execution time. The deploy task depends on every `mavenStaging`
- * `PublishToMavenRepository` upload task (all projects, live) and the generated
- * JReleaser config — deliberately not on the root `publish` lifecycle task, so
- * `publish` itself can depend on the deploy task without a task cycle. Only staging
+ * `PublishToMavenRepository` upload task from central-enabled projects (all projects, live)
+ * and the generated JReleaser config — deliberately not on the root `publish` lifecycle
+ * task, so `publish` itself can depend on the deploy task without a task cycle. Only staging
  * uploads feed the deploy: JReleaser uploads the `stagingRepositories` collection, so
  * other repos (e.g. `sonatypeSnapshots`) must neither gate nor precede it. Either
  * entry point (`publish` or `publishToMavenCentral`) stages everything first;
- * the wiring only runs when [com.mreil.easy.publish.EasyPublishExtension.toMavenCentral]
- * is set — see [EasyJreleaserPlugin] for the gating rule.
+ * the wiring only runs when any project opts into Maven Central — root-inherited or a
+ * single subproject — see [EasyJreleaserPlugin] for the ANY gating rule.
  */
 internal object JreleaserDeployWiring {
     fun wire(target: Project) {
@@ -58,16 +59,18 @@ internal object JreleaserDeployWiring {
         // regardless of evaluation order. Configured once here — never from inside a
         // task-creation callback (illegal mutation context).
         target.allprojects { project ->
-            deployProvider.configure { deploy ->
-                deploy.dependsOn(
-                    project.tasks
-                        .withType(PublishToMavenRepository::class.java)
-                        // Null-safe: `repository` is unassigned while implicit upload tasks are
-                        // being created, and the spec may be evaluated mid-creation.
-                        .matching { it.repository?.name == MAVEN_STAGING_REPO },
-                )
-                // Strip after the staging upload, before deploy (second upload to Central).
-                deploy.dependsOn(project.tasks.withType(StripSignatureChecksumsTask::class.java))
+            if (project.isCentralEnabled()) {
+                deployProvider.configure { deploy ->
+                    deploy.dependsOn(
+                        project.tasks
+                            .withType(PublishToMavenRepository::class.java)
+                            // Null-safe: `repository` is unassigned while implicit upload tasks are
+                            // being created, and the spec may be evaluated mid-creation.
+                            .matching { it.repository?.name == MAVEN_STAGING_REPO },
+                    )
+                    // Strip after the staging upload, before deploy (second upload to Central).
+                    deploy.dependsOn(project.tasks.withType(StripSignatureChecksumsTask::class.java))
+                }
             }
         }
         deployProvider.configure {

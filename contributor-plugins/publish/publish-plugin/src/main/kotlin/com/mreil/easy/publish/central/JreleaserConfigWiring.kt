@@ -1,7 +1,7 @@
 package com.mreil.easy.publish.central
 
-import com.mreil.easy.isEnabled
 import com.mreil.easy.isRoot
+import com.mreil.easy.publish.isCentralEnabled
 import com.mreil.easy.publish.publishExtension
 import com.mreil.utils.PropertyResolver
 import org.gradle.api.Project
@@ -10,10 +10,11 @@ import org.gradle.api.publish.PublishingExtension
 /**
  * Root-only registration of `generateJreleaserConfig` (JReleaser YAML generation).
  *
- * Registered lazily with convention defaults. The wiring only runs when
- * [com.mreil.easy.publish.EasyPublishExtension.toMavenCentral] is set — see
- * [EasyJreleaserPlugin] for the gating rule.
- * Config generation explicitly waits for every project's `checkCentralPoms`
+ * Registered lazily with convention defaults. The wiring runs when any project opts into
+ * Maven Central — a root `easy { publish { toMavenCentral() } }` (inherited by every
+ * subproject) or a single subproject setting `toMavenCentral()` from its own script. See
+ * [EasyJreleaserPlugin] for the ANY gating rule.
+ * Config generation explicitly waits for every central-enabled project's `checkCentralPoms`
  * (see [CentralPublishingWiring]) so POM validation stays a separate step before any
  * config is generated for upload.
  */
@@ -39,8 +40,8 @@ internal object JreleaserConfigWiring {
                 )
                 // Per-project staging dirs, resolved eagerly: extension values are final once
                 // afterEnabled runs post-evaluation, and inheritance is live provider linkage
-                // (see ExtensionCopier), so root-set values are visible here. Only enabled
-                // projects are included (mirroring addStagingRepository); a child disabling
+                // (see ExtensionCopier), so root-set values are visible here. Only central-enabled
+                // projects are included (toMavenCentral + isEnabled); a child disabling
                 // itself in its own later-evaluated script may still contribute a dangling
                 // entry — same tolerance as the previous single shared dir.
                 // Default staging path is "stagingRepo" when central is enabled without explicit staging.
@@ -102,8 +103,8 @@ internal object JreleaserConfigWiring {
 
     private fun stagingDirFor(project: Project): String? =
         project
-            .publishExtension()
-            ?.takeIf { it.isEnabled() }
+            .takeIf { it.isCentralEnabled() }
+            ?.publishExtension()
             ?.let { ext ->
                 val path = ext.stagingPath.orNull ?: "stagingRepo"
                 project.layout.buildDirectory
