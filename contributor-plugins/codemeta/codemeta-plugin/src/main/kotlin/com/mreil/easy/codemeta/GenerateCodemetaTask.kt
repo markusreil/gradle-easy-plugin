@@ -29,6 +29,9 @@ abstract class GenerateCodemetaTask : DefaultTask() {
     @get:Input
     abstract val projectDescription: Property<String>
 
+    @get:Input
+    abstract val codeRepository: Property<String>
+
     @TaskAction
     fun generate() {
         val file = outputFile.get().asFile
@@ -40,7 +43,8 @@ abstract class GenerateCodemetaTask : DefaultTask() {
                 description = projectDescription.getOrElse("TODO: Add description - replace with project description"),
                 version = projectVersion.getOrElse("TODO: Add version"),
                 license = "https://spdx.org/licenses/MIT",
-                codeRepository = "TODO: Add codeRepository - e.g. https://github.com/mreil/gradle-easy-plugin-new",
+                codeRepository =
+                    codeRepository.getOrElse("TODO: Add codeRepository - e.g. https://github.com/mreil/gradle-easy-plugin-new"),
                 url = "TODO: Add url - e.g. https://mreil.com/gradle-easy-plugin-new",
                 issueTracker = "TODO: Add issueTracker - e.g. https://github.com/mreil/gradle-easy-plugin-new/issues",
                 datePublished = "TODO: Add datePublished - e.g. 2026-01-01",
