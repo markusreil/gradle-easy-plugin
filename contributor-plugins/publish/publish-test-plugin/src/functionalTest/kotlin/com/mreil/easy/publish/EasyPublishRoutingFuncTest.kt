@@ -146,4 +146,46 @@ class EasyPublishRoutingFuncTest {
             softly.assertThat(project).hasArtifact(snapshotDir, coordinates)
         }
     }
+
+    /** A 0.x release version is not a SNAPSHOT, so it routes only to release and neutral repos. */
+    @Test
+    fun `0 x release version publishes only to release and neutral repos`() {
+        lateinit var releaseDir: File
+        lateinit var snapshotDir: File
+        lateinit var neutralDir: File
+        project.configure {
+            version = "0.0.100"
+            releaseDir = createDir("repoRelease")
+            snapshotDir = createDir("repoSnapshot")
+            neutralDir = createDir("repoNeutral")
+            buildGradle(
+                """
+                plugins {
+                    `java-library`
+                    id("com.mreil.easy.test.publish")
+                }
+                easy {
+                    semver { enabled.set(true) }
+                    publish {
+                        enabled.set(true)
+                        signingEnabled.set(false)
+                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
+                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}")
+                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}")
+                    }
+                }
+                """.trimIndent(),
+            )
+            javaSource()
+        }
+
+        project.build("publish", "--info")
+
+        val coordinates = MavenCoordinates(name = project.projectDir.name, version = "0.0.100")
+        assertSoftly { softly ->
+            softly.assertThat(project).hasArtifact(releaseDir, coordinates)
+            softly.assertThat(project).doesNotHaveArtifact(snapshotDir, coordinates)
+            softly.assertThat(project).hasArtifact(neutralDir, coordinates)
+        }
+    }
 }

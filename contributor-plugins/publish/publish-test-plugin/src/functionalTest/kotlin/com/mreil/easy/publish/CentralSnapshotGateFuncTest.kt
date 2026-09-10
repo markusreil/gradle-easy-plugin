@@ -11,9 +11,10 @@ import org.junit.jupiter.api.extension.ExtendWith
 /**
  * Functional tests for the unified Maven Central snapshot gate in [com.mreil.easy.publish.central.EasyJreleaserPlugin].
  *
- * Snapshots never reach the JReleaser wiring: semver decides when enabled (so pre-releases like
- * `1.0.0-RC1` are skipped too), and a `-SNAPSHOT` suffix fallback decides when semver is off.
- * Either way no central task is registered and `publish` stays detached from `publishToMavenCentral`.
+ * Only `-SNAPSHOT` pre-release versions skip the JReleaser wiring: semver decides when enabled,
+ * and a `-SNAPSHOT` suffix fallback decides when semver is off. Other pre-releases (e.g. `1.0.0-RC1`)
+ * are treated as deployable releases. Either way no central task is registered for snapshots and
+ * `publish` stays detached from `publishToMavenCentral`.
  */
 @ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
 @DisableAllEasyPlugins
@@ -50,10 +51,10 @@ class CentralSnapshotGateFuncTest {
         }
         """.trimIndent()
 
-    /** A pre-release like RC1 is not a release to semver, so central wiring is skipped entirely
-     *  and `publish` no longer depends on the (unregistered) deploy task. */
+    /** A pre-release like RC1 is not a SNAPSHOT, so it is a deployable release and central
+     *  wiring proceeds. */
     @Test
-    fun `RC1 pre-release with semver skips central wiring and detaches publish from deploy`() {
+    fun `RC1 pre-release with semver wires central wiring`() {
         project.configure {
             version = "1.0.0-RC1"
             file("codemeta.json", codemetaJson())
@@ -63,15 +64,9 @@ class CentralSnapshotGateFuncTest {
 
         val tasks = project.build("tasks", "--all")
         assertSoftly { softly ->
-            softly.assertThat(tasks.output).doesNotContain("checkCentralPoms")
-            softly.assertThat(tasks.output).doesNotContain("publishToMavenCentral")
-            softly.assertThat(tasks.output).doesNotContain("generateJreleaserConfig")
-        }
-
-        val dryRun = project.build("publish", "--dry-run")
-        assertSoftly { softly ->
-            softly.assertThat(dryRun.output).contains(":publish")
-            softly.assertThat(dryRun.output).doesNotContain("publishToMavenCentral")
+            softly.assertThat(tasks.output).contains("checkCentralPoms")
+            softly.assertThat(tasks.output).contains("publishToMavenCentral")
+            softly.assertThat(tasks.output).contains("generateJreleaserConfig")
         }
     }
 

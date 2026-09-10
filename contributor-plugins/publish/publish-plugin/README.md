@@ -28,7 +28,7 @@ plugin infrastructure. It activates by default (`enabled` defaults to `true` in 
 * **Password credentials** – opt-in per repository via `passwordCredentials` (or `withPasswordCredentials = true`).
 * **Staging repository** – `toMavenStaging(path)` creates a `mavenStaging` file repo under `build/<path>` (default `build/stagingRepo`).
 * **Maven local wiring** – `toMavenLocal()` makes `publish` depend on `publishToMavenLocal`.
-* **Semver-aware routing** – when `easy.semver` is enabled (`easy { semver {} }`), the version is parsed via `semver4j` (`EasySemver.of(project)`). Snapshots (`!isStable`) skip `*release*` repos, releases skip `*snapshot*` repos; neutral names always publish. Without semver, a `-SNAPSHOT` version suffix decides instead, so routing always filters.
+* **Semver-aware routing** – when `easy.semver` is enabled (`easy { semver {} }`), the version is parsed via `semver4j` (`EasySemver.of(project)`). A version is a snapshot iff its semver pre-release is exactly `SNAPSHOT` (Maven convention); `0.x` releases and other pre-releases (e.g. `1.0.0-RC1`) are treated as releases. Snapshots skip `*release*` repos, releases skip `*snapshot*` repos; neutral names always publish. Without semver, a `-SNAPSHOT` version suffix decides instead, so routing always filters.
 * **Sonatype snapshots** – `toSonatypeSnapshots()` publishes snapshots directly to Central's snapshot repository via `maven-publish` (parallel, no JReleaser round-trip). Creates the `sonatypeSnapshots` repo (`https://central.sonatype.com/repository/maven-snapshots/` with standard `sonatypeSnapshotsUsername`/`sonatypeSnapshotsPassword` credentials) unless already declared manually. It is a pure repo shorthand: routing is decided by semver when enabled, or by the `-SNAPSHOT` suffix when semver is off — no semver requirement.
 
 ## Usage
@@ -87,6 +87,8 @@ easy {
         mavenRepo("myNeutral", "https://repo.example.com/central") // always published
         // version 1.0.0 -> publishes to myRelease + myNeutral
         // version 1.0.0-SNAPSHOT -> publishes to mySnapshot + myNeutral
+        // version 0.0.100 -> publishes to myRelease + myNeutral
+        // version 1.0.0-RC1 -> publishes to myRelease + myNeutral
     }
 }
 ```

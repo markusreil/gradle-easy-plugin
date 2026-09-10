@@ -108,10 +108,10 @@ class EasyJreleaserPluginTest {
         }
     }
 
-    /** Predicate matrix: a pre-release like RC1 is not a release for semver, so it skips
-     *  central wiring — matching the unified snapshot gate (no stale deploy edge). */
+    /** Predicate matrix: a pre-release like RC1 is not a SNAPSHOT, so it is a deployable release
+     *  and central wiring proceeds. */
     @Test
-    fun `afterEnabled skips central wiring for RC1 pre-release version`() {
+    fun `afterEnabled wires central wiring for RC1 pre-release version`() {
         val project = singleProject()
         project.publishExtension()!!.apply {
             enabled.set(true)
@@ -122,9 +122,28 @@ class EasyJreleaserPluginTest {
         evaluate(project)
 
         assertSoftly { softly ->
-            softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNull()
-            softly.assertThat(project.tasks.findByName("generateJreleaserConfig")).isNull()
-            softly.assertThat(project.tasks.findByName("publishToMavenCentral")).isNull()
+            softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNotNull()
+            softly.assertThat(project.tasks.findByName("generateJreleaserConfig")).isNotNull()
+            softly.assertThat(project.tasks.findByName("publishToMavenCentral")).isNotNull()
+        }
+    }
+
+    /** Predicate matrix: a 0.x release version is not a SNAPSHOT, so central wiring proceeds. */
+    @Test
+    fun `afterEnabled wires central wiring for 0-version release`() {
+        val project = singleProject()
+        project.publishExtension()!!.apply {
+            enabled.set(true)
+            toMavenCentral()
+        }
+        project.version = "0.0.105"
+
+        evaluate(project)
+
+        assertSoftly { softly ->
+            softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNotNull()
+            softly.assertThat(project.tasks.findByName("generateJreleaserConfig")).isNotNull()
+            softly.assertThat(project.tasks.findByName("publishToMavenCentral")).isNotNull()
         }
     }
 

@@ -33,8 +33,9 @@ import org.gradle.api.Project
  * `checkCentralPoms`), the root `publish` aggregation over subproject `publish`
  * tasks, and `publishToMavenCentral` (JReleaser `deploy`). `toMavenCentral` set on
  * the shared publish extension is the main switch: unless it is enabled, the plugin
- * wires nothing. SNAPSHOT versions are detected via the semver API and skip
- * JReleaser entirely, and the codemeta extension is required so the published POMs
+ * wires nothing. Versions with a `-SNAPSHOT` pre-release are detected via the semver
+ * API and skip JReleaser entirely; other pre-releases like `1.0.0-RC1` are treated as
+ * deployable releases. The codemeta extension is required so the published POMs
  * carry the metadata Maven Central validates (url, scm, license, developers).
  */
 @EnabledBy(EasyPublishExtension::class)
@@ -67,8 +68,9 @@ class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
      * Reasons, in order:
      * 1. **SNAPSHOT version** — JReleaser deploys only releases; snapshots go directly
      *    via `maven-publish` (`toSonatypeSnapshots`). The semver extension decides when
-     *    enabled (so pre-releases like `1.0.0-RC1` are correctly skipped too); when
-     *    semver is off, a `-SNAPSHOT` suffix fallback decides.
+     *    enabled (only `-SNAPSHOT` pre-releases are skipped; other pre-releases like
+     *    `1.0.0-RC1` are deployable releases); when semver is off, a `-SNAPSHOT` suffix
+     *    fallback decides.
      * 2. **Missing codemeta extension** — Maven Central validates the POM's
      *    url/scm/license/developers fields; the codemeta overlay fills them from
      *    `codemeta.json`. Without it, wiring would produce POMs Central rejects at

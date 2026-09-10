@@ -132,6 +132,47 @@ class SonatypeSnapshotsTest {
         }
     }
 
+    @Test
+    fun `sonatypeSnapshots repo is skipped for 0-version release`() {
+        val project = createProject(version = "0.0.100")
+        val publish = publishOf(project)
+        publish.enabled.set(true)
+        semverOf(project).enabled.set(true)
+        publish.toSonatypeSnapshots()
+
+        evaluate(project)
+
+        val repo =
+            project.extensions
+                .getByType(PublishingExtension::class.java)
+                .repositories
+                .findByName(SONATYPE_SNAPSHOTS_REPO)
+        assertSoftly { softly ->
+            softly.assertThat(repo).isNull()
+        }
+    }
+
+    @Test
+    fun `sonatypeSnapshots repo is attached for 0-version snapshot`() {
+        val project = createProject(version = "0.0.100-SNAPSHOT")
+        val publish = publishOf(project)
+        publish.enabled.set(true)
+        semverOf(project).enabled.set(true)
+        publish.toSonatypeSnapshots()
+
+        evaluate(project)
+
+        val repo =
+            project.extensions
+                .getByType(PublishingExtension::class.java)
+                .repositories
+                .findByName(SONATYPE_SNAPSHOTS_REPO) as MavenArtifactRepository?
+        assertSoftly { softly ->
+            softly.assertThat(repo).isNotNull()
+            softly.assertThat(repo?.url?.toString()).isEqualTo(SONATYPE_SNAPSHOTS_URL)
+        }
+    }
+
     private fun createProject(version: String = "1.0.0"): Project {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
