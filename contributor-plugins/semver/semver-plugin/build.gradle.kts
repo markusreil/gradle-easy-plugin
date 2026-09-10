@@ -5,6 +5,10 @@ plugins {
     alias(libs.plugins.detekt)
 }
 
+easy {
+    publish.enabled = false
+}
+
 repositories { mavenCentral() }
 
 dependencies {
