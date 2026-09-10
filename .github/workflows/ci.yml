@@ -60,4 +60,4 @@ jobs:
         # (see PublishAggregationWiring). The deploy edge stays out: snapshots are
         # published directly via maven-publish and never go through JReleaser
         # (which has no credentials in this job and is release-only by design).
-        run: ./gradlew publish -x publishToMavenCentral
+        run: ./gradlew publish -x publish
