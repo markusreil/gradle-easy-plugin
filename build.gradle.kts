@@ -50,11 +50,6 @@ tasks.named("check") {
 // itself is unaffected — only the compile/test toolchain is pinned to 17 (auto-provisioned if absent).
 // Version is single-sourced from gradle.properties (java.toolchainVersion).
 subprojects {
-    plugins.withId("org.jetbrains.kotlin.jvm") {
-        extensions.configure<KotlinJvmProjectExtension> {
-            jvmToolchain(providers.gradleProperty("java.toolchainVersion").get().toInt())
-        }
-    }
     // Leaf-project block: Spotless config, detekt source wiring.
     if (childProjects.isNotEmpty()) return@subprojects
     apply(plugin = "com.diffplug.spotless")

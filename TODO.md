@@ -1,14 +1,12 @@
 # TODO
 
 This document keeps track of tasks that need to be completed.
-## Bugs
 
-* "publish" tries to publish to staging repos (both mreil and sonatypeSnapshots) when project version is release.
+## Bugs
 
 ## Contributor plugins
 
 * jvm-defaults: detect and configure test suites
-* publish: make sure sonatypeSnapshots is guarded by release/snapshots logic
 
 ## Architecture changes / fixes
 
