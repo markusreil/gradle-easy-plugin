@@ -11,7 +11,6 @@ plugins { id("com.mreil.easy.settings") version "0.0.104-SNAPSHOT" }
 
 easy {
     publish {
-        enabled.set(true)
         toMavenStaging()
         toSonatypeSnapshots()
         mavenRepo(

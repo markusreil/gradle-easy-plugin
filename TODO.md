@@ -1,6 +1,9 @@
 # TODO
 
 This document keeps track of tasks that need to be completed.
+## Bugs
+
+* "publish" tries to publish to staging repos (both mreil and sonatypeSnapshots) when project version is release.
 
 ## Contributor plugins
 
