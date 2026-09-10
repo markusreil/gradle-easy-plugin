@@ -61,6 +61,7 @@ test-projects/simple-settings/        # same for settings plugin (id("com.mreil.
 ./gradlew :contributor-plugins:jvm-defaults:jvm-defaults-test-plugin:check # jvm harness: functionalTest via withPluginClasspath (id("com.mreil.easy.test.jvm")) + detekt + jacoco
 ./gradlew :easy-plugin:publishToMavenLocal
 ./gradlew :easy-plugin:publish                 # publish snapshots to mreilComGradlePluginsSnapshots (requires credentials)
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew publishAllPublicationsToMavenStagingRepository  # local publish-set verification: stages the full artifact set (jars, sources, javadoc, poms, module, markers, signatures) into each project's build/stagingRepo — no remote credentials needed, see DEVELOPMENT.md "Publishing"
 cd test-projects/simple && ./gradlew build     # manual snapshot smoke-test (standalone, Java 21, latest.integration)
 ./gradlew spotlessCheck                        # verify Kotlin/Gradle formatting (ktlint)
 ./gradlew spotlessApply                        # auto-format all sources
@@ -78,6 +79,7 @@ Use `./gradlew` (wrapper, Gradle 9.4.1) — not system `gradle`.
 `providers.gradleProperty(...).get()` in `easy-plugin/build.gradle.kts`; runtime
 mirror is `easy-contributor-api/.../PluginIds.kt` — keep in sync.
 Contributor `publish-plugin`/`jvm-defaults` IDs are internal (contribute via SPI, not applied by ID externally).
+- Published artifact set is documented in `DEVELOPMENT.md` → "Publishing (deployed artifact set)" and is the source of truth for everything any `mavenRepo()`-declared repository receives. Whenever publish behaviour changes (new module, new publication, marker changes, harness publishing), update that section and the local-verification note (`publishAllPublicationsToMavenStagingRepository`) — keep both docs in sync.
 - Plugin registration via `gradlePlugin { plugins.creating { id,
 implementationClass } }`. Functional test source set wired via
 `gradlePlugin.testSourceSets.add(...)` (easy-plugin + contributor `publish-test-plugin`/`jvm-defaults-test-plugin` harnesses) and `check.dependsOn(functionalTest)` — keep.

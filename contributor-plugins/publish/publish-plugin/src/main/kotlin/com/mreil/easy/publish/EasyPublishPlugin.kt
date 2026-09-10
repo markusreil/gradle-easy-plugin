@@ -4,11 +4,9 @@ import com.mreil.easy.AbstractEasyProjectPlugin
 import com.mreil.easy.ApplyToSubprojects
 import com.mreil.easy.EnabledBy
 import com.mreil.easy.isEasyChildEnabled
-import com.mreil.easy.publish.central.CentralPublishingWiring
 import com.mreil.easy.publish.central.SigningWiring
 import com.mreil.easy.semver.EasySemver
 import com.mreil.easy.semver.EasySemverExtension
-import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -29,16 +27,17 @@ import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
  * plugin markers), applies consistent POM metadata and version mapping, and wires
  * up any Maven repositories declared via [EasyPublishExtension.mavenRepo].
  *
- * Maven Central deployment via JReleaser lives in [EasyJreleaserPlugin] (same
- * extension, root-only); this plugin only owns `maven-publish` wiring plus the
- * shared `mavenStaging` file repository consumed by both.
+ * This plugin owns the shared `mavenStaging` file repository, `cleanStagingRepo`,
+ * `maven-publish` wiring, signing, and repository routing. POM validation and
+ * Maven Central deployment via JReleaser live in
+ * [EasyJreleaserPlugin] (same extension, root-only).
  *
  * Lifecycle:
  *
  * | Phase | What runs | Why |
  * | ----- | --------- | --- |
  * | `init` | `withId + afterEvaluate { ensureDefaultPublication }` | Final plugin set visible, enable-gate deferred |
- * | `afterEnabled` | staging repo + cleanup, `maven-publish`, `CentralPublishingWiring` | Eager reads only, no `afterEvaluate` needed |
+ * | `afterEnabled` | staging repo + cleanup, `maven-publish`, signing, repo routing | Eager reads only, no `afterEvaluate` needed |
  */
 @EnabledBy(EasyPublishExtension::class)
 @ApplyToSubprojects
@@ -79,7 +78,6 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             // Signing is handled by the Gradle `signing` plugin (see SigningWiring).
             SigningWiring.wire(target, propertyResolver)
         }
-        CentralPublishingWiring.wire(target)
     }
 
     /**
@@ -137,28 +135,16 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         publishing: PublishingExtension,
     ) {
         val publishExt = target.publishExtension() ?: return
-        requireSemverForSnapshots(target, publishExt)
+        if (publishExt.sonatypeSnapshots.get() && !target.isEasyChildEnabled<EasySemverExtension>()) {
+            target.logger.lifecycle(
+                "easy.publish.toSonatypeSnapshots(): semver is disabled, so snapshot detection " +
+                    "falls back to the '-SNAPSHOT' version suffix convention.",
+            )
+        }
         val isSnapshot = resolveIsSnapshot(target)
         publishExt.mavenRepos
             .filter { RepoRouting.shouldPublishToRepo(it.name, isSnapshot) }
             .forEach { spec -> publishing.repositories.maven { repo -> spec.configure(target, repo) } }
-    }
-
-    /**
-     * Snapshot routing ([RepoRouting]) only filters repositories when a semver version is
-     * resolvable. Without `easy.semver` every repo — release and snapshot alike — would
-     * receive every version, so `toSonatypeSnapshots()` fails fast instead.
-     */
-    private fun requireSemverForSnapshots(
-        target: Project,
-        publishExt: DefaultEasyPublishExtension,
-    ) {
-        if (publishExt.sonatypeSnapshots.get() && !target.isEasyChildEnabled<EasySemverExtension>()) {
-            throw GradleException(
-                "easy.publish.toSonatypeSnapshots() requires semver for snapshot/release routing. " +
-                    "Enable it via easy { semver { enabled.set(true) } }.",
-            )
-        }
     }
 
     /**
@@ -186,12 +172,18 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         }
     }
 
-    private fun resolveIsSnapshot(target: Project): Boolean? =
+    /**
+     * Resolves whether this project is publishing a snapshot version, used by [RepoRouting] to
+     * filter repositories. Semver decides when `easy.semver` is enabled; otherwise the `-SNAPSHOT`
+     * version suffix decides. Routing therefore always filters — the old attach-everywhere `null`
+     * default is gone, so `toSonatypeSnapshots()` needs no semver requirement.
+     */
+    private fun resolveIsSnapshot(target: Project): Boolean =
         RepoRouting.isSnapshot(
             runCatching {
                 if (!target.isEasyChildEnabled<EasySemverExtension>()) null else EasySemver.of(target).orNull
             }.getOrNull(),
-        )
+        ) ?: target.version.toString().endsWith("-SNAPSHOT")
 
     /**
      * Creates the default `maven` publication backed by the project's `java` component.

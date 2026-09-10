@@ -10,9 +10,9 @@ import org.gradle.api.provider.Property
  * Public API for the `easy.publish` extension.
  *
  * Declared under the `easy` extension and gated by [CanBeEnabled], so the
- * [EasyPublishPlugin][com.mreil.easy.publish.EasyPublishPlugin] only activates when this extension is
- * explicitly enabled via `enabled.set(true)` — it is **disabled by default**
- * (`DefaultEasyPublishExtension` conventions `enabled` to `false`).
+ * [EasyPublishPlugin][com.mreil.easy.publish.EasyPublishPlugin] activates by default
+ * (`DefaultEasyPublishExtension` conventions `enabled` to `true`). Disable it via
+ * `enabled.set(false)` when publishing is not wanted.
  *
  * Use [mavenRepo] to declare named Maven repositories to publish to. The underlying
  * [NamedDomainObjectContainer][org.gradle.api.NamedDomainObjectContainer] of [MavenRepoSpec] is
@@ -38,8 +38,9 @@ interface EasyPublishExtension :
      * (`https://central.sonatype.com/repository/maven-snapshots/` with standard
      * `sonatypeSnapshotsUsername`/`sonatypeSnapshotsPassword` credentials) unless it
      * already exists, so a manual `mavenRepo("sonatypeSnapshots", ...)` declaration
-     * keeps working. Requires `easy.semver` to be enabled for snapshot/release
-     * routing — fails fast otherwise.
+     * keeps working. This is a pure repository shorthand: snapshot/release routing
+     * is decided by semver when enabled, and by the `-SNAPSHOT` version suffix when
+     * semver is disabled — so it works with or without `easy.semver`.
      */
     fun toSonatypeSnapshots()
 

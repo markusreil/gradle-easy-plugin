@@ -14,7 +14,8 @@ import org.gradle.api.tasks.TaskAction
 /**
  * Generates a JReleaser YAML config for Maven Central deployment.
  *
- * Guarded by [DefaultEasyPublishExtension.toMavenCentral]; registered only on the root project.
+ * Registered only on the root project when [DefaultEasyPublishExtension.toMavenCentral]
+ * is set (see [EasyJreleaserPlugin] for the gating rule).
  * Holds the lazy `@Input` properties and delegates rendering to [MavenCentralWiring.buildYaml].
  * See [MavenCentralWiring.Config] for the resolved values (including the test-only nexus
  * escape hatch that swaps in a `nexus3/local-test` deployer and demotes `mavenCentral`

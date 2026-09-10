@@ -26,6 +26,20 @@ class JreleaserDeployFuncTest {
     @Test
     fun `publishToMavenCentral skips friendly when nothing staged and reuses configuration cache`() {
         project.configure {
+            // Codemeta is required by EasyJreleaserPlugin for the central path —
+            // any well-formed codemeta.json satisfies the guard; this test never
+            // inspects it.
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "demo",
+                  "version": "1.0.0"
+                }
+                """.trimIndent(),
+            )
             buildGradle(
                 """
                 plugins {
@@ -42,6 +56,7 @@ class JreleaserDeployFuncTest {
                         enabled.set(true)
                         toMavenCentral()
                     }
+                    codemeta { enabled.set(true) }
                 }
                 """.trimIndent(),
             )

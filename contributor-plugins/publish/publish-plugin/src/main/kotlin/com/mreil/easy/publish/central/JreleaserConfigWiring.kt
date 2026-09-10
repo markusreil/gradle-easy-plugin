@@ -10,7 +10,9 @@ import org.gradle.api.publish.PublishingExtension
 /**
  * Root-only registration of `generateJreleaserConfig` (JReleaser YAML generation).
  *
- * Registered lazily with convention defaults; disabled until `toMavenCentral`.
+ * Registered lazily with convention defaults. The wiring only runs when
+ * [com.mreil.easy.publish.EasyPublishExtension.toMavenCentral] is set — see
+ * [EasyJreleaserPlugin] for the gating rule.
  * Config generation explicitly waits for every project's `checkCentralPoms`
  * (see [CentralPublishingWiring]) so POM validation stays a separate step before any
  * config is generated for upload.
@@ -22,9 +24,8 @@ internal object JreleaserConfigWiring {
         propertyResolver: PropertyResolver,
     ) {
         if (!target.isRoot()) return
-        val publishExt = target.publishExtension() ?: return
 
-        // Register lazily on root only; disabled until toMavenCentral is true. Uses convention defaults.
+        // Register lazily on root only with convention defaults.
         val taskProvider =
             target.tasks.register(
                 "generateJreleaserConfig",
@@ -62,12 +63,7 @@ internal object JreleaserConfigWiring {
                 task.nexusPassword.convention(
                     propertyResolver.get(JreleaserVersions.PROPERTY_NEXUS_PASSWORD),
                 )
-                task.onlyIf { publishExt.toMavenCentral.get() }
             }
-
-        // Eager: only an extension value is read (final once afterEnabled runs
-        // post-evaluation), so no afterEvaluate deferral is needed.
-        taskProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
 
         // Explicit validation step (kept separate by design): config generation waits
         // for every project's POM check. Live collection — no eager realization, picks

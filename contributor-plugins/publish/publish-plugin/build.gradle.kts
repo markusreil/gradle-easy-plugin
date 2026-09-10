@@ -33,6 +33,11 @@ testing {
                 implementation(libs.jreleaser)
                 implementation(project(":easy-plugin-core"))
                 implementation(project(":contributor-plugins:semver:semver-plugin"))
+                // Codemeta contributor on the test classpath so the SPI registers
+                // EasyCodemetaExtension (defaults to enabled) — the central-path unit
+                // tests in EasyPublishCentralTest would otherwise fail EasyJreleaserPlugin's
+                // codemeta-required guard.
+                implementation(project(":contributor-plugins:codemeta:codemeta-plugin"))
                 implementation(gradleTestKit())
             }
         }

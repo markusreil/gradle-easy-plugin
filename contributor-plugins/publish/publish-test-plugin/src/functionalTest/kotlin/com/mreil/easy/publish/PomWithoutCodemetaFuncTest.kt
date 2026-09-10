@@ -6,12 +6,15 @@ import com.mreil.gradletest.project.GradleTestProject
 import com.mreil.gradletest.project.GradleTestProjectExtension
 import com.mreil.gradletest.project.assertj.MavenCoordinates
 import com.mreil.gradletest.project.assertj.assertSoftly
+import com.mreil.gradletest.project.probeTask
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
 /**
- * Without Codemeta, `url`/`scm` are omitted from the POM rather than invented —
- * and reported later by `checkCentralPoms` when deploying to Maven Central.
+ * Without Codemeta, `url`/`scm` are omitted from the POM rather than invented.
+ *
+ * For the central path, EasyJreleaserPlugin refuses to wire at all when codemeta
+ * is missing — see `central wiring is skipped and logged when codemeta is missing`.
  */
 @ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
 @DisableAllEasyPlugins
@@ -41,7 +44,9 @@ class PomWithoutCodemetaFuncTest {
             javaSource()
         }
 
-        project.build("publish", "--info", "-x", "publishToMavenCentral")
+        // publishToMavenCentral does not exist when toMavenCentral() is not requested
+        // (EasyJreleaserPlugin now skips wiring entirely), so no -x is needed.
+        project.build("publish", "--info")
 
         val stagedPom = project.mavenArtifact(project.file("build/stagingRepo"), MavenCoordinates(name = rootName, extension = "pom"))
         assertSoftly { softly ->
@@ -53,9 +58,19 @@ class PomWithoutCodemetaFuncTest {
         }
     }
 
-    /** Missing `url`/`scm` fail `checkCentralPoms` before upload, not at POM generation. */
+    /** Central wiring is skipped when codemeta is not enabled: no `checkCentralPoms`,
+     *  no `publishToMavenCentral`, no `generateJreleaserConfig`, and the lifecycle log
+     *  explains why. The previous behaviour (POM validation catches the missing
+     *  metadata) is unreachable now: EasyJreleaserPlugin refuses to wire at all
+     *  without codemeta. */
     @Test
-    fun `checkCentralPoms reports missing url and scm without codemeta`() {
+    fun `central wiring is skipped and logged when codemeta is missing`() {
+        val probe =
+            probeTask("verifyCentralWiringSkipped") {
+                taskExists("HAS_CHECK_CENTRAL_POMS", "checkCentralPoms", expected = false)
+                taskExists("HAS_PUBLISH_TO_MAVEN_CENTRAL", "publishToMavenCentral", expected = false)
+                taskExists("HAS_GENERATE_JRELEASER_CONFIG", "generateJreleaserConfig", expected = false)
+            }
         project.configure {
             buildGradle(
                 """
@@ -71,17 +86,17 @@ class PomWithoutCodemetaFuncTest {
                         toMavenStaging()
                     }
                 }
+                ${probe.script()}
                 """.trimIndent(),
             )
             javaSource()
         }
 
-        val result = project.buildAndFail("publish", "--info", "-x", "publishToMavenCentral")
+        val result = project.build("verifyCentralWiringSkipped", "--info")
 
         assertSoftly { softly ->
-            softly.assertThat(result.output).contains("checkCentralPoms")
-            softly.assertThat(result.output).contains("missing <url>")
-            softly.assertThat(result.output).contains("missing <scm>")
+            softly.assertThat(result.output).contains("codemeta extension is required")
+            probe.assertOutput(softly, result.output)
         }
     }
 }

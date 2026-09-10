@@ -55,11 +55,8 @@ subprojects {
             jvmToolchain(providers.gradleProperty("java.toolchainVersion").get().toInt())
         }
     }
-    // Leaf-project block: Spotless config, maven-publish, detekt source wiring.
+    // Leaf-project block: Spotless config, detekt source wiring.
     if (childProjects.isNotEmpty()) return@subprojects
-    if (project.path != ":test-fixtures") {
-        apply(plugin = "maven-publish")
-    }
     apply(plugin = "com.diffplug.spotless")
     configure<SpotlessExtension> {
         kotlin {

@@ -68,9 +68,10 @@ class StripSignatureChecksumsTaskTest {
         val project = ProjectBuilder.builder().build()
         val nonexistentDir = File(stagingDir, "nonexistent")
         val task =
-            project.tasks.create("stripSignatureChecksums", StripSignatureChecksumsTask::class.java) {
-                it.stagingDir.set(nonexistentDir)
-            }
+            project.tasks
+                .register("stripSignatureChecksums", StripSignatureChecksumsTask::class.java) {
+                    it.stagingDir.set(nonexistentDir)
+                }.get()
 
         // Should not throw.
         task.strip()
@@ -119,9 +120,10 @@ class StripSignatureChecksumsTaskTest {
     private fun runStrip() {
         val project = ProjectBuilder.builder().build()
         val task =
-            project.tasks.create("stripSignatureChecksums", StripSignatureChecksumsTask::class.java) {
-                it.stagingDir.set(stagingDir)
-            }
+            project.tasks
+                .register("stripSignatureChecksums", StripSignatureChecksumsTask::class.java) {
+                    it.stagingDir.set(stagingDir)
+                }.get()
         task.strip()
     }
 

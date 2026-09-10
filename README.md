@@ -35,13 +35,12 @@ Plugin IDs are the single source in `gradle.properties` (`plugin.project`/`plugi
 
 ## Configuration
 
-All features are configured via `easy { }`. Each feature is opt-in via its DSL block — use only what you need (`publish` is **disabled by default** and must be explicitly enabled, `semver`/`codemeta` are enabled when their block is present).
+All features are configured via `easy { }`. `publish` is **enabled by default** (disable it with `enabled.set(false)`); `semver`/`codemeta` are enabled when their block is present.
 
 ```kotlin
 easy {
-    // Publish to Maven repositories (disabled by default — must opt in)
+    // Publish to Maven repositories (enabled by default — declare repos to publish)
     publish {
-        enabled.set(true)
         // publish to build/stagingRepo (creates mavenStaging repository)
         toMavenStaging("stagingRepo")
         // also publish to local maven on `publish`
@@ -85,7 +84,7 @@ easy {
 
 | Feature | Extension (`easy.<name>`) | Description |
 |---|---|---|
-| `publish` | `easy.publish` (disabled by default — `enabled.set(true)` required) | Wraps `maven-publish`. Creates default `maven` publication from `java` component (unless `java-gradle-plugin` present), wires `mavenRepo {}` declarations and snapshot/release filtering. |
+| `publish` | `easy.publish` (enabled by default — set `enabled.set(false)` to disable) | Wraps `maven-publish`. Creates default `maven` publication from `java` component (unless `java-gradle-plugin` present), wires `mavenRepo {}` declarations and snapshot/release filtering. |
 | `jvm-defaults` | — (no DSL) | When `java` plugin is present, configures `withSourcesJar()` / `withJavadocJar()`. Always active. |
 | `semver` | `easy.semver` | Validates `group`/`version` are SEMVER and exposes `EasySemver.of(project)` for typed access. |
 | `codemeta` | `easy.codemeta` (`filename` default `codemeta.json`) | Manages `codemeta.json` via `generateCodemeta` task (fails first build to let you edit if file is missing). |

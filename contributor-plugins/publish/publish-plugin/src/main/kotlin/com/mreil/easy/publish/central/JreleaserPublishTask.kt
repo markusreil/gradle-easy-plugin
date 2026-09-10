@@ -19,9 +19,11 @@ import org.gradle.api.tasks.TaskAction
  *
  * Runs `org.jreleaser.cli.Main` from the resolve-only `jreleaser` configuration
  * (no external binary needed) against the generated JReleaser YAML config.
- * Registered only on the root project as `publishToMavenCentral` and enabled only
- * when `toMavenCentral` is set. Not cacheable (remote side effects); declared inputs
- * give up-to-date skipping, which also protects against Central rejecting redeploys.
+ * Registered only on the root project as `publishToMavenCentral` when
+ * [com.mreil.easy.publish.EasyPublishExtension.toMavenCentral] is set (see
+ * [EasyJreleaserPlugin] for the gating rule). Not cacheable (remote side effects);
+ * declared inputs give up-to-date skipping, which also protects against Central
+ * rejecting redeploys.
  */
 abstract class JreleaserPublishTask : JavaExec() {
     @get:Classpath

@@ -4,10 +4,19 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.mreil.easy.publish.central.JreleaserYaml.Config
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
+import org.gradle.api.GradleException
+import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
 
 class GenerateJreleaserConfigTaskTest {
+    @TempDir
+    lateinit var tempDir: File
+
     @Test
     fun `central yaml has mavenCentral deployer and no signing`() {
         val yaml = JreleaserYaml.buildYaml(centralConfig())
@@ -26,6 +35,56 @@ class GenerateJreleaserConfigTaskTest {
             softly.assertThat(yaml).doesNotContain("nexus3:")
             softly.assertThat(yaml).doesNotContain("release:")
         }
+    }
+
+    /** Task action writes the rendered YAML to `outputFile` and creates parent directories. */
+    @Test
+    fun `generate writes yaml to outputFile when invoked as task action`() {
+        val task = createTask()
+
+        task.generate()
+
+        val generated = File(tempDir, "jreleaser/jreleaser.yml")
+        assertThat(generated).exists()
+        val text = generated.readText()
+        assertThat(text).contains("name: demo")
+        assertThat(text).contains("version: 1.0.0")
+        assertThat(text).contains("active: RELEASE")
+    }
+
+    /** Missing Central credentials must fail at task action (not configuration) so absent
+     *  `-D` flags still produce an actionable error during the first build attempt. */
+    @Test
+    fun `generate fails with actionable GradleException when mavenCentralUsername is missing`() {
+        val task = createTask().apply { mavenCentralUsername.set(null as String?) }
+
+        assertThatThrownBy { task.generate() }
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining("Maven Central username is required")
+    }
+
+    @Test
+    fun `generate fails with actionable GradleException when mavenCentralPassword is missing`() {
+        val task = createTask().apply { mavenCentralPassword.set(null as String?) }
+
+        assertThatThrownBy { task.generate() }
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining("Maven Central password is required")
+    }
+
+    private fun createTask(): GenerateJreleaserConfigTask {
+        val project = ProjectBuilder.builder().build()
+        return project
+            .tasks
+            .register("generateJreleaserConfig", GenerateJreleaserConfigTask::class.java) {
+                it.projectName.set("demo")
+                it.projectVersion.set("1.0.0")
+                it.projectGroupId.set("com.example")
+                it.stagingDirs.set(listOf("build/stagingRepo"))
+                it.outputFile.set(File(tempDir, "jreleaser/jreleaser.yml"))
+                it.mavenCentralUsername.set("user")
+                it.mavenCentralPassword.set("pass")
+            }.get()
     }
 
     @Test

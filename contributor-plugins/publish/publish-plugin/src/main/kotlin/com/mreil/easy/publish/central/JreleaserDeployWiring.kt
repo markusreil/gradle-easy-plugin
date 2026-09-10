@@ -3,7 +3,6 @@ package com.mreil.easy.publish.central
 import com.mreil.easy.catalogVersionOrDefault
 import com.mreil.easy.isRoot
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
-import com.mreil.easy.publish.publishExtension
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 
@@ -18,12 +17,12 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
  * uploads feed the deploy: JReleaser uploads the `stagingRepositories` collection, so
  * other repos (e.g. `sonatypeSnapshots`) must neither gate nor precede it. Either
  * entry point (`publish` or `publishToMavenCentral`) stages everything first;
- * a lone `publish` stays deploy-free unless `toMavenCentral` (deploy skipped).
+ * the wiring only runs when [com.mreil.easy.publish.EasyPublishExtension.toMavenCentral]
+ * is set — see [EasyJreleaserPlugin] for the gating rule.
  */
 internal object JreleaserDeployWiring {
     fun wire(target: Project) {
         if (!target.isRoot()) return
-        val publishExt = target.publishExtension() ?: return
 
         val jreleaserConf =
             target.configurations.maybeCreate("jreleaser").apply {
@@ -49,7 +48,6 @@ internal object JreleaserDeployWiring {
                 task.projectVersion.convention(target.provider { target.version.toString() })
                 task.dryRun.convention(false)
                 task.hasStagedUploads.convention(true)
-                task.onlyIf { publishExt.toMavenCentral.get() }
             }
 
         target.ensureRootPublishTask()
@@ -68,7 +66,7 @@ internal object JreleaserDeployWiring {
                         // being created, and the spec may be evaluated mid-creation.
                         .matching { it.repository?.name == MAVEN_STAGING_REPO },
                 )
-                // Strip unnecessary checksums after staging, before deploy.
+                // Strip after the staging upload, before deploy (second upload to Central).
                 deploy.dependsOn(project.tasks.withType(StripSignatureChecksumsTask::class.java))
             }
         }
@@ -91,15 +89,10 @@ internal object JreleaserDeployWiring {
                 )
             }
         }
-        // A single `./gradlew publish` stages, validates and deploys — but only when
-        // central is on. The edge itself (not just the task) is gated: the deploy task's
-        // CLI classpath is unresolvable in builds without repositories and would
-        // otherwise break configuration-cache storage of every `publish` graph.
-        if (publishExt.toMavenCentral.get()) {
-            target.ensureRootPublishTask().configure { it.dependsOn(deployProvider) }
-        }
-
-        // Eager (see above): no afterEvaluate deferral needed.
-        deployProvider.configure { it.enabled = publishExt.toMavenCentral.get() }
+        // A single `./gradlew publish` stages, validates and deploys — unconditionally
+        // on this edge. Snapshots never reach this wiring at all: `EasyJreleaserPlugin`
+        // skips all central wiring for them (via `skipReason`), so `publishToMavenCentral`
+        // — and this `publish` dependency — only exist when the version is a release.
+        target.ensureRootPublishTask().configure { it.dependsOn(deployProvider) }
     }
 }
