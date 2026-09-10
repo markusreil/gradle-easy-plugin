@@ -5,14 +5,12 @@ import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.semver.EasySemverExtension
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
-import org.gradle.api.ProjectConfigurationException
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 
 class SonatypeSnapshotsTest {
     @Test
@@ -53,20 +51,43 @@ class SonatypeSnapshotsTest {
     }
 
     @Test
-    fun `toSonatypeSnapshots fails without semver`() {
-        val project = createProject()
+    fun `toSonatypeSnapshots attaches snapshot repo and filters release repos for SNAPSHOT version without semver`() {
+        val project = createProject(version = "1.0.0-SNAPSHOT")
         val publish = publishOf(project)
         publish.enabled.set(true)
         // semver defaults to enabled when on the classpath — disable to simulate "not active"
         // (absent extension behaves identically via isEasyChildEnabled).
         semverOf(project).enabled.set(false)
         publish.toSonatypeSnapshots()
+        publish.mavenRepo("myRelease", "https://example.com/releases")
 
-        val ex = assertThrows<ProjectConfigurationException> { evaluate(project) }
+        evaluate(project)
 
-        val messages = generateSequence(ex as Throwable) { it.cause }.mapNotNull { it.message }.joinToString("\n")
+        val publishing = project.extensions.getByType(PublishingExtension::class.java)
+        val snapshotsRepo =
+            publishing.repositories.findByName(SONATYPE_SNAPSHOTS_REPO) as MavenArtifactRepository?
         assertSoftly { softly ->
-            softly.assertThat(messages).contains("semver")
+            softly.assertThat(snapshotsRepo).isNotNull()
+            softly.assertThat(snapshotsRepo?.url?.toString()).isEqualTo(SONATYPE_SNAPSHOTS_URL)
+            softly.assertThat(publishing.repositories.findByName("myRelease")).isNull()
+        }
+    }
+
+    @Test
+    fun `toSonatypeSnapshots is skipped and release repos attach for release version without semver`() {
+        val project = createProject(version = "1.0.0")
+        val publish = publishOf(project)
+        publish.enabled.set(true)
+        semverOf(project).enabled.set(false)
+        publish.toSonatypeSnapshots()
+        publish.mavenRepo("myRelease", "https://example.com/releases")
+
+        evaluate(project)
+
+        val publishing = project.extensions.getByType(PublishingExtension::class.java)
+        assertSoftly { softly ->
+            softly.assertThat(publishing.repositories.findByName(SONATYPE_SNAPSHOTS_REPO)).isNull()
+            softly.assertThat(publishing.repositories.findByName("myRelease")).isNotNull()
         }
     }
 
@@ -108,6 +129,47 @@ class SonatypeSnapshotsTest {
                 .findByName(SONATYPE_SNAPSHOTS_REPO)
         assertSoftly { softly ->
             softly.assertThat(repo).isNull()
+        }
+    }
+
+    @Test
+    fun `sonatypeSnapshots repo is skipped for 0-version release`() {
+        val project = createProject(version = "0.0.100")
+        val publish = publishOf(project)
+        publish.enabled.set(true)
+        semverOf(project).enabled.set(true)
+        publish.toSonatypeSnapshots()
+
+        evaluate(project)
+
+        val repo =
+            project.extensions
+                .getByType(PublishingExtension::class.java)
+                .repositories
+                .findByName(SONATYPE_SNAPSHOTS_REPO)
+        assertSoftly { softly ->
+            softly.assertThat(repo).isNull()
+        }
+    }
+
+    @Test
+    fun `sonatypeSnapshots repo is attached for 0-version snapshot`() {
+        val project = createProject(version = "0.0.100-SNAPSHOT")
+        val publish = publishOf(project)
+        publish.enabled.set(true)
+        semverOf(project).enabled.set(true)
+        publish.toSonatypeSnapshots()
+
+        evaluate(project)
+
+        val repo =
+            project.extensions
+                .getByType(PublishingExtension::class.java)
+                .repositories
+                .findByName(SONATYPE_SNAPSHOTS_REPO) as MavenArtifactRepository?
+        assertSoftly { softly ->
+            softly.assertThat(repo).isNotNull()
+            softly.assertThat(repo?.url?.toString()).isEqualTo(SONATYPE_SNAPSHOTS_URL)
         }
     }
 

@@ -50,9 +50,11 @@ class CheckCentralPomsFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
-                        signingEnabled.set(false)
                         toMavenCentral()
                         toMavenStaging()
+                        // toMavenCentral() turns signing on by default; these tests don't
+                        // supply GPG keys, so disable signing explicitly.
+                        signingEnabled.set(false)
                     }
                     codemeta { enabled.set(true) }
                 }
@@ -60,11 +62,13 @@ class CheckCentralPomsFuncTest {
             )
             javaSource()
             createChild {
+                // Root-only harness (documented production path): maven-publish is applied in the
+                // child by the EasyPublishPlugin fan-out and wired by the root JReleaser plugin.
+                // Re-applying the harness here would double-register the per-project Central tasks.
                 buildGradle(
                     """
                     plugins {
                         `java-library`
-                        id("com.mreil.easy.test.publish")
                     }
                     """.trimIndent(),
                 )
@@ -85,6 +89,74 @@ class CheckCentralPomsFuncTest {
             softly.assertThat(project).hasArtifact(stagingRepo, MavenCoordinates(name = rootName))
             // Each module stages into its own build dir; JReleaser deploys the collection.
             softly.assertThat(project).hasArtifact(childStagingRepo, MavenCoordinates(name = "child"))
+        }
+    }
+
+    /**
+     * The documented production path applies the harness root-only: `EasyJreleaserPlugin` is not
+     * `@ApplyToSubprojects`, so the per-project Central tasks must still reach the child via the
+     * root's live `withId("maven-publish")` callback once `EasyPublishPlugin`'s fan-out enables it.
+     * Regression for the pre-fix behaviour where a root-only harness left the child without any
+     * Central wiring.
+     */
+    @Test
+    fun `central wiring reaches child when harness is applied root only`() {
+        project.configure {
+            settings("include(\"child\")")
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "demo",
+                  "description": "demo description",
+                  "version": "1.0.0",
+                  "license": "https://spdx.org/licenses/MIT",
+                  "codeRepository": "https://github.com/example/demo",
+                  "author": [{ "@type": "Person", "givenName": "Ada", "familyName": "Lovelace", "email": "ada@example.com" }]
+                }
+                """.trimIndent(),
+            )
+            buildGradle(
+                """
+                plugins {
+                    `java-library`
+                    id("com.mreil.easy.test.publish")
+                }
+                easy {
+                    publish {
+                        enabled.set(true)
+                        toMavenCentral()
+                        toMavenStaging()
+                        // toMavenCentral() turns signing on by default; these tests don't
+                        // supply GPG keys, so disable signing explicitly.
+                        signingEnabled.set(false)
+                    }
+                    codemeta { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+            javaSource()
+            createChild {
+                // Intentionally no harness here: `maven-publish` is applied in the child by the
+                // `EasyPublishPlugin` fan-out from the root, then wired by the root JReleaser plugin.
+                buildGradle(
+                    """
+                    plugins {
+                        `java-library`
+                    }
+                    """.trimIndent(),
+                )
+                javaSource()
+            }
+        }
+
+        val result = project.build("tasks", "--all")
+        assertSoftly { softly ->
+            // `tasks --all` lists subproject tasks without a leading path colon.
+            softly.assertThat(result.output).contains("child:checkCentralPoms")
+            softly.assertThat(result.output).contains("child:stripSignatureChecksums")
         }
     }
 
@@ -114,9 +186,11 @@ class CheckCentralPomsFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
-                        signingEnabled.set(false)
                         toMavenCentral()
                         toMavenStaging()
+                        // toMavenCentral() turns signing on by default; these tests don't
+                        // supply GPG keys, so disable signing explicitly.
+                        signingEnabled.set(false)
                     }
                     codemeta { enabled.set(true) }
                 }
@@ -165,9 +239,11 @@ class CheckCentralPomsFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
-                        signingEnabled.set(false)
                         toMavenCentral()
                         toMavenStaging()
+                        // toMavenCentral() turns signing on by default; these tests don't
+                        // supply GPG keys, so disable signing explicitly.
+                        signingEnabled.set(false)
                     }
                     codemeta { enabled.set(true) }
                 }

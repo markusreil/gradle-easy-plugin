@@ -5,6 +5,12 @@ import org.semver4j.Semver
 /**
  * Pure repository routing rules for snapshot/release filtering.
  *
+ * **Snapshot definition**: a version counts as a snapshot iff its parsed semver pre-release
+ * component is exactly `SNAPSHOT` (the Maven convention, case-sensitive). Releases (including
+ * `0.x` versions like `0.0.105`) and other pre-releases (e.g. `1.0.0-RC1`, `1.0.0-alpha.1`)
+ * are treated as releases. When semver is disabled or parsing fails, the `-SNAPSHOT` version
+ * suffix fallback decides instead.
+ *
  * Naming contract: a repository whose name contains `release` (case-insensitive)
  * is a release repo, one containing `snapshot` is a snapshot repo, anything else
  * is neutral and always used. A repo containing both counts as both, so it is
@@ -25,5 +31,5 @@ internal object RepoRouting {
         }
     }
 
-    fun isSnapshot(semver: Semver?): Boolean? = semver?.let { !it.isStable }
+    fun isSnapshot(semver: Semver?): Boolean? = semver?.let { it.getPreRelease() == listOf("SNAPSHOT") }
 }

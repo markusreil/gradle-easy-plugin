@@ -12,6 +12,7 @@ import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -62,6 +63,45 @@ class EasyPublishCentralTest {
             softly.assertThat(project.publish.stagingPath.get()).isEqualTo("stagingRepo")
             softly.assertThat(stagingRepo).isNotNull()
             softly.assertThat(stagingRepo?.url?.toString()).contains("stagingRepo")
+        }
+    }
+
+    /** Signing is opt-in: only `toMavenCentral()` flips it on, by design so staging-only
+     *  and local publishes stay unsigned. Locks the default-convention contract. */
+    @Test
+    fun `signingEnabled defaults to false (opt-in)`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        assertSoftly { softly ->
+            softly.assertThat(project.publish.signingEnabled.get()).isFalse()
+        }
+    }
+
+    /** `toMavenCentral()` enables signing because the JReleaser deploy verifies every
+     *  artifact is signed; consumers who don't want that opt out explicitly. */
+    @Test
+    fun `toMavenCentral flips signingEnabled to true`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+
+        assertSoftly { softly ->
+            softly.assertThat(project.publish.toMavenCentral.get()).isTrue()
+            softly.assertThat(project.publish.signingEnabled.get()).isTrue()
+        }
+    }
+
+    /** Opt-out path: `signingEnabled.set(false)` AFTER `toMavenCentral()` disables signing
+     *  for central users who configure keys manually or skip signing entirely. */
+    @Test
+    fun `signingEnabled explicitly set after toMavenCentral disables signing`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+        project.publish.signingEnabled.set(false)
+
+        assertSoftly { softly ->
+            softly.assertThat(project.publish.toMavenCentral.get()).isTrue()
+            softly.assertThat(project.publish.signingEnabled.get()).isFalse()
         }
     }
 
@@ -180,7 +220,7 @@ class EasyPublishCentralTest {
             .getByType(EasyPublishExtension::class.java) as DefaultEasyPublishExtension
 
     @Test
-    fun `generateJreleaserConfig is skipped when toMavenCentral not set`() {
+    fun `generateJreleaserConfig is not registered when toMavenCentral is not set`() {
         val project = ProjectBuilderHelper.createSingleProject()
         val publish = project.publish
         publish.enabled.set(true)
@@ -188,10 +228,10 @@ class EasyPublishCentralTest {
 
         ProjectBuilderHelper.evaluate(project.project)
 
-        val task = project.project.tasks.getByName("generateJreleaserConfig") as GenerateJreleaserConfigTask
-        // disabled via onlyIf + syncEnabled
+        // EasyJreleaserPlugin skips wiring entirely when toMavenCentral is unset,
+        // so the task must not exist (not "registered but disabled").
         assertSoftly { softly ->
-            softly.assertThat(task.enabled).isFalse()
+            softly.assertThat(project.project.tasks.findByName("generateJreleaserConfig")).isNull()
         }
     }
 
@@ -216,7 +256,7 @@ class EasyPublishCentralTest {
     }
 
     @Test
-    fun `stripSignatureChecksums is registered when toMavenCentral is set and depends on staging upload`() {
+    fun `stripSignatureChecksums is registered when toMavenCentral is set and runs after staging upload`() {
         val project = ProjectBuilderHelper.createSingleProject()
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
@@ -224,9 +264,17 @@ class EasyPublishCentralTest {
         ProjectBuilderHelper.evaluate(project.project)
 
         val strip = project.project.tasks.getByName("stripSignatureChecksums") as? StripSignatureChecksumsTask
+        val stagingUploads =
+            project.project.tasks
+                .withType(PublishToMavenRepository::class.java)
+                .filter { it.repository?.name == MAVEN_STAGING_REPO }
         assertSoftly { softly ->
             softly.assertThat(strip).isNotNull()
             softly.assertThat(strip?.enabled).isTrue()
+            softly.assertThat(stagingUploads).isNotEmpty()
+            stagingUploads.forEach { upload ->
+                softly.assertThat(upload.finalizedBy.getDependencies(upload)).contains(strip)
+            }
         }
     }
 
@@ -251,7 +299,10 @@ class EasyPublishCentralTest {
     }
 
     @Test
-    fun `checkCentralPoms skips silently without publications`() {
+    fun `checkCentralPoms is not registered without maven-publish`() {
+        // No `java` (hence no maven-publish): the root wiring's live `withId("maven-publish")`
+        // enabled-gate never fires, so the Central task is not registered even though
+        // toMavenCentral is set. Publication-less projects get no Central wiring at all.
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0"
@@ -265,24 +316,23 @@ class EasyPublishCentralTest {
 
         ProjectBuilderHelper.evaluate(project)
 
-        val checker = project.tasks.getByName("checkCentralPoms") as CheckCentralPomsTask
         assertSoftly { softly ->
-            softly.assertThat(checker.enabled).isTrue()
-            softly.assertThat(checker.pomFiles.files).isEmpty()
+            softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNull()
         }
     }
 
     @Test
-    fun `checkCentralPoms is disabled without toMavenCentral`() {
+    fun `checkCentralPoms is not registered without toMavenCentral`() {
         val project = ProjectBuilderHelper.createSingleProject()
         project.publish.enabled.set(true)
         project.publish.toMavenStaging()
 
         ProjectBuilderHelper.evaluate(project.project)
 
-        val task = project.project.tasks.getByName("checkCentralPoms") as CheckCentralPomsTask
+        // EasyJreleaserPlugin skips CentralPublishingWiring when toMavenCentral is unset,
+        // so the task must not exist (not "registered but disabled").
         assertSoftly { softly ->
-            softly.assertThat(task.enabled).isFalse()
+            softly.assertThat(project.project.tasks.findByName("checkCentralPoms")).isNull()
         }
     }
 
@@ -450,16 +500,17 @@ class EasyPublishCentralTest {
     }
 
     @Test
-    fun `publishToMavenCentral is disabled without toMavenCentral`() {
+    fun `publishToMavenCentral is not registered without toMavenCentral`() {
         val project = ProjectBuilderHelper.createSingleProject()
         project.publish.enabled.set(true)
         project.publish.toMavenStaging()
 
         ProjectBuilderHelper.evaluate(project.project)
 
-        val task = project.project.tasks.getByName("publishToMavenCentral") as JreleaserPublishTask
+        // EasyJreleaserPlugin skips JreleaserDeployWiring when toMavenCentral is unset,
+        // so the task must not exist (not "registered but disabled").
         assertSoftly { softly ->
-            softly.assertThat(task.enabled).isFalse()
+            softly.assertThat(project.project.tasks.findByName("publishToMavenCentral")).isNull()
         }
     }
 
@@ -504,6 +555,22 @@ class EasyPublishCentralTest {
         val project = ProjectBuilderHelper.createSingleProject()
         project.publish.enabled.set(true)
         project.publish.toMavenStaging()
+
+        ProjectBuilderHelper.evaluate(project.project)
+
+        val publish = project.project.tasks.getByName("publish")
+        val deps = publish.taskDependencies.getDependencies(publish).map { it.name }
+        assertSoftly { softly ->
+            softly.assertThat(deps).doesNotContain("publishToMavenCentral")
+        }
+    }
+
+    @Test
+    fun `publish omits publishToMavenCentral for snapshot versions`() {
+        val project = ProjectBuilderHelper.createSingleProject()
+        project.publish.enabled.set(true)
+        project.publish.toMavenCentral()
+        project.project.version = "0.0.102-SNAPSHOT"
 
         ProjectBuilderHelper.evaluate(project.project)
 
@@ -567,8 +634,11 @@ private object ProjectBuilderHelper {
             it.version = "1.0.0"
             it.pluginManager.apply("java-library")
         }
+        // Root-only harness (production model): the child gets `EasyPublishPlugin`/`maven-publish`
+        // and the per-project Central tasks via the root's fan-out + live `withId` wiring. Applying
+        // `ProjectPlugin` here too would give the child its own `EasyJreleaserPlugin` and double
+        // register `checkCentralPoms`/`stripSignatureChecksums`.
         root.pluginManager.apply(ProjectPlugin::class.java)
-        child.pluginManager.apply(ProjectPlugin::class.java)
         val rootPublish =
             (root.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
                 .extensions

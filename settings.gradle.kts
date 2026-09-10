@@ -2,17 +2,17 @@ pluginManagement {
     repositories {
         gradlePluginPortal()
         mavenCentral()
+        maven { url = uri("https://central.sonatype.com/repository/maven-snapshots/") }
         maven { url = uri("https://repo.mreil.com/gradle-plugins-snapshots") }
     }
 }
 
-plugins { id("com.mreil.easy.settings") version "0.0.100" }
+plugins { id("com.mreil.easy.settings") version "0.0.105" }
 
 easy {
     publish {
-        enabled.set(true)
         toMavenStaging()
-        toMavenCentral()
+        toSonatypeSnapshots()
         mavenRepo(
             "mreilComGradlePluginsSnapshots",
             "https://repo.mreil.com/gradle-plugins-snapshots",

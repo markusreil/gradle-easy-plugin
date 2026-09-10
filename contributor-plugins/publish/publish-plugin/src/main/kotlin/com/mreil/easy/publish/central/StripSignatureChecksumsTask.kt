@@ -8,7 +8,9 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
 /**
- * Strips unnecessary checksums from a staged Maven repository before deploy to Maven Central.
+ * Strips unneeded checksums from a staged Maven repository after the staging upload
+ * and before the Maven Central deploy. Two uploads: (1) `maven-publish` stages
+ * into the local dir, (2) JReleaser deploys the cleaned dir to Central.
  *
  * Maven Central only requires MD5 and SHA-1 checksums. Gradle's `maven-publish` plugin emits
  * all four (`*.md5`, `*.sha1`, `*.sha256`, `*.sha512`) for each artifact, and the `signing`

@@ -20,11 +20,14 @@ internal const val MAVEN_STAGING_REPO = "mavenStaging"
 @PublicType(EasyPublishExtension::class)
 abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     init {
-        enabled.convention(false)
+        enabled.convention(true)
         toMavenLocal.convention(false)
         toMavenCentral.convention(false)
         sonatypeSnapshots.convention(false)
-        signingEnabled.convention(true)
+        // Signing is opt-in: staging-only / local / snapshot publishing skips it.
+        // [toMavenCentral] turns it on because the JReleaser deploy verifies every artifact
+        // is signed, so consumers must sign before deploy.
+        signingEnabled.convention(false)
     }
 
     abstract val mavenRepos: NamedDomainObjectContainer<MavenRepoSpec>
@@ -48,10 +51,13 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     /**
      * Enables the JReleaser Central deploy. Unless another staging repo was already chosen,
      * also stages to the default `build/stagingRepo` — a Central deploy needs something to
-     * upload, and JReleaser builds its `stagingRepositories` list from this.
+     * upload, and JReleaser builds its `stagingRepositories` list from this. Also turns on
+     * `signingEnabled` because the JReleaser deploy verifies every artifact is signed;
+     * callers who want to opt out can set `signingEnabled.set(false)` after calling this.
      */
     override fun toMavenCentral() {
         toMavenCentral.set(true)
+        signingEnabled.set(true)
         if (stagingPath.orNull == null) {
             toMavenStaging()
         }

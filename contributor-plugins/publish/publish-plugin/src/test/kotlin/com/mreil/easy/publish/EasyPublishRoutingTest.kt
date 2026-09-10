@@ -1,8 +1,11 @@
 package com.mreil.easy.publish
 
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.semver4j.Semver
 
 class EasyPublishRoutingTest {
     @ParameterizedTest(name = "repo={0} snapshot={1} expected={2}")
@@ -31,5 +34,26 @@ class EasyPublishRoutingTest {
         assertSoftly { softly ->
             softly.assertThat(result).isEqualTo(expected)
         }
+    }
+
+    @ParameterizedTest(name = "version={0} expected={1}")
+    @CsvSource(
+        "0.0.105, false",
+        "0.0.105-SNAPSHOT, true",
+        "1.0.0, false",
+        "1.0.0-RC1, false",
+        "1.0.0-SNAPSHOT, true",
+        "1.0.0-alpha.1, false",
+    )
+    fun `isSnapshot is true only for SNAPSHOT pre-release`(
+        version: String,
+        expected: Boolean,
+    ) {
+        assertThat(RepoRouting.isSnapshot(Semver.parse(version))).isEqualTo(expected)
+    }
+
+    @Test
+    fun `isSnapshot returns null for null semver`() {
+        assertThat(RepoRouting.isSnapshot(null)).isNull()
     }
 }

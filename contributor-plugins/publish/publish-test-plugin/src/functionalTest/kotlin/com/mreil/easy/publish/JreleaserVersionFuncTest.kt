@@ -29,6 +29,20 @@ class JreleaserVersionFuncTest {
                 expect("JRELEASER_VERSION", "dep.version", "9.9.9-catalog")
             }
         project.configure {
+            // Codemeta is required by EasyJreleaserPlugin for the central path —
+            // any well-formed codemeta.json satisfies the guard; this test never
+            // inspects it.
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "demo",
+                  "version": "1.0.0"
+                }
+                """.trimIndent(),
+            )
             file(
                 "gradle/libs.versions.toml",
                 """
@@ -45,7 +59,9 @@ class JreleaserVersionFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
+                        toMavenCentral()
                     }
+                    codemeta { enabled.set(true) }
                 }
                 ${versionProbe.script()}
                 """.trimIndent(),
@@ -70,6 +86,20 @@ class JreleaserVersionFuncTest {
                 expect("JRELEASER_VERSION", "dep.version", "1.25.0")
             }
         project.configure {
+            // Codemeta is required by EasyJreleaserPlugin for the central path —
+            // any well-formed codemeta.json satisfies the guard; this test never
+            // inspects it.
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "demo",
+                  "version": "1.0.0"
+                }
+                """.trimIndent(),
+            )
             buildGradle(
                 """
                 plugins {
@@ -79,7 +109,9 @@ class JreleaserVersionFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
+                        toMavenCentral()
                     }
+                    codemeta { enabled.set(true) }
                 }
                 ${versionProbe.script()}
                 """.trimIndent(),
