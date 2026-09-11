@@ -7,5 +7,6 @@ import com.mreil.easy.PublicType
 abstract class DefaultEasyReleaseExtension : EasyReleaseExtension {
     init {
         enabled.convention(true)
+        releaseBranchPattern.convention("(main|master|rel-.*)")
     }
 }
