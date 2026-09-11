@@ -3,6 +3,7 @@ package com.mreil.easy.release
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.semver.EasySemverExtension
+import com.mreil.easy.vcs.VcsService
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
@@ -32,8 +33,10 @@ class EasyReleasePluginTest {
             softly.assertThat(project.tasks.findByName("release")).isNotNull()
             softly.assertThat(project.tasks.findByName("preReleaseCheck")).isNotNull()
             softly.assertThat(project.tasks.findByName("preReleaseCommit")).isNotNull()
+            softly.assertThat(project.tasks.findByName("preReleaseTag")).isNotNull()
             softly.assertThat(release?.releaseBranchPattern?.get()).isEqualTo("(main|master|rel-.*)")
             softly.assertThat(release?.preReleaseCommitMessage?.get()).isEqualTo("Set version for release: \$v")
+            softly.assertThat(release?.tagTemplate?.get()).isEqualTo("v\$v")
             softly.assertThat(project.tasks.findByName("release")?.dependsOn).isNotEmpty()
         }
     }
@@ -219,11 +222,12 @@ class EasyReleasePluginTest {
     }
 
     @Test
-    fun `preReleaseCommit writes version file and skips commit without vcs`() {
+    fun `preReleaseCommit updates version file without vcs`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
+        registerVcsService(project)
         (project as ProjectInternal).evaluate()
         val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
         val versionFile = File(project.projectDir, "gradle.properties")
@@ -277,6 +281,55 @@ class EasyReleasePluginTest {
             .hasMessageContaining(EasyReleasePlugin.RELEASE_VERSION_PROPERTY)
     }
 
+    @Test
+    fun `preReleaseTag is gated and runs after preReleaseCommit`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("preReleaseTag") as PreReleaseTagTask
+        assertSoftly { softly ->
+            softly.assertThat(task.group).isEqualTo("release")
+            softly.assertThat(task.tagTemplate.get()).isEqualTo("v\$v")
+            softly.assertThat(task.taskDependencies.getDependencies(task)).contains(
+                project.tasks.getByName("preReleaseCheck"),
+                project.tasks.getByName("preReleaseCommit"),
+            )
+        }
+    }
+
+    @Test
+    fun `preReleaseTag is a no-op without vcs`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0-SNAPSHOT"
+        registerVcsService(project)
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("preReleaseTag") as PreReleaseTagTask
+
+        task.tag()
+    }
+
+    @Test
+    fun `preReleaseTag fails without resolved release version`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.extensions
+            .getByType(EasyExtension::class.java)
+            .extensions
+            .getByType(EasySemverExtension::class.java)
+            .enabled
+            .set(false)
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("preReleaseTag") as PreReleaseTagTask
+
+        assertThatThrownBy { task.tag() }
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining(EasyReleasePlugin.RELEASE_VERSION_PROPERTY)
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun releaseStateOf(project: Project): ReleaseStateService {
         val registration =
@@ -303,5 +356,12 @@ class EasyReleasePluginTest {
         check.clean.set(clean)
         check.upToDate.set(upToDate)
         return check
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun registerVcsService(project: Project) {
+        project.gradle.sharedServices.registerIfAbsent("vcs", VcsService::class.java) {
+            it.parameters.rootDir.set(project.layout.projectDirectory)
+        }
     }
 }

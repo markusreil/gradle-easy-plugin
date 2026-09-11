@@ -23,5 +23,7 @@ internal class VcsNone(
     override fun addAndCommit(
         paths: List<String>,
         message: String,
-    ): Provider<Boolean> = providers.provider { false }
+    ): Provider<Boolean> = providers.provider { true }
+
+    override fun tag(name: String): Provider<Boolean> = providers.provider { true }
 }

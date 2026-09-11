@@ -1,7 +1,6 @@
 package com.mreil.easy.release
 
 import com.mreil.easy.vcs.VcsService
-import com.mreil.easy.vcs.VcsType
 import com.mreil.utils.GradleProperties
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -23,7 +22,8 @@ import org.gradle.api.tasks.TaskAction
  * distinct commit so the release build (a separate Gradle invocation) picks up
  * the new `gradle.properties` at configuration time.
  *
- * Without a VCS the file is still updated; the commit is skipped with a warning.
+ * Without a VCS, [VcsService] is a `VcsNone` no-op: the file is still updated
+ * but not committed.
  */
 abstract class PreReleaseCommitTask : DefaultTask() {
     @get:InputFile
@@ -33,9 +33,6 @@ abstract class PreReleaseCommitTask : DefaultTask() {
 
     @get:Input
     abstract val commitMessageTemplate: Property<String>
-
-    @get:Input
-    abstract val vcsType: Property<VcsType>
 
     @get:ServiceReference("release")
     abstract val releaseState: Property<ReleaseStateService>
@@ -58,14 +55,6 @@ abstract class PreReleaseCommitTask : DefaultTask() {
         val file = versionFile.get().asFile
         if (!GradleProperties.writeValue(file, "version", releaseVersion)) {
             logger.lifecycle("Version file {} already at release version {}, nothing to commit.", file, releaseVersion)
-            return
-        }
-        if (vcsType.get() != VcsType.GIT) {
-            logger.lifecycle(
-                "PreReleaseCommit: VCS unavailable, version file {} updated to {} but not committed.",
-                file,
-                releaseVersion,
-            )
             return
         }
         val message = commitMessageTemplate.get().replace("\$v", releaseVersion)

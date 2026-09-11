@@ -9,5 +9,6 @@ abstract class DefaultEasyReleaseExtension : EasyReleaseExtension {
         enabled.convention(true)
         releaseBranchPattern.convention("(main|master|rel-.*)")
         preReleaseCommitMessage.convention("Set version for release: \$v")
+        tagTemplate.convention("v\$v")
     }
 }

@@ -51,6 +51,8 @@ internal class VcsGit(
             addSuccess && output("commit", "-m", message).result.get().exitValue == 0
         }
 
+    override fun tag(name: String): Provider<Boolean> = success("tag", name)
+
     private fun firstLine(vararg args: String): Provider<String> =
         output(*args)
             .standardOutput

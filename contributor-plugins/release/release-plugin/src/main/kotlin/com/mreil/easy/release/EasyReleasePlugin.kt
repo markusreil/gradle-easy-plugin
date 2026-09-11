@@ -6,7 +6,6 @@ import com.mreil.easy.findEasyChild
 import com.mreil.easy.isRoot
 import com.mreil.easy.semver.EasySemver
 import com.mreil.easy.vcs.EasyVcs
-import com.mreil.easy.vcs.VcsType
 import com.mreil.utils.hasGroup
 import com.mreil.utils.hasVersion
 import org.gradle.api.Project
@@ -41,7 +40,12 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
             it.description = "Writes the release version into the version file and commits it."
             it.versionFile.set(release.versionFile.orElse(target.layout.projectDirectory.file("gradle.properties")))
             it.commitMessageTemplate.set(release.preReleaseCommitMessage)
-            it.vcsType.set(vcs.map { service -> service.type() }.orElse(VcsType.NONE))
+        }
+        target.tasks.register("preReleaseTag", PreReleaseTagTask::class.java) {
+            it.group = "release"
+            it.description = "Tags the release commit with the release version."
+            it.tagTemplate.set(release.tagTemplate)
+            it.dependsOn("preReleaseCommit")
         }
         target.tasks.register("release", Task::class.java) {
             it.group = "release"

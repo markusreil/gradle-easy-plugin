@@ -21,4 +21,6 @@ internal interface VcsOperations {
         paths: List<String>,
         message: String,
     ): Provider<Boolean>
+
+    fun tag(name: String): Provider<Boolean>
 }

@@ -31,4 +31,11 @@ interface EasyReleaseExtension :
      * The placeholder `$v` is replaced with the release version.
      */
     val preReleaseCommitMessage: Property<String>
+
+    /**
+     * Tag name template for [preReleaseTag].
+     *
+     * The placeholder `$v` is replaced with the release version.
+     */
+    val tagTemplate: Property<String>
 }

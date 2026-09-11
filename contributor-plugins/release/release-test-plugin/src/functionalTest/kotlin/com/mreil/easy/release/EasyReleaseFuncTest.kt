@@ -197,7 +197,7 @@ class EasyReleaseFuncTest {
     }
 
     @Test
-    fun `preReleaseCommit without vcs updates version file but skips commit`() {
+    fun `preReleaseCommit without vcs updates the version file`() {
         project.configure {
             project.version = "1.0.0-SNAPSHOT"
             buildGradle(
@@ -219,7 +219,95 @@ class EasyReleaseFuncTest {
         assertSoftly { softly ->
             softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
             softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.0")
-            softly.assertThat(result.output).contains("VCS unavailable")
+        }
+    }
+
+    @Test
+    fun `preReleaseTag tags the release commit with release version`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        initGitWithRemote(project)
+
+        val result = project.build("preReleaseTag")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(result.output).contains("Created git tag v1.0.0.")
+            softly.assertThat(gitLastMessage(project)).isEqualTo("Set version for release: 1.0.0")
+            softly.assertThat(gitRevParse(project, "v1.0.0")).isEqualTo(gitRevParse(project, "HEAD"))
+        }
+    }
+
+    @Test
+    fun `preReleaseTag uses custom tag template`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release {
+                        enabled.set(true)
+                        tagTemplate.set("release-\${'$'}v")
+                    }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        initGitWithRemote(project)
+
+        val result = project.build("preReleaseTag")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(result.output).contains("Created git tag release-1.0.0.")
+            softly.assertThat(gitRevParse(project, "release-1.0.0")).isEqualTo(gitRevParse(project, "HEAD"))
+        }
+    }
+
+    @Test
+    fun `preReleaseTag without vcs is a no-op`() {
+        project.configure {
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+
+        val result = project.build("preReleaseTag")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
         }
     }
 }
@@ -251,6 +339,11 @@ private fun runGit(
 }
 
 private fun gitLastMessage(project: GradleTestProject): String = gitOutput(project.projectDir.absolutePath, "log", "-1", "--format=%s")
+
+private fun gitRevParse(
+    project: GradleTestProject,
+    ref: String,
+): String = gitOutput(project.projectDir.absolutePath, "rev-parse", ref)
 
 private fun gitChangedFiles(project: GradleTestProject): List<String> =
     gitOutput(project.projectDir.absolutePath, "show", "--name-only", "--format=", "HEAD")

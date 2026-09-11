@@ -8,8 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `preReleaseCommit` task in the release plugin: rewrites the `version=` line of a version file (default root `gradle.properties`, overridable via `EasyReleaseExtension.versionFile`) to the resolved release version and commits only that file. Commit message from `preReleaseCommitMessage` (default `Set version for release: $v`, `$v` = release version); without a VCS the commit is a `VcsNone` no-op (file still updated). Requires a separate Gradle invocation afterwards to build/publish with the new version (the version file is read at configuration time).
 
-- `preReleaseCommit` task in the release plugin: rewrites the `version=` line of a version file (default root `gradle.properties`, overridable via `EasyReleaseExtension.versionFile`) to the resolved release version and commits only that file. Commit message from `preReleaseCommitMessage` (default `Set version for release: $v`, `$v` = release version); skips commit with a warning when no VCS is available. Requires a separate Gradle invocation afterwards to build/publish with the new version (the version file is read at configuration time).
+- `preReleaseTag` task in the release plugin: tags the release commit with the release version. Tag name from `tagTemplate` (default `v$v`, `$v` = release version); runs after `preReleaseCommit` (tags the version-bump commit), `VcsNone` no-op when no VCS is available.
 
 ### Changed
 

@@ -7,6 +7,7 @@ import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import javax.inject.Inject
 
+@Suppress("TooManyFunctions")
 abstract class VcsService
     @Inject
     constructor(
@@ -56,4 +57,6 @@ abstract class VcsService
             paths: List<String>,
             message: String,
         ): Provider<Boolean> = operations.addAndCommit(paths, message)
+
+        fun tag(name: String): Provider<Boolean> = operations.tag(name)
     }
