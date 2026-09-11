@@ -3,9 +3,7 @@ package com.mreil.easy.publish
 import com.mreil.easy.codemeta.Codemeta
 import com.mreil.easy.codemeta.CodemetaLicense
 import com.mreil.easy.codemeta.EasyCodemeta
-import com.mreil.easy.codemeta.EasyCodemetaExtension
 import com.mreil.easy.codemeta.Person
-import com.mreil.easy.isEasyChildEnabled
 import com.mreil.utils.hasGroup
 import com.mreil.utils.hasVersion
 import com.mreil.utils.isSpecified
@@ -108,14 +106,7 @@ internal object MavenPublicationConfigurer {
             .ifBlank { person.name }
             ?.ifBlank { null }
 
-    private fun resolveCodemeta(target: Project): Codemeta? =
-        runCatching {
-            if (!target.isEasyChildEnabled<EasyCodemetaExtension>()) {
-                null
-            } else {
-                EasyCodemeta.of(target).orNull
-            }
-        }.getOrNull()
+    private fun resolveCodemeta(target: Project): Codemeta? = EasyCodemeta.of(target).orNull
 
     private fun configureVersionMapping(publication: MavenPublication) {
         publication.versionMapping { mapping ->

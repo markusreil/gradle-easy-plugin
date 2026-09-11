@@ -1,5 +1,6 @@
 package com.mreil.easy.codemeta
 
+import com.mreil.easy.easyService
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 
@@ -11,20 +12,21 @@ import org.gradle.api.provider.Provider
  */
 object EasyCodemeta {
     /**
+     * Lazily resolves the [CodemetaService] registered by the codemeta plugin.
+     *
+     * Never throws at call time; the returned [Provider] is absent when the
+     * codemeta plugin is disabled or not applied (`easy { codemeta {} }`).
+     */
+    private fun service(project: Project): Provider<CodemetaService> = project.easyService("codemeta", EasyCodemetaExtension::class)
+
+    /**
      * Lazily reads `codemeta.json` from the root project directory.
      *
-     * Fails if the plugin is not enabled (`easy { codemeta {} }`).
+     * The returned [Provider] is absent when the codemeta plugin is disabled
+     * or not applied (`easy { codemeta {} }`), or when the `codemeta.json`
+     * file cannot be read (e.g. `generateCodemeta` has not run yet).
      */
-    fun of(project: Project): Provider<Codemeta> {
-        // Service is registered by EasyCodemetaPlugin; lookup is lazy via Provider
-        val serviceProvider =
-            project.gradle.sharedServices.registrations
-                .findByName("codemeta")
-                ?.service
-                ?: error("CodemetaService not registered - is the codemeta plugin applied?")
-
-        @Suppress("UNCHECKED_CAST")
-        val codemetaService = serviceProvider.get() as CodemetaService
-        return codemetaService.codemeta
-    }
+    fun of(project: Project): Provider<Codemeta> =
+        service(project)
+            .map { codemeta -> runCatching { codemeta.codemeta.get() }.getOrNull() }
 }

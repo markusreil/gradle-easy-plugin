@@ -116,8 +116,13 @@ class SemverFuncTest {
     }
 
     @Test
-    fun `easySemver of fails when semver not enabled`() {
-        val semverProbe = failingLookupProbe()
+    fun `easySemver of is absent when semver not enabled`() {
+        val semverProbe =
+            probeTask("verifySemver") {
+                prelude("val semver = com.mreil.easy.semver.EasySemver.of(project)")
+                expect("SEMVER_ABSENT", "semver.orNull == null", "true")
+                expect("SEMVER_NOT_PRESENT", "semver.isPresent", "false")
+            }
         project.configure {
             version = "1.2.3"
             buildGradle(
@@ -140,7 +145,6 @@ class SemverFuncTest {
 
         assertSoftly { softly ->
             semverProbe.assertOutput(softly, result.output)
-            softly.assertThat(result.output).contains("EasySemver plugin is not enabled")
         }
     }
 

@@ -180,11 +180,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
      * default is gone, so `toSonatypeSnapshots()` needs no semver requirement.
      */
     private fun resolveIsSnapshot(target: Project): Boolean =
-        RepoRouting.isSnapshot(
-            runCatching {
-                if (!target.isEasyChildEnabled<EasySemverExtension>()) null else EasySemver.of(target).orNull
-            }.getOrNull(),
-        ) ?: target.version.toString().endsWith("-SNAPSHOT")
+        RepoRouting.isSnapshot(EasySemver.of(target).orNull) ?: target.version.toString().endsWith("-SNAPSHOT")
 
     /**
      * Creates the default `maven` publication backed by the project's `java` component.

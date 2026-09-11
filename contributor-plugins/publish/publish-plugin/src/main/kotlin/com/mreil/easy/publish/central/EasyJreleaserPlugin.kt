@@ -9,7 +9,6 @@ import com.mreil.easy.publish.RepoRouting
 import com.mreil.easy.publish.isCentralEnabled
 import com.mreil.easy.publish.publishExtension
 import com.mreil.easy.semver.EasySemver
-import com.mreil.easy.semver.EasySemverExtension
 import org.gradle.api.Project
 
 /**
@@ -106,9 +105,5 @@ class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
         }
 
     private fun isSnapshot(target: Project): Boolean =
-        RepoRouting.isSnapshot(
-            runCatching {
-                if (!target.isEasyChildEnabled<EasySemverExtension>()) null else EasySemver.of(target).orNull
-            }.getOrNull(),
-        ) ?: target.version.toString().endsWith("-SNAPSHOT")
+        RepoRouting.isSnapshot(EasySemver.of(target).orNull) ?: target.version.toString().endsWith("-SNAPSHOT")
 }

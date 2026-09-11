@@ -6,7 +6,7 @@ import com.mreil.easy.isRoot
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.provider.Property
-import org.gradle.api.tasks.Input
+import org.gradle.api.services.ServiceReference
 import org.gradle.api.tasks.TaskAction
 
 /**
@@ -27,29 +27,27 @@ class EasyVcsPlugin : AbstractEasyProjectPlugin() {
 
     override fun afterEnabled(target: Project) {
         if (!target.isRoot()) return
-        target.tasks.register("vcsStatus", VcsStatusTask::class.java) { task ->
-            task.status.set(
-                EasyVcs.of(target).map { vcs ->
-                    val info = vcs.info()
-                    "VCS type=${info.type}, branch=${info.branch ?: "n/a"}, clean=${info.clean}"
-                },
-            )
-        }
+        // Service is injected via @ServiceReference; VCS detection happens in the
+        // action at execution time, so no wiring is needed here.
+        target.tasks.register("vcsStatus", VcsStatusTask::class.java)
     }
 }
 
 /**
  * Prints the detected VCS type, branch and clean state.
  *
- * Captures only a [Property] provider (no [Project] at execution) to stay
- * configuration-cache compatible.
+ * Resolves the shared [VcsService] via [ServiceReference] and queries it inside
+ * the action. VCS detection shells out to git, which is only legal at execution
+ * time for the configuration cache, so the service is never realized during
+ * configuration.
  */
 abstract class VcsStatusTask : DefaultTask() {
-    @get:Input
-    abstract val status: Property<String>
+    @get:ServiceReference("vcs")
+    abstract val vcs: Property<VcsService>
 
     @TaskAction
     fun printStatus() {
-        logger.lifecycle(status.get())
+        val info = vcs.get().info()
+        logger.lifecycle("VCS type=${info.type}, branch=${info.branch ?: "n/a"}, clean=${info.clean}")
     }
 }
