@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.0.107] - 2026-09-11
+
+### Fixed
+
+- VCS configuration-cache compatibility (`Fix VCS cc issues #13`): `VcsService` no longer starts external Git processes at configuration time (moved to provider APIs via `VcsOperations`), with a new `VcsConfigurationCacheFuncTest` that fails on CC violations.
+
 ## [0.0.106] - 2026-09-11
 
 ### Added
