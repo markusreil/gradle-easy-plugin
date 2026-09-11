@@ -61,6 +61,7 @@ Plugin IDs are the single source in `gradle.properties` (`plugin.project`/`plugi
 | `contributor-plugins/jvm-defaults` | no API extension | `EasyJvmDefaultsPlugin` | — | Configures `JavaPluginExtension` with `withSourcesJar()`/`withJavadocJar()` when `java` plugin present. `EasyJvmDefaultsContributor`. |
 | `contributor-plugins/semver` | `semver-plugin-api: EasySemverExtension` / `semver-plugin: DefaultEasySemverExtension` | `EasySemverPlugin` (`@EnabledBy`) | `easy.semver` | Exposes `EasySemver.of(project): Provider<Semver>` (validates SEMVER via `semver4j`). |
 | `contributor-plugins/codemeta` | `codemeta-plugin-api: EasyCodemetaExtension` (`filename` default `codemeta.json`) / `codemeta-plugin: DefaultEasyCodemetaExtension` | `EasyCodemetaPlugin` (`@EnabledBy`) | `easy.codemeta` | Registers `CodemetaService` (Jackson) and `generateCodemeta`. If file missing, every task depends on `generateCodemeta` which creates initial `codemeta.json` and fails. |
+| `contributor-plugins/release` | `release-plugin-api: EasyReleaseExtension` / `release-plugin: DefaultEasyReleaseExtension` (`@PublicType`, `enabled` true by default) | `EasyReleasePlugin` (`@EnabledBy(EasyReleaseExtension::class)`) | `easy.release` | Trivial stub (empty `init`/`afterEnabled`) — happy-path smoke tests only, features to follow. |
 
 Each contributor has a `-test-plugin` harness (`com.mreil.easy.test.publish` etc.) that applies `ProjectPlugin` for `withPluginClasspath` functional tests. Harnesses are **not** published (`easy { publish.enabled = false }`).
 
@@ -79,7 +80,7 @@ This section is the source of truth for the deployed artifact set — update it
 whenever the publish behaviour changes (e.g. new module, new publication,
 marker changes, harness publishing).
 
-11 projects publish (the 5 `*-test-plugin` harnesses, 5 contributor plugin
+13 projects publish (the 7 `*-test-plugin` harnesses, 7 contributor plugin
 implementations, and `easy-plugin-core` set `easy.publish.enabled = false` in
 their `build.gradle.kts` — contributor plugins are Shadow-bundled into
 `easy-plugin` and `easy-plugin-core` is an internal dependency of the fat jar):
@@ -87,8 +88,9 @@ their `build.gradle.kts` — contributor plugins are Shadow-bundled into
 * 6 easy modules: `easy-plugin`, `easy-contributor-api`,
   `easy-contributor-support`, `easy-test-support`, `gradle-plugin-testutils`,
   `gradle-plugin-utils`
-* 5 contributor API modules: `publish-plugin-api`, `jvm-defaults-plugin-api`,
-  `semver-plugin-api`, `codemeta-plugin-api`, `project-defaults-plugin-api`
+* 7 contributor API modules: `publish-plugin-api`, `jvm-defaults-plugin-api`,
+  `semver-plugin-api`, `codemeta-plugin-api`, `project-defaults-plugin-api`,
+  `vcs-plugin-api`, `release-plugin-api`
 * 2 plugin markers emitted by `easy-plugin` (via `java-gradle-plugin`):
   `com.mreil.easy.project.gradle.plugin` and `com.mreil.easy.settings.gradle.plugin`
   — POM-only, groupId = plugin ID (`com.mreil.easy.project` / `com.mreil.easy.settings`),
