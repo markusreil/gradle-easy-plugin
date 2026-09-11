@@ -11,10 +11,10 @@ import org.gradle.api.tasks.TaskAction
 /**
  * Verifies release readiness and resolves release versions; gates `release`.
  *
- * All git state is consumed at execution time via providers. When VCS is
- * absent (provider empty), VCS checks are skipped and coordinates checks
- * still run. Release/next versions resolve as system property > semver, and
- * fail here with guidance when neither is present.
+ * Readiness inputs (branch, clean, upToDate, pattern, group, version) stay task
+ * inputs. Versions and names resolve from [ReleaseStateService] (wired once in
+ * the plugin); the commit sha is snapshotted here at execution, right after the
+ * gate passes (HEAD-at-gate — a lazily-wired sha could capture a moved HEAD).
  */
 abstract class PreReleaseCheckTask : DefaultTask() {
     @get:Input
@@ -39,20 +39,6 @@ abstract class PreReleaseCheckTask : DefaultTask() {
     abstract val hasVersion: Property<Boolean>
 
     @get:Input
-    abstract val projectName: Property<String>
-
-    @get:Input
-    abstract val currentVersion: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val releaseVersion: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val nextVersion: Property<String>
-
-    @get:Input
     @get:Optional
     abstract val commitSha: Property<String>
 
@@ -66,24 +52,25 @@ abstract class PreReleaseCheckTask : DefaultTask() {
             throw GradleException("Release readiness check failed:\n- " + failures.joinToString("\n- "))
         }
         logVersions()
-        recordState()
+        commitSha.orNull?.takeIf { it.isNotBlank() }?.let { releaseState.get().recordCommitSha(it) }
     }
 
     private fun logVersions() {
+        val state = releaseState.get()
         val release =
-            releaseVersion.orNull ?: throw GradleException(
+            state.releaseVersion().orNull ?: throw GradleException(
                 "No release version resolved: set -Deasy.release.version=<version> " +
                     "or enable the semver plugin with a valid project version.",
             )
         val next =
-            nextVersion.orNull ?: throw GradleException(
+            state.nextVersion().orNull ?: throw GradleException(
                 "No next version resolved: set -Deasy.release.nextVersion=<version> " +
                     "or enable the semver plugin with a valid project version.",
             )
         logger.lifecycle(
             "Releasing {}: current version {}, release version {}, next version {}",
-            projectName.get(),
-            currentVersion.get(),
+            state.projectName().get(),
+            state.currentVersion().get(),
             release,
             next,
         )
@@ -105,13 +92,5 @@ abstract class PreReleaseCheckTask : DefaultTask() {
             failures.add("branch '$current' does not match release pattern '$pattern'")
         }
         return failures
-    }
-
-    private fun recordState() {
-        val state = releaseState.get()
-        commitSha.orNull?.takeIf { it.isNotBlank() }?.let { state.recordCommitSha(it) }
-        releaseVersion.orNull?.let { state.recordReleaseVersion(it) }
-        nextVersion.orNull?.let { state.recordNextVersion(it) }
-        state.recordProjectName(projectName.get())
     }
 }

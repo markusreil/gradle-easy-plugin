@@ -116,9 +116,10 @@ class EasyReleasePluginTest {
             project.pluginManager.apply(ProjectPlugin::class.java)
             (project as ProjectInternal).evaluate()
             val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+            val state = releaseStateOf(project)
             assertSoftly { softly ->
-                softly.assertThat(check.releaseVersion.get()).isEqualTo("9.9.9")
-                softly.assertThat(check.nextVersion.get()).isEqualTo("9.9.10-SNAPSHOT")
+                softly.assertThat(state.releaseVersion().get()).isEqualTo("9.9.9")
+                softly.assertThat(state.nextVersion().get()).isEqualTo("9.9.10-SNAPSHOT")
             }
         } finally {
             System.clearProperty(EasyReleasePlugin.RELEASE_VERSION_PROPERTY)
@@ -151,10 +152,10 @@ class EasyReleasePluginTest {
         project.group = "com.example"
         project.version = "1.2.3-SNAPSHOT"
         (project as ProjectInternal).evaluate()
-        val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+        val state = releaseStateOf(project)
         assertSoftly { softly ->
-            softly.assertThat(check.releaseVersion.get()).isEqualTo("1.2.3")
-            softly.assertThat(check.nextVersion.get()).isEqualTo("1.2.4-SNAPSHOT")
+            softly.assertThat(state.releaseVersion().get()).isEqualTo("1.2.3")
+            softly.assertThat(state.nextVersion().get()).isEqualTo("1.2.4-SNAPSHOT")
         }
     }
 
@@ -166,19 +167,14 @@ class EasyReleasePluginTest {
         project.version = "1.0.0"
         (project as ProjectInternal).evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
-        check.branch.set("main")
-        check.clean.set(true)
-        check.upToDate.set(true)
         check.commitSha.set("abc123")
-        check.releaseVersion.set("1.0.0")
-        check.nextVersion.set("1.0.1-SNAPSHOT")
         check.check()
         val state = releaseStateOf(project)
         assertSoftly { softly ->
-            softly.assertThat(state.commitSha().get()).isEqualTo("abc123")
             softly.assertThat(state.releaseVersion().get()).isEqualTo("1.0.0")
             softly.assertThat(state.nextVersion().get()).isEqualTo("1.0.1-SNAPSHOT")
             softly.assertThat(state.projectName().get()).isEqualTo(project.name)
+            softly.assertThat(state.commitSha().orNull).isEqualTo("abc123")
         }
     }
 
@@ -221,8 +217,6 @@ class EasyReleasePluginTest {
         check.branch.set(branch)
         check.clean.set(clean)
         check.upToDate.set(upToDate)
-        check.releaseVersion.set("1.0.0")
-        check.nextVersion.set("1.0.1-SNAPSHOT")
         return check
     }
 }

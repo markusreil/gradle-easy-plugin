@@ -25,12 +25,14 @@ abstract class ReleaseStateService :
         abstract val releaseVersion: Property<String>
         abstract val nextVersion: Property<String>
         abstract val projectName: Property<String>
+        abstract val currentVersion: Property<String>
 
         init {
             commitSha.convention("")
             releaseVersion.convention("")
             nextVersion.convention("")
             projectName.convention("")
+            currentVersion.convention("")
         }
     }
 
@@ -59,6 +61,8 @@ abstract class ReleaseStateService :
     fun nextVersion(): Provider<String> = parameters.nextVersion
 
     fun projectName(): Provider<String> = parameters.projectName
+
+    fun currentVersion(): Provider<String> = parameters.currentVersion
 
     override fun onFinish(event: FinishEvent) {
         if (event !is TaskFinishEvent || event.result !is TaskFailureResult) return

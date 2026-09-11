@@ -18,21 +18,11 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
     @get:Inject
     abstract val listenerRegistry: BuildEventsListenerRegistry
 
-    override fun init(target: Project) {
-        if (!target.isRoot()) return
-        val service = target.gradle.sharedServices.registerIfAbsent("release", ReleaseStateService::class.java)
-        listenerRegistry.onTaskCompletion(service)
-    }
-
     override fun afterEnabled(target: Project) {
         if (!target.isRoot()) return
         val release = target.findEasyChild<EasyReleaseExtension, DefaultEasyReleaseExtension>() ?: return
         val vcs = EasyVcs.of(target)
-        val semver = EasySemver.of(target)
-        val semverRelease = semver.map { it.withClearedPreRelease().toString() }
-        val semverNext = semver.map { it.withIncPatch().withPreRelease("SNAPSHOT").toString() }
-        val releaseVersion = propertyResolver.get(RELEASE_VERSION_PROPERTY).orElse(semverRelease)
-        val nextVersion = propertyResolver.get(NEXT_VERSION_PROPERTY).orElse(semverNext)
+        registerService(target)
         val check =
             target.tasks.register("preReleaseCheck", PreReleaseCheckTask::class.java) {
                 it.group = "release"
@@ -44,10 +34,6 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
                 it.clean.set(vcs.flatMap { service -> service.isClean() })
                 it.upToDate.set(vcs.flatMap { service -> service.isUpToDateWithRemote() })
                 it.commitSha.set(vcs.flatMap { service -> service.currentSha() })
-                it.projectName.set(target.name)
-                it.currentVersion.set(target.version.toString())
-                it.releaseVersion.set(releaseVersion)
-                it.nextVersion.set(nextVersion)
             }
         target.tasks.register("release", Task::class.java) {
             it.group = "release"
@@ -59,6 +45,22 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
                 it.dependsOn(check)
             }
         }
+    }
+
+    private fun registerService(target: Project) {
+        val semver = EasySemver.of(target)
+        val semverRelease = semver.map { it.withClearedPreRelease().toString() }
+        val semverNext = semver.map { it.withIncPatch().withPreRelease("SNAPSHOT").toString() }
+        val releaseService =
+            target.gradle.sharedServices.registerIfAbsent("release", ReleaseStateService::class.java) {
+                it.parameters.apply {
+                    releaseVersion.set(propertyResolver.get(RELEASE_VERSION_PROPERTY).orElse(semverRelease))
+                    nextVersion.set(propertyResolver.get(NEXT_VERSION_PROPERTY).orElse(semverNext))
+                    projectName.set(target.name)
+                    currentVersion.set(target.version.toString())
+                }
+            }
+        listenerRegistry.onTaskCompletion(releaseService)
     }
 
     companion object {
