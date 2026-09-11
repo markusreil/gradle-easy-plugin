@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `preReleaseTag` task in the release plugin: tags the release commit with the release version. Tag name from `tagTemplate` (default `v$v`, `$v` = release version); runs after `preReleaseCommit` (tags the version-bump commit), `VcsNone` no-op when no VCS is available.
 
+- `postReleasePush` finalizes the release: bumps `version=` to the next development version (precedence `easy.release.nextVersion` > semver `withIncPatch().withPreRelease("SNAPSHOT")`), commits it with `postReleaseCommitMessage` (default `Set new version after release: $v`, `$v` = next version; no-op when already at the next version) and atomically pushes the commit and the release tag (`git push origin HEAD <tag>`). Runs after `preReleaseTag`; the `release` task now depends on the full chain (check → commit → tag → push).
+
 ### Changed
 
 ### Deprecated

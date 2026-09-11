@@ -38,4 +38,11 @@ interface EasyReleaseExtension :
      * The placeholder `$v` is replaced with the release version.
      */
     val tagTemplate: Property<String>
+
+    /**
+     * Commit message template for [postReleasePush].
+     *
+     * The placeholder `$v` is replaced with the next development version.
+     */
+    val postReleaseCommitMessage: Property<String>
 }

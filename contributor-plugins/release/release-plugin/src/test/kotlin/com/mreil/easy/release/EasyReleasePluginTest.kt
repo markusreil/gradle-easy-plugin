@@ -34,9 +34,11 @@ class EasyReleasePluginTest {
             softly.assertThat(project.tasks.findByName("preReleaseCheck")).isNotNull()
             softly.assertThat(project.tasks.findByName("preReleaseCommit")).isNotNull()
             softly.assertThat(project.tasks.findByName("preReleaseTag")).isNotNull()
+            softly.assertThat(project.tasks.findByName("postReleasePush")).isNotNull()
             softly.assertThat(release?.releaseBranchPattern?.get()).isEqualTo("(main|master|rel-.*)")
             softly.assertThat(release?.preReleaseCommitMessage?.get()).isEqualTo("Set version for release: \$v")
             softly.assertThat(release?.tagTemplate?.get()).isEqualTo("v\$v")
+            softly.assertThat(release?.postReleaseCommitMessage?.get()).isEqualTo("Set new version after release: \$v")
             softly.assertThat(project.tasks.findByName("release")?.dependsOn).isNotEmpty()
         }
     }
@@ -328,6 +330,84 @@ class EasyReleasePluginTest {
         assertThatThrownBy { task.tag() }
             .isInstanceOf(GradleException::class.java)
             .hasMessageContaining(EasyReleasePlugin.RELEASE_VERSION_PROPERTY)
+    }
+
+    @Test
+    fun `postReleasePush is gated and runs after preReleaseTag`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("postReleasePush") as PostReleasePushTask
+        assertSoftly { softly ->
+            softly.assertThat(task.group).isEqualTo("release")
+            softly.assertThat(task.commitMessageTemplate.get()).isEqualTo("Set new version after release: \$v")
+            softly.assertThat(task.tagTemplate.get()).isEqualTo("v\$v")
+            softly.assertThat(task.taskDependencies.getDependencies(task)).contains(
+                project.tasks.getByName("preReleaseCheck"),
+                project.tasks.getByName("preReleaseTag"),
+            )
+        }
+    }
+
+    @Test
+    fun `postReleasePush bumps to next version and commits`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0-SNAPSHOT"
+        registerVcsService(project)
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("postReleasePush") as PostReleasePushTask
+        val versionFile = File(project.projectDir, "gradle.properties")
+        versionFile.writeText("group=com.example\nversion=1.0.0-SNAPSHOT\n")
+        task.versionFile.set(versionFile)
+
+        task.push()
+
+        assertSoftly { softly ->
+            softly.assertThat(versionFile.readText()).contains("version=1.0.1-SNAPSHOT\n")
+            softly.assertThat(versionFile.readText()).contains("group=com.example")
+        }
+    }
+
+    @Test
+    fun `postReleasePush is a no-op when version file already at next version`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0-SNAPSHOT"
+        registerVcsService(project)
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("postReleasePush") as PostReleasePushTask
+        val original = "group=com.example\nversion=1.0.1-SNAPSHOT\n"
+        val versionFile = File(project.projectDir, "gradle.properties")
+        versionFile.writeText(original)
+        task.versionFile.set(versionFile)
+
+        task.push()
+
+        assertThat(versionFile.readText()).isEqualTo(original)
+    }
+
+    @Test
+    fun `postReleasePush fails without resolved next version`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.extensions
+            .getByType(EasyExtension::class.java)
+            .extensions
+            .getByType(EasySemverExtension::class.java)
+            .enabled
+            .set(false)
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("postReleasePush") as PostReleasePushTask
+        task.versionFile.set(File(project.projectDir, "gradle.properties"))
+
+        assertThatThrownBy { task.push() }
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining(EasyReleasePlugin.NEXT_VERSION_PROPERTY)
     }
 
     @Suppress("UNCHECKED_CAST")

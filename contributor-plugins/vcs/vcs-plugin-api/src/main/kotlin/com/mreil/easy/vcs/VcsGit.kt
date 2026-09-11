@@ -39,6 +39,8 @@ internal class VcsGit(
 
     override fun push(): Provider<Boolean> = success("push")
 
+    override fun push(tag: String): Provider<Boolean> = success("push", "origin", "HEAD", tag)
+
     override fun fetch(): Provider<Boolean> = success("fetch")
 
     @Suppress("SpreadOperator")

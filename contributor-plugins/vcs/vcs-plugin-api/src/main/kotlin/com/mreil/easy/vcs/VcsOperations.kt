@@ -15,6 +15,11 @@ internal interface VcsOperations {
 
     fun push(): Provider<Boolean>
 
+    /**
+     * Pushes the current branch and the named tag in a single atomic operation.
+     */
+    fun push(tag: String): Provider<Boolean>
+
     fun fetch(): Provider<Boolean>
 
     fun addAndCommit(

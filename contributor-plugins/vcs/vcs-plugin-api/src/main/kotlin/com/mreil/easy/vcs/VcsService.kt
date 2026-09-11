@@ -45,6 +45,8 @@ abstract class VcsService
 
         fun push(): Provider<Boolean> = operations.push()
 
+        fun push(tag: String): Provider<Boolean> = operations.push(tag)
+
         fun fetch(): Provider<Boolean> = operations.fetch()
 
         fun remoteUrl(): Provider<String> = operations.remoteUrl()

@@ -12,6 +12,7 @@ import java.nio.file.Files
 
 @ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
 @DisableAllEasyPlugins
+@Suppress("TooManyFunctions")
 class EasyReleaseFuncTest {
     lateinit var project: GradleTestProject
 
@@ -310,9 +311,104 @@ class EasyReleaseFuncTest {
             softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
         }
     }
+
+    @Test
+    fun `postReleasePush bumps to next version, commits and pushes commit and tag atomically`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        val remote = initGitWithRemote(project)
+
+        val result = project.build("postReleasePush")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(result.output).contains("Pushed commit and tag v1.0.0.")
+            softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.1-SNAPSHOT")
+            softly.assertThat(gitLastMessage(project)).isEqualTo("Set new version after release: 1.0.1-SNAPSHOT")
+            softly
+                .assertThat(gitOutput(remote.absolutePath, "rev-parse", "v1.0.0"))
+                .isEqualTo(gitRevParse(project, "v1.0.0"))
+            softly
+                .assertThat(gitOutput(remote.absolutePath, "log", "--format=%s"))
+                .contains("Set new version after release: 1.0.1-SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun `postReleasePush uses custom commit message template`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release {
+                        enabled.set(true)
+                        postReleaseCommitMessage.set("Post \${'$'}v")
+                    }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        initGitWithRemote(project)
+
+        val result = project.build("postReleasePush")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(gitLastMessage(project)).isEqualTo("Post 1.0.1-SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun `postReleasePush without vcs bumps the version file`() {
+        project.configure {
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+
+        val result = project.build("postReleasePush")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.1-SNAPSHOT")
+        }
+    }
 }
 
-private fun initGitWithRemote(project: GradleTestProject) {
+private fun initGitWithRemote(project: GradleTestProject): File {
     project.file("build.gradle.kts")
     runGit(project.projectDir.absolutePath, "init", "-b", "main")
     runGit(project.projectDir.absolutePath, "config", "user.email", "test@example.com")
@@ -323,6 +419,7 @@ private fun initGitWithRemote(project: GradleTestProject) {
     runGit(remoteDir.absolutePath, "init", "--bare")
     runGit(project.projectDir.absolutePath, "remote", "add", "origin", remoteDir.absolutePath)
     runGit(project.projectDir.absolutePath, "push", "-u", "origin", "main")
+    return remoteDir
 }
 
 private fun runGit(

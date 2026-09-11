@@ -16,7 +16,9 @@ internal class VcsNone(
 
     override fun isUpToDateWithRemote(): Provider<Boolean> = providers.provider { true }
 
-    override fun push(): Provider<Boolean> = providers.provider { false }
+    override fun push(): Provider<Boolean> = providers.provider { true }
+
+    override fun push(tag: String): Provider<Boolean> = providers.provider { true }
 
     override fun fetch(): Provider<Boolean> = providers.provider { false }
 

@@ -47,10 +47,18 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
             it.tagTemplate.set(release.tagTemplate)
             it.dependsOn("preReleaseCommit")
         }
+        target.tasks.register("postReleasePush", PostReleasePushTask::class.java) {
+            it.group = "release"
+            it.description = "Bumps to the next development version, commits it and pushes commit and tag."
+            it.versionFile.set(release.versionFile.orElse(target.layout.projectDirectory.file("gradle.properties")))
+            it.commitMessageTemplate.set(release.postReleaseCommitMessage)
+            it.tagTemplate.set(release.tagTemplate)
+            it.dependsOn("preReleaseTag")
+        }
         target.tasks.register("release", Task::class.java) {
             it.group = "release"
             it.description = "Release wiring task (other release tasks attach here)."
-            it.dependsOn(check)
+            it.dependsOn(check, "postReleasePush")
         }
         target.tasks.configureEach {
             if (it.name != "preReleaseCheck" && it.group == "release") {
