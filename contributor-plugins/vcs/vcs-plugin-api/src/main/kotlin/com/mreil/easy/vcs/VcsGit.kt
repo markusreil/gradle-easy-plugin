@@ -1,50 +1,79 @@
 package com.mreil.easy.vcs
 
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
+import org.gradle.process.ExecOutput
 
-internal object VcsGit {
-    fun remoteUrl(rootDir: DirectoryProperty): String? {
-        val url = upstreamRemoteUrl(rootDir) ?: originRemoteUrl(rootDir) ?: firstRemoteUrl(rootDir)
-        return url?.let(::normalizeRemoteUrl)
-    }
-
-    @Suppress("TooGenericExceptionCaught", "SwallowedException")
-    fun run(
-        rootDir: DirectoryProperty,
-        vararg args: String,
-    ): ProcessResult =
-        try {
-            val command = listOf("git", *args)
-            val process = ProcessBuilder(command).directory(rootDir.get().asFile).start()
-            val output = process.inputStream.bufferedReader().use { it.readText() }
-            val exit = process.waitFor()
-            ProcessResult(exit, output.lines().filter { it.isNotBlank() })
-        } catch (e: Exception) {
-            ProcessResult(-1, emptyList())
+internal class VcsGit(
+    private val providers: ProviderFactory,
+    private val rootDir: DirectoryProperty,
+) : VcsOperations {
+    override fun remoteUrl(): Provider<String> =
+        providers.provider {
+            sequenceOf(
+                upstreamRemoteUrl(),
+                originRemoteUrl(),
+                firstRemoteUrl(),
+            ).map { it.get() }
+                .firstOrNull { it.isNotEmpty() }
+                ?.let(::normalizeRemoteUrl)
+                .orEmpty()
         }
 
-    private fun upstreamRemoteUrl(rootDir: DirectoryProperty): String? {
-        val upstream =
-            run(rootDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}").output.firstOrNull() ?: return null
-        return run(rootDir, "remote", "get-url", upstream.substringBefore('/')).output.firstOrNull()
-    }
+    override fun branch(): Provider<String> = firstLine("rev-parse", "--abbrev-ref", "HEAD")
 
-    private fun originRemoteUrl(rootDir: DirectoryProperty): String? = run(rootDir, "remote", "get-url", "origin").output.firstOrNull()
+    override fun isClean(): Provider<Boolean> = firstLine("status", "--porcelain").map { it.isEmpty() }
 
-    private fun firstRemoteUrl(rootDir: DirectoryProperty): String? {
-        val remote = run(rootDir, "remote").output.firstOrNull() ?: return null
-        return run(rootDir, "remote", "get-url", remote).output.firstOrNull()
-    }
+    override fun isUpToDateWithRemote(): Provider<Boolean> =
+        providers.provider {
+            val output = output("rev-list", "--count", "HEAD..@{u}")
+            output.result.get().exitValue == 0 &&
+                output.standardOutput.asText
+                    .get()
+                    .trim() == "0"
+        }
 
-    private fun normalizeRemoteUrl(raw: String): String? {
+    override fun push(): Provider<Boolean> = success("push")
+
+    override fun fetch(): Provider<Boolean> = success("fetch")
+
+    private fun firstLine(vararg args: String): Provider<String> =
+        output(*args)
+            .standardOutput
+            .asText
+            .map { text -> text.lines().firstOrNull { it.isNotBlank() }.orEmpty() }
+
+    private fun success(vararg args: String): Provider<Boolean> = output(*args).result.map { it.exitValue == 0 }
+
+    private fun output(vararg args: String): ExecOutput =
+        providers.exec { spec ->
+            spec.commandLine("git", *args)
+            spec.workingDir = rootDir.get().asFile
+            spec.isIgnoreExitValue = true
+        }
+
+    private fun upstreamRemoteUrl(): Provider<String> =
+        providers.provider {
+            val upstream =
+                firstLine("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+                    .get()
+                    .takeIf { it.isNotEmpty() } ?: return@provider ""
+            firstLine("remote", "get-url", upstream.substringBefore('/')).get()
+        }
+
+    private fun originRemoteUrl(): Provider<String> = firstLine("remote", "get-url", "origin")
+
+    private fun firstRemoteUrl(): Provider<String> =
+        providers.provider {
+            val remote = firstLine("remote").get().takeIf { it.isNotEmpty() } ?: return@provider ""
+            firstLine("remote", "get-url", remote).get()
+        }
+
+    private fun normalizeRemoteUrl(raw: String): String {
         val trimmed = raw.trim()
-        if (trimmed.isBlank()) return null
+        if (trimmed.isBlank()) return ""
         val normalized = trimmed.replace(Regex("^git@([^:]+):"), "https://$1/")
-        return normalized.removeSuffix(".git").ifBlank { null }
+        return normalized.removeSuffix(".git").ifBlank { "" }
     }
 }
-
-internal data class ProcessResult(
-    val exit: Int,
-    val output: List<String>,
-)

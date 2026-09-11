@@ -6,6 +6,7 @@ import com.mreil.easy.findEasyChild
 import com.mreil.easy.isRoot
 import com.mreil.easy.vcs.EasyVcs
 import org.gradle.api.Project
+import org.gradle.api.provider.Provider
 
 /**
  * Easy plugin that handles CodeMeta generation.
@@ -57,7 +58,7 @@ class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {
                 task.projectDescription.set(
                     target.provider { target.description ?: "TODO: Add description - replace with project description" },
                 )
-                task.codeRepository.set(target.provider { resolveCodeRepository(target) })
+                task.codeRepository.set(codeRepository(target))
                 task.onlyIf {
                     !task.outputFile
                         .get()
@@ -75,11 +76,12 @@ class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {
         }
     }
 
-    private fun resolveCodeRepository(target: Project): String =
-        EasyVcs
+    private fun codeRepository(target: Project): Provider<String> {
+        val placeholder = "TODO: Add codeRepository - e.g. https://github.com/mreil/gradle-easy-plugin-new"
+        return EasyVcs
             .of(target)
-            .orNull
-            ?.remoteUrl()
-            ?.takeIf { !it.isNullOrBlank() }
-            ?: "TODO: Add codeRepository - e.g. https://github.com/mreil/gradle-easy-plugin-new"
+            .flatMap { it.remoteUrl() }
+            .map { it.takeIf { url -> url.isNotBlank() } ?: placeholder }
+            .orElse(target.provider { placeholder })
+    }
 }

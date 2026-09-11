@@ -14,6 +14,7 @@ repositories { mavenCentral() }
 dependencies {
     implementation(project(":easy-plugin-core"))
     implementation(project(":contributor-plugins:vcs:vcs-plugin"))
+    implementation(project(":contributor-plugins:codemeta:codemeta-plugin"))
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
     compileOnly(gradleApi())

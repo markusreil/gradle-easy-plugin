@@ -121,6 +121,8 @@ directory (signed, with checksums). This is the fastest way to confirm what the 
 
 Run `./gradlew :easy-plugin:check` (or `./gradlew build` for all modules + aggregated reports) before submitting.
 
+New contributor plugins must ship a configuration-cache compatibility test that fails on CC validation problems (e.g. external processes started at configuration time) — the VCS plugin's `git rev-parse ... @{u}` / `git remote get-url origin` calls broke CC and were only found after release.
+
 ## Manual Snapshot Testing
 
 Standalone projects in `test-projects/` dogfood the latest snapshot from `mreilComGradlePluginsSnapshots` (`https://repo.mreil.com/gradle-plugins-snapshots`). They are **not** included in the root build — run in isolation (see `test-projects/README.md` for full docs):
