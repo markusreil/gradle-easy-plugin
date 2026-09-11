@@ -1,76 +1,184 @@
 package com.mreil.easy.release
 
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.logging.Logging
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import org.gradle.tooling.events.FinishEvent
 import org.gradle.tooling.events.OperationCompletionListener
 import org.gradle.tooling.events.task.TaskFailureResult
 import org.gradle.tooling.events.task.TaskFinishEvent
+import java.io.File
+import javax.inject.Inject
 
 /**
  * Holds versions and commit captured by `preReleaseCheck` for downstream release tasks.
  *
- * Registered by [EasyReleasePlugin] as a shared service, not exposed via public extension.
- * Listens for task completions and logs captured state on failures; rollback is not implemented.
+ * Registered by `EasyReleasePlugin` as a shared service, not exposed via public extension.
+ * Listens for task completions: a failed release-group task rolls the local repository back
+ * to the state captured at the gate (hard reset to the gate commit + guarded deletion of the
+ * release tag); any other failure only logs the captured state.
  */
 @Suppress("TooManyFunctions")
-abstract class ReleaseStateService :
-    BuildService<ReleaseStateService.Params>,
-    OperationCompletionListener {
-    abstract class Params : BuildServiceParameters {
-        abstract val commitSha: Property<String>
-        abstract val releaseVersion: Property<String>
-        abstract val nextVersion: Property<String>
-        abstract val projectName: Property<String>
-        abstract val currentVersion: Property<String>
+abstract class ReleaseStateService
+    @Inject
+    constructor(
+        private val providers: ProviderFactory,
+    ) : BuildService<ReleaseStateService.Params>,
+        OperationCompletionListener {
+        abstract class Params : BuildServiceParameters {
+            abstract val commitSha: Property<String>
+            abstract val releaseVersion: Property<String>
+            abstract val nextVersion: Property<String>
+            abstract val projectName: Property<String>
+            abstract val currentVersion: Property<String>
+            abstract val rootDir: DirectoryProperty
+            abstract val tagTemplate: Property<String>
+            abstract val releaseTaskNames: ListProperty<String>
 
-        init {
-            commitSha.convention("")
-            releaseVersion.convention("")
-            nextVersion.convention("")
-            projectName.convention("")
-            currentVersion.convention("")
+            init {
+                commitSha.convention("")
+                releaseVersion.convention("")
+                nextVersion.convention("")
+                projectName.convention("")
+                currentVersion.convention("")
+                tagTemplate.convention("v\$v")
+                releaseTaskNames.convention(emptyList())
+            }
+        }
+
+        private val logger = Logging.getLogger(ReleaseStateService::class.java)
+
+        fun recordCommitSha(sha: String) {
+            parameters.commitSha.set(sha)
+        }
+
+        fun recordReleaseVersion(version: String) {
+            parameters.releaseVersion.set(version)
+        }
+
+        fun recordNextVersion(version: String) {
+            parameters.nextVersion.set(version)
+        }
+
+        fun recordProjectName(name: String) {
+            parameters.projectName.set(name)
+        }
+
+        fun commitSha(): Provider<String> = parameters.commitSha
+
+        fun releaseVersion(): Provider<String> = parameters.releaseVersion
+
+        fun nextVersion(): Provider<String> = parameters.nextVersion
+
+        fun projectName(): Provider<String> = parameters.projectName
+
+        fun currentVersion(): Provider<String> = parameters.currentVersion
+
+        /**
+         * Release tag name: `tagTemplate` with `$v` replaced by the release version.
+         *
+         * Null when no release version is resolved. Single resolution point for the tag name —
+         * release tasks and rollback all read it here so they can never disagree.
+         */
+        fun tagName(): String? =
+            parameters.releaseVersion.orNull
+                ?.takeIf { it.isNotBlank() }
+                ?.let { parameters.tagTemplate.get().replace("\$v", it) }
+
+        override fun onFinish(event: FinishEvent) {
+            if (event !is TaskFinishEvent || event.result !is TaskFailureResult) return
+            val sha = parameters.commitSha.orNull?.takeIf { it.isNotBlank() } ?: return
+            val taskName = event.descriptor.taskPath.substringAfterLast(':')
+            if (taskName in parameters.releaseTaskNames.orNull.orEmpty()) {
+                rollback(event.descriptor.taskPath)
+            } else {
+                logger.error(
+                    "Task '{}' failed after release check at commit {}. No rollback for non-release-group tasks.",
+                    event.descriptor.taskPath,
+                    sha,
+                )
+            }
+        }
+
+        /**
+         * Restores the local repository to the state captured by `preReleaseCheck` after a failed
+         * release-group task: hard-resets to the gate commit and deletes the release tag created
+         * by this run. Nothing is ever reset against the remote — a failed release means nothing
+         * was pushed, and if an earlier invocation pushed, the gate commit is then-current HEAD.
+         */
+        fun rollback(failedTaskPath: String) {
+            val sha = parameters.commitSha.orNull?.takeIf { it.isNotBlank() } ?: return
+            val root = parameters.rootDir.orNull?.asFile ?: return
+            logger.error(
+                "Task '{}' failed after release check at commit {}. Rolling back local changes.",
+                failedTaskPath,
+                sha,
+            )
+            if (isGitRepository(root)) {
+                if (resetToGate(root, sha)) {
+                    logger.error("Rolled back working tree to commit {}.", sha)
+                    deleteReleaseTagIfCreatedAfterGate(root, sha)
+                } else {
+                    logger.error("Rollback failed: 'git reset --hard {}' did not succeed.", sha)
+                }
+            } else {
+                logger.error(
+                    "Task '{}' failed after release check at commit {}; {} is not a git repository, nothing to roll back.",
+                    failedTaskPath,
+                    sha,
+                    root,
+                )
+            }
+        }
+
+        private fun isGitRepository(root: File): Boolean = root.resolve(".git").isDirectory
+
+        private fun resetToGate(
+            root: File,
+            gateSha: String,
+        ): Boolean = gitResult(root, listOf("reset", "--hard", gateSha)).first == 0
+
+        private fun deleteReleaseTagIfCreatedAfterGate(
+            root: File,
+            gateSha: String,
+        ) {
+            val tag = tagName() ?: return
+            if (!tagCreatedAfter(root, tag, gateSha)) return
+            if (gitResult(root, listOf("tag", "-d", tag)).first == 0) {
+                logger.error("Deleted release tag {}.", tag)
+            } else {
+                logger.error("Rollback: could not delete release tag {}.", tag)
+            }
+        }
+
+        private fun tagCreatedAfter(
+            root: File,
+            tag: String,
+            gateSha: String,
+        ): Boolean {
+            val (exit, target) = gitResult(root, listOf("rev-parse", "--verify", "--quiet", "$tag^{commit}"))
+            if (exit != 0 || target.isBlank() || target == gateSha) return false
+            return gitResult(root, listOf("merge-base", "--is-ancestor", gateSha, target)).first == 0
+        }
+
+        private fun gitResult(
+            root: File,
+            arguments: List<String>,
+        ): Pair<Int, String> {
+            val output =
+                providers.exec {
+                    it.commandLine(listOf("git") + arguments)
+                    it.workingDir = root
+                    it.isIgnoreExitValue = true
+                }
+            return output.result.get().exitValue to
+                output.standardOutput.asText
+                    .get()
+                    .trim()
         }
     }
-
-    private val logger = Logging.getLogger(ReleaseStateService::class.java)
-
-    fun recordCommitSha(sha: String) {
-        parameters.commitSha.set(sha)
-    }
-
-    fun recordReleaseVersion(version: String) {
-        parameters.releaseVersion.set(version)
-    }
-
-    fun recordNextVersion(version: String) {
-        parameters.nextVersion.set(version)
-    }
-
-    fun recordProjectName(name: String) {
-        parameters.projectName.set(name)
-    }
-
-    fun commitSha(): Provider<String> = parameters.commitSha
-
-    fun releaseVersion(): Provider<String> = parameters.releaseVersion
-
-    fun nextVersion(): Provider<String> = parameters.nextVersion
-
-    fun projectName(): Provider<String> = parameters.projectName
-
-    fun currentVersion(): Provider<String> = parameters.currentVersion
-
-    override fun onFinish(event: FinishEvent) {
-        if (event !is TaskFinishEvent || event.result !is TaskFailureResult) return
-        val sha = parameters.commitSha.orNull?.takeIf { it.isNotBlank() } ?: return
-        logger.error(
-            "Task '{}' failed after release check at commit {}. Rollback not yet implemented.",
-            event.descriptor.taskPath,
-            sha,
-        )
-    }
-}

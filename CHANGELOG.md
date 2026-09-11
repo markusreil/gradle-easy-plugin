@@ -12,7 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `preReleaseTag` task in the release plugin: tags the release commit with the release version. Tag name from `tagTemplate` (default `v$v`, `$v` = release version); runs after `preReleaseCommit` (tags the version-bump commit), `VcsNone` no-op when no VCS is available.
 
-- `postReleasePush` finalizes the release: bumps `version=` to the next development version (precedence `easy.release.nextVersion` > semver `withIncPatch().withPreRelease("SNAPSHOT")`), commits it with `postReleaseCommitMessage` (default `Set new version after release: $v`, `$v` = next version; no-op when already at the next version) and atomically pushes the commit and the release tag (`git push origin HEAD <tag>`). Runs after `preReleaseTag`; the `release` task now depends on the full chain (check → commit → tag → push).
+- `postReleasePush` finalizes the release: bumps `version=` to the next development version (precedence `easy.release.nextVersion` > semver `withIncPatch().withPreRelease("SNAPSHOT")`), commits it with `postReleaseCommitMessage` (default `Set new version after release: $v`, `$v` = next version; no-op when already at the next version) and atomically pushes the commit and the release tag (`git push --atomic origin HEAD <tag>`). Runs after `preReleaseTag`; the `release` task now depends on the full chain (check → commit → tag → push).
+
+- `ReleaseStateService` now rolls a failed release-group task (`preReleaseCheck`, `preReleaseCommit`, `preReleaseTag`, `postReleasePush`, `release`) back to the state captured at the gate: it hard-resets the working tree to the gate commit (discarding the release/snapshot commits and the half-written version file) and deletes the release tag only if it points at a commit created after the gate, so a pre-existing tag is never deleted. Nothing is ever reset against the remote; non-release-group failures only log the captured state.
 
 ### Changed
 

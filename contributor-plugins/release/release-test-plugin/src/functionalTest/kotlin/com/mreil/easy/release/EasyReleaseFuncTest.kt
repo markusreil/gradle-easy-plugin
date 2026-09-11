@@ -406,6 +406,141 @@ class EasyReleaseFuncTest {
             softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.1-SNAPSHOT")
         }
     }
+
+    @Test
+    fun `failed push rolls back to gate commit and deletes the release tag`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        val remote = initGitWithRemote(project)
+        val conflictSha = advanceRemote(remote)
+        val gateSha = gitRevParse(project, "HEAD")
+
+        val result = project.buildAndFail("release")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("Rolling back local changes")
+            softly.assertThat(result.output).contains("Deleted release tag v1.0.0.")
+            softly.assertThat(gitRevParse(project, "HEAD")).isEqualTo(gateSha)
+            softly.assertThat(gitTagExists(project, "v1.0.0")).isFalse()
+            softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.0-SNAPSHOT")
+            softly.assertThat(gitOutput(remote.absolutePath, "rev-parse", "refs/heads/main")).isEqualTo(conflictSha)
+            softly.assertThat(gitRefExists(remote.absolutePath, "v1.0.0")).isFalse()
+        }
+    }
+
+    @Test
+    fun `pre-existing release tag survives rollback`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        initGitWithRemote(project)
+        runGit(project.projectDir.absolutePath, "tag", "v1.0.0")
+        val gateSha = gitRevParse(project, "HEAD")
+
+        val result = project.buildAndFail("release")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("Rolling back local changes")
+            softly.assertThat(gitRevParse(project, "HEAD")).isEqualTo(gateSha)
+            softly.assertThat(gitTagExists(project, "v1.0.0")).isTrue()
+            softly.assertThat(gitRevParse(project, "v1.0.0")).isEqualTo(gateSha)
+            softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.0-SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun `no rollback when the gate fails on a dirty tree`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        initGitWithRemote(project)
+        project.file("uncommitted.txt", "dirty")
+        val headSha = gitRevParse(project, "HEAD")
+
+        val result = project.buildAndFail("release")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("working tree is dirty")
+            softly.assertThat(result.output).doesNotContain("Rolling back")
+            softly.assertThat(gitRevParse(project, "HEAD")).isEqualTo(headSha)
+            softly.assertThat(gitTagExists(project, "v1.0.0")).isFalse()
+            softly.assertThat(project.file("uncommitted.txt").readText()).isEqualTo("dirty")
+        }
+    }
+
+    @Test
+    fun `successful release performs no rollback`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        initGitWithRemote(project)
+
+        val result = project.build("release")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(result.output).doesNotContain("Rolling back")
+            softly.assertThat(gitTagExists(project, "v1.0.0")).isTrue()
+            softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.1-SNAPSHOT")
+        }
+    }
 }
 
 private fun initGitWithRemote(project: GradleTestProject): File {
@@ -420,6 +555,20 @@ private fun initGitWithRemote(project: GradleTestProject): File {
     runGit(project.projectDir.absolutePath, "remote", "add", "origin", remoteDir.absolutePath)
     runGit(project.projectDir.absolutePath, "push", "-u", "origin", "main")
     return remoteDir
+}
+
+/**
+ * Advances the bare [remote] with a commit the local repo does not know about (via a throwaway
+ * clone), so the next `git push` from the project is a non-fast-forward that gets rejected.
+ */
+private fun advanceRemote(remote: File): String {
+    val cloneDir = Files.createTempDirectory("rollback-clone-").toFile()
+    runGit(remote.parentFile.absolutePath, "clone", remote.absolutePath, cloneDir.absolutePath)
+    runGit(cloneDir.absolutePath, "config", "user.email", "test@example.com")
+    runGit(cloneDir.absolutePath, "config", "user.name", "Test")
+    runGit(cloneDir.absolutePath, "commit", "--allow-empty", "-m", "remote-only commit")
+    runGit(cloneDir.absolutePath, "push", "origin", "main")
+    return gitOutput(remote.absolutePath, "rev-parse", "refs/heads/main")
 }
 
 private fun runGit(
@@ -446,6 +595,23 @@ private fun gitChangedFiles(project: GradleTestProject): List<String> =
     gitOutput(project.projectDir.absolutePath, "show", "--name-only", "--format=", "HEAD")
         .lines()
         .filter { it.isNotBlank() }
+
+private fun gitTagExists(
+    project: GradleTestProject,
+    tag: String,
+): Boolean = gitRefExists(project.projectDir.absolutePath, tag)
+
+private fun gitRefExists(
+    workDir: String,
+    ref: String,
+): Boolean {
+    val process =
+        ProcessBuilder(listOf("git", "rev-parse", "--verify", "--quiet", "$ref^{commit}"))
+            .directory(File(workDir))
+            .redirectErrorStream(true)
+            .start()
+    return process.waitFor() == 0
+}
 
 private fun gitOutput(
     workDir: String,

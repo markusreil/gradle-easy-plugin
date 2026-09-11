@@ -22,7 +22,7 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
         if (!target.isRoot()) return
         val release = target.findEasyChild<EasyReleaseExtension, DefaultEasyReleaseExtension>() ?: return
         val vcs = EasyVcs.of(target)
-        registerService(target)
+        registerService(target, release)
         val check =
             target.tasks.register("preReleaseCheck", PreReleaseCheckTask::class.java) {
                 it.group = "release"
@@ -44,7 +44,6 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
         target.tasks.register("preReleaseTag", PreReleaseTagTask::class.java) {
             it.group = "release"
             it.description = "Tags the release commit with the release version."
-            it.tagTemplate.set(release.tagTemplate)
             it.dependsOn("preReleaseCommit")
         }
         target.tasks.register("postReleasePush", PostReleasePushTask::class.java) {
@@ -52,7 +51,6 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
             it.description = "Bumps to the next development version, commits it and pushes commit and tag."
             it.versionFile.set(release.versionFile.orElse(target.layout.projectDirectory.file("gradle.properties")))
             it.commitMessageTemplate.set(release.postReleaseCommitMessage)
-            it.tagTemplate.set(release.tagTemplate)
             it.dependsOn("preReleaseTag")
         }
         target.tasks.register("release", Task::class.java) {
@@ -67,7 +65,10 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
         }
     }
 
-    private fun registerService(target: Project) {
+    private fun registerService(
+        target: Project,
+        release: EasyReleaseExtension,
+    ) {
         val semver = EasySemver.of(target)
         val semverRelease = semver.map { it.withClearedPreRelease().toString() }
         val semverNext = semver.map { it.withIncPatch().withPreRelease("SNAPSHOT").toString() }
@@ -78,6 +79,17 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
                     nextVersion.set(propertyResolver.get(NEXT_VERSION_PROPERTY).orElse(semverNext))
                     projectName.set(target.name)
                     currentVersion.set(target.version.toString())
+                    rootDir.set(target.layout.projectDirectory)
+                    tagTemplate.set(release.tagTemplate)
+                    releaseTaskNames.set(
+                        listOf(
+                            "preReleaseCheck",
+                            "preReleaseCommit",
+                            "preReleaseTag",
+                            "postReleasePush",
+                            "release",
+                        ),
+                    )
                 }
             }
         listenerRegistry.onTaskCompletion(releaseService)

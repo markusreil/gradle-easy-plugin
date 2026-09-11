@@ -34,9 +34,6 @@ abstract class PostReleasePushTask : DefaultTask() {
     @get:Input
     abstract val commitMessageTemplate: Property<String>
 
-    @get:Input
-    abstract val tagTemplate: Property<String>
-
     @get:ServiceReference("release")
     abstract val releaseState: Property<ReleaseStateService>
 
@@ -72,12 +69,9 @@ abstract class PostReleasePushTask : DefaultTask() {
                 "or enable the semver plugin with a valid project version.",
         )
 
-    private fun tagName(): String {
-        val releaseVersion =
-            releaseState.get().releaseVersion().orNull ?: throw GradleException(
-                "No release version resolved: set -Deasy.release.version=<version> " +
-                    "or enable the semver plugin with a valid project version.",
-            )
-        return tagTemplate.get().replace("\$v", releaseVersion)
-    }
+    private fun tagName(): String =
+        releaseState.get().tagName() ?: throw GradleException(
+            "No release version resolved: set -Deasy.release.version=<version> " +
+                "or enable the semver plugin with a valid project version.",
+        )
 }

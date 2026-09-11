@@ -14,6 +14,7 @@ import org.gradle.api.services.BuildServiceRegistration
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import java.io.File
+import java.nio.file.Files
 
 class EasyReleasePluginTest {
     @Test
@@ -184,6 +185,7 @@ class EasyReleasePluginTest {
             softly.assertThat(state.nextVersion().get()).isEqualTo("1.0.1-SNAPSHOT")
             softly.assertThat(state.projectName().get()).isEqualTo(project.name)
             softly.assertThat(state.commitSha().orNull).isEqualTo("abc123")
+            softly.assertThat(state.tagName()).isEqualTo("v1.0.0")
         }
     }
 
@@ -198,6 +200,26 @@ class EasyReleasePluginTest {
         val state = releaseStateOf(project)
         assertSoftly { softly ->
             softly.assertThat(state.commitSha().orNull.isNullOrBlank()).isTrue()
+        }
+    }
+
+    @Test
+    fun `release service resolves custom tag template from the extension`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.2.3-SNAPSHOT"
+        project.extensions
+            .getByType(EasyExtension::class.java)
+            .extensions
+            .getByType(EasyReleaseExtension::class.java)
+            .tagTemplate
+            .set("release-\$v")
+        (project as ProjectInternal).evaluate()
+        val state = releaseStateOf(project)
+        assertSoftly { softly ->
+            softly.assertThat(state.releaseVersion().get()).isEqualTo("1.2.3")
+            softly.assertThat(state.tagName()).isEqualTo("release-1.2.3")
         }
     }
 
@@ -291,7 +313,6 @@ class EasyReleasePluginTest {
         val task = project.tasks.getByName("preReleaseTag") as PreReleaseTagTask
         assertSoftly { softly ->
             softly.assertThat(task.group).isEqualTo("release")
-            softly.assertThat(task.tagTemplate.get()).isEqualTo("v\$v")
             softly.assertThat(task.taskDependencies.getDependencies(task)).contains(
                 project.tasks.getByName("preReleaseCheck"),
                 project.tasks.getByName("preReleaseCommit"),
@@ -341,7 +362,6 @@ class EasyReleasePluginTest {
         assertSoftly { softly ->
             softly.assertThat(task.group).isEqualTo("release")
             softly.assertThat(task.commitMessageTemplate.get()).isEqualTo("Set new version after release: \$v")
-            softly.assertThat(task.tagTemplate.get()).isEqualTo("v\$v")
             softly.assertThat(task.taskDependencies.getDependencies(task)).contains(
                 project.tasks.getByName("preReleaseCheck"),
                 project.tasks.getByName("preReleaseTag"),
@@ -410,6 +430,59 @@ class EasyReleasePluginTest {
             .hasMessageContaining(EasyReleasePlugin.NEXT_VERSION_PROPERTY)
     }
 
+    @Test
+    fun `rollback resets to gate commit and deletes tag created after gate`() {
+        val repo = gitRepo()
+        val versionFile = File(repo, "gradle.properties")
+        versionFile.writeText("group=com.example\nversion=1.0.0-SNAPSHOT\n")
+        gitAddCommit(repo, "initial")
+        val gateSha = gitOutput(repo, "rev-parse", "HEAD")
+
+        val state = releaseStateWithRepo(repo)
+        state.recordCommitSha(gateSha)
+        state.recordReleaseVersion("1.0.0")
+
+        versionFile.writeText("group=com.example\nversion=1.0.0\n")
+        runGit(repo, "add", "gradle.properties")
+        runGit(repo, "commit", "-m", "Set version for release: 1.0.0")
+        runGit(repo, "tag", "v1.0.0")
+
+        state.rollback("postReleasePush")
+
+        assertSoftly { softly ->
+            softly.assertThat(gitOutput(repo, "rev-parse", "HEAD")).isEqualTo(gateSha)
+            softly.assertThat(gitRef(repo, "v1.0.0")).isNull()
+            softly.assertThat(versionFile.readText()).contains("version=1.0.0-SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun `rollback keeps a pre-existing tag pointing at the gate commit`() {
+        val repo = gitRepo()
+        val versionFile = File(repo, "gradle.properties")
+        versionFile.writeText("group=com.example\nversion=1.0.0-SNAPSHOT\n")
+        runGit(repo, "add", "-A")
+        runGit(repo, "commit", "-m", "initial")
+        val gateSha = gitOutput(repo, "rev-parse", "HEAD")
+        runGit(repo, "tag", "v1.0.0")
+
+        val state = releaseStateWithRepo(repo)
+        state.recordCommitSha(gateSha)
+        state.recordReleaseVersion("1.0.0")
+
+        versionFile.writeText("group=com.example\nversion=1.0.0\n")
+        runGit(repo, "add", "gradle.properties")
+        runGit(repo, "commit", "-m", "Set version for release: 1.0.0")
+
+        state.rollback("preReleaseTag")
+
+        assertSoftly { softly ->
+            softly.assertThat(gitOutput(repo, "rev-parse", "HEAD")).isEqualTo(gateSha)
+            softly.assertThat(gitRef(repo, "v1.0.0")).isEqualTo(gateSha)
+            softly.assertThat(versionFile.readText()).contains("version=1.0.0-SNAPSHOT")
+        }
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun releaseStateOf(project: Project): ReleaseStateService {
         val registration =
@@ -443,5 +516,76 @@ class EasyReleasePluginTest {
         project.gradle.sharedServices.registerIfAbsent("vcs", VcsService::class.java) {
             it.parameters.rootDir.set(project.layout.projectDirectory)
         }
+    }
+
+    private fun releaseStateWithRepo(repo: File): ReleaseStateService {
+        val project = ProjectBuilder.builder().withProjectDir(repo).build()
+        project.group = "com.example"
+        project.version = "1.0.0-SNAPSHOT"
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        (project as ProjectInternal).evaluate()
+        return releaseStateOf(project)
+    }
+
+    private fun gitRepo(): File =
+        Files.createTempDirectory("rollback-repo-").toFile().apply {
+            runGit(this, "init", "-b", "main")
+            runGit(this, "config", "user.email", "test@example.com")
+            runGit(this, "config", "user.name", "Test")
+        }
+
+    private fun gitAddCommit(
+        dir: File,
+        message: String,
+    ) {
+        runGit(dir, "add", "-A")
+        runGit(dir, "commit", "-m", message)
+    }
+
+    private fun gitRef(
+        dir: File,
+        ref: String,
+    ): String? {
+        val process =
+            ProcessBuilder(listOf("git", "rev-parse", "--verify", "--quiet", "$ref^{commit}"))
+                .directory(dir)
+                .redirectErrorStream(true)
+                .start()
+        val output =
+            process.inputStream
+                .bufferedReader()
+                .readText()
+                .trim()
+        return output.takeIf { process.waitFor() == 0 }
+    }
+
+    private fun gitOutput(
+        dir: File,
+        vararg args: String,
+    ): String {
+        val process =
+            ProcessBuilder(listOf("git") + args.toList())
+                .directory(dir)
+                .redirectErrorStream(true)
+                .start()
+        val output =
+            process.inputStream
+                .bufferedReader()
+                .readText()
+                .trim()
+        check(process.waitFor() == 0) { "git ${args.joinToString(" ")} failed with exit code $process.exitValue()" }
+        return output
+    }
+
+    private fun runGit(
+        dir: File,
+        vararg args: String,
+    ) {
+        val process =
+            ProcessBuilder(listOf("git") + args.toList())
+                .directory(dir)
+                .redirectErrorStream(true)
+                .start()
+        check(process.waitFor() == 0) { "git ${args.joinToString(" ")} failed with exit code $process.exitValue()" }
     }
 }
