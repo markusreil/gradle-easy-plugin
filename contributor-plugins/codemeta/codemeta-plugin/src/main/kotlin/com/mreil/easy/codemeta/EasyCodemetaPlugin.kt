@@ -3,7 +3,10 @@ package com.mreil.easy.codemeta
 import com.mreil.easy.AbstractEasyProjectPlugin
 import com.mreil.easy.EnabledBy
 import com.mreil.easy.findEasyChild
+import com.mreil.easy.isEasyChildEnabled
 import com.mreil.easy.isRoot
+import com.mreil.easy.vcs.EasyVcs
+import com.mreil.easy.vcs.EasyVcsExtension
 import org.gradle.api.Project
 
 /**
@@ -56,6 +59,7 @@ class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {
                 task.projectDescription.set(
                     target.provider { target.description ?: "TODO: Add description - replace with project description" },
                 )
+                task.codeRepository.set(target.provider { resolveCodeRepository(target) })
                 task.onlyIf {
                     !task.outputFile
                         .get()
@@ -72,4 +76,14 @@ class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {
             }
         }
     }
+
+    private fun resolveCodeRepository(target: Project): String =
+        runCatching {
+            if (!target.isEasyChildEnabled<EasyVcsExtension>()) {
+                null
+            } else {
+                EasyVcs.of(target).orNull?.remoteUrl()
+            }
+        }.getOrNull()?.takeIf { !it.isNullOrBlank() }
+            ?: "TODO: Add codeRepository - e.g. https://github.com/mreil/gradle-easy-plugin-new"
 }

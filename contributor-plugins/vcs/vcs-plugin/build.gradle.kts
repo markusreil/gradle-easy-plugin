@@ -5,15 +5,10 @@ plugins {
     alias(libs.plugins.detekt)
 }
 
-easy {
-    publish.enabled = false
-}
-
 repositories { mavenCentral() }
 
 dependencies {
-    api(project(":contributor-plugins:codemeta:codemeta-plugin-api"))
-    implementation(project(":contributor-plugins:vcs:vcs-plugin-api"))
+    api(project(":contributor-plugins:vcs:vcs-plugin-api"))
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
     compileOnly(gradleApi())
@@ -30,7 +25,6 @@ testing {
             dependencies {
                 implementation(libs.assertj.core)
                 implementation(project(":easy-plugin-core"))
-                implementation(project(":contributor-plugins:vcs:vcs-plugin"))
                 implementation(gradleTestKit())
             }
         }

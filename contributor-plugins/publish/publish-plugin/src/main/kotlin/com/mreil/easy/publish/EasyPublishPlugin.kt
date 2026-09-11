@@ -75,6 +75,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             target.plugins.withId("maven-publish") {
                 withMavenPublish(target)
             }
+            // TODO should this be inside with(mavenPublish). Publishing extension is needed.
             // Signing is handled by the Gradle `signing` plugin (see SigningWiring).
             SigningWiring.wire(target, propertyResolver)
         }
