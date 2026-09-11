@@ -101,29 +101,172 @@ class EasyReleaseFuncTest {
         }
     }
 
-    private fun initGitWithRemote(project: GradleTestProject) {
-        project.file("build.gradle.kts")
-        runGit(project.projectDir.absolutePath, "init", "-b", "main")
-        runGit(project.projectDir.absolutePath, "config", "user.email", "test@example.com")
-        runGit(project.projectDir.absolutePath, "config", "user.name", "Test")
-        runGit(project.projectDir.absolutePath, "add", "-A")
-        runGit(project.projectDir.absolutePath, "commit", "-m", "initial")
-        val remoteDir = Files.createTempDirectory("git-remote-").toFile()
-        runGit(remoteDir.absolutePath, "init", "--bare")
-        runGit(project.projectDir.absolutePath, "remote", "add", "origin", remoteDir.absolutePath)
-        runGit(project.projectDir.absolutePath, "push", "-u", "origin", "main")
+    @Test
+    fun `preReleaseCommit writes release version and commits only the version file`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        initGitWithRemote(project)
+
+        val result = project.build("preReleaseCommit")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.0")
+            softly.assertThat(gitLastMessage(project)).isEqualTo("Set version for release: 1.0.0")
+            softly.assertThat(gitChangedFiles(project)).containsExactly("gradle.properties")
+        }
     }
 
-    private fun runGit(
-        workDir: String,
-        vararg args: String,
-    ) {
-        val process =
-            ProcessBuilder(listOf("git") + args.toList())
-                .directory(File(workDir))
-                .redirectErrorStream(true)
-                .start()
-        val exitCode = process.waitFor()
-        check(exitCode == 0) { "git ${args.joinToString(" ")} failed with exit code $exitCode" }
+    @Test
+    fun `preReleaseCommit uses custom version file and message template`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release {
+                        enabled.set(true)
+                        versionFile.set(layout.projectDirectory.file("version.txt"))
+                        preReleaseCommitMessage.set("Release \${'$'}v is out")
+                    }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+            file("version.txt", "version=1.0.0-SNAPSHOT")
+        }
+        initGitWithRemote(project)
+
+        val result = project.build("preReleaseCommit")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(project.file("version.txt").readText()).contains("version=1.0.0")
+            softly.assertThat(gitLastMessage(project)).isEqualTo("Release 1.0.0 is out")
+            softly.assertThat(gitChangedFiles(project)).containsExactly("version.txt")
+        }
     }
+
+    @Test
+    fun `preReleaseCommit is gated by preReleaseCheck`() {
+        project.configure {
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        initGitWithRemote(project)
+        project.file("uncommitted.txt", "dirty")
+
+        val result = project.buildAndFail("preReleaseCommit")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("working tree is dirty")
+        }
+    }
+
+    @Test
+    fun `preReleaseCommit without vcs updates version file but skips commit`() {
+        project.configure {
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+
+        val result = project.build("preReleaseCommit")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.0")
+            softly.assertThat(result.output).contains("VCS unavailable")
+        }
+    }
+}
+
+private fun initGitWithRemote(project: GradleTestProject) {
+    project.file("build.gradle.kts")
+    runGit(project.projectDir.absolutePath, "init", "-b", "main")
+    runGit(project.projectDir.absolutePath, "config", "user.email", "test@example.com")
+    runGit(project.projectDir.absolutePath, "config", "user.name", "Test")
+    runGit(project.projectDir.absolutePath, "add", "-A")
+    runGit(project.projectDir.absolutePath, "commit", "-m", "initial")
+    val remoteDir = Files.createTempDirectory("git-remote-").toFile()
+    runGit(remoteDir.absolutePath, "init", "--bare")
+    runGit(project.projectDir.absolutePath, "remote", "add", "origin", remoteDir.absolutePath)
+    runGit(project.projectDir.absolutePath, "push", "-u", "origin", "main")
+}
+
+private fun runGit(
+    workDir: String,
+    vararg args: String,
+) {
+    val process =
+        ProcessBuilder(listOf("git") + args.toList())
+            .directory(File(workDir))
+            .redirectErrorStream(true)
+            .start()
+    val exitCode = process.waitFor()
+    check(exitCode == 0) { "git ${args.joinToString(" ")} failed with exit code $exitCode" }
+}
+
+private fun gitLastMessage(project: GradleTestProject): String = gitOutput(project.projectDir.absolutePath, "log", "-1", "--format=%s")
+
+private fun gitChangedFiles(project: GradleTestProject): List<String> =
+    gitOutput(project.projectDir.absolutePath, "show", "--name-only", "--format=", "HEAD")
+        .lines()
+        .filter { it.isNotBlank() }
+
+private fun gitOutput(
+    workDir: String,
+    vararg args: String,
+): String {
+    val process =
+        ProcessBuilder(listOf("git") + args.toList())
+            .directory(File(workDir))
+            .redirectErrorStream(true)
+            .start()
+    val output = process.inputStream.bufferedReader().readText()
+    check(process.waitFor() == 0) { "git ${args.joinToString(" ")} failed with exit code $process.exitValue()" }
+    return output.trim()
 }

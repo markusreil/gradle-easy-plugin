@@ -41,6 +41,16 @@ internal class VcsGit(
 
     override fun fetch(): Provider<Boolean> = success("fetch")
 
+    @Suppress("SpreadOperator")
+    override fun addAndCommit(
+        paths: List<String>,
+        message: String,
+    ): Provider<Boolean> =
+        providers.provider {
+            val addSuccess = output("add", "--", *paths.toTypedArray()).result.get().exitValue == 0
+            addSuccess && output("commit", "-m", message).result.get().exitValue == 0
+        }
+
     private fun firstLine(vararg args: String): Provider<String> =
         output(*args)
             .standardOutput

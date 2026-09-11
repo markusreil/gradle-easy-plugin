@@ -8,5 +8,6 @@ abstract class DefaultEasyReleaseExtension : EasyReleaseExtension {
     init {
         enabled.convention(true)
         releaseBranchPattern.convention("(main|master|rel-.*)")
+        preReleaseCommitMessage.convention("Set version for release: \$v")
     }
 }

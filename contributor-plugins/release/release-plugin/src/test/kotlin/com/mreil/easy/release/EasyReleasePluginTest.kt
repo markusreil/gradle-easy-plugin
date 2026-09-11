@@ -3,6 +3,7 @@ package com.mreil.easy.release
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.semver.EasySemverExtension
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.GradleException
@@ -11,6 +12,7 @@ import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.services.BuildServiceRegistration
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
+import java.io.File
 
 class EasyReleasePluginTest {
     @Test
@@ -29,7 +31,9 @@ class EasyReleasePluginTest {
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("release")).isNotNull()
             softly.assertThat(project.tasks.findByName("preReleaseCheck")).isNotNull()
+            softly.assertThat(project.tasks.findByName("preReleaseCommit")).isNotNull()
             softly.assertThat(release?.releaseBranchPattern?.get()).isEqualTo("(main|master|rel-.*)")
+            softly.assertThat(release?.preReleaseCommitMessage?.get()).isEqualTo("Set version for release: \$v")
             softly.assertThat(project.tasks.findByName("release")?.dependsOn).isNotEmpty()
         }
     }
@@ -190,6 +194,87 @@ class EasyReleasePluginTest {
         assertSoftly { softly ->
             softly.assertThat(state.commitSha().orNull.isNullOrBlank()).isTrue()
         }
+    }
+
+    @Test
+    fun `preReleaseCommit is gated and defaults to root gradle properties`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
+        assertSoftly { softly ->
+            softly.assertThat(task.group).isEqualTo("release")
+            softly
+                .assertThat(task.versionFile.get().asFile)
+                .isEqualTo(
+                    project.layout.projectDirectory
+                        .file("gradle.properties")
+                        .asFile,
+                )
+            softly.assertThat(task.commitMessageTemplate.get()).isEqualTo("Set version for release: \$v")
+            softly.assertThat(task.taskDependencies.getDependencies(task)).contains(
+                project.tasks.getByName("preReleaseCheck"),
+            )
+        }
+    }
+
+    @Test
+    fun `preReleaseCommit writes version file and skips commit without vcs`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0-SNAPSHOT"
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
+        val versionFile = File(project.projectDir, "gradle.properties")
+        versionFile.writeText("group=com.example\nversion=1.0.0-SNAPSHOT\n")
+        task.versionFile.set(versionFile)
+
+        task.commit()
+
+        assertSoftly { softly ->
+            softly.assertThat(versionFile.readText()).contains("version=1.0.0\n")
+            softly.assertThat(versionFile.readText()).contains("group=com.example")
+        }
+    }
+
+    @Test
+    fun `preReleaseCommit is a no-op when version file already at release version`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
+        val original = "group=com.example\nversion=1.0.0\n"
+        val versionFile = File(project.projectDir, "gradle.properties")
+        versionFile.writeText(original)
+        task.versionFile.set(versionFile)
+
+        task.commit()
+
+        assertThat(versionFile.readText()).isEqualTo(original)
+    }
+
+    @Test
+    fun `preReleaseCommit fails without resolved release version`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.extensions
+            .getByType(EasyExtension::class.java)
+            .extensions
+            .getByType(EasySemverExtension::class.java)
+            .enabled
+            .set(false)
+        (project as ProjectInternal).evaluate()
+        val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
+        task.versionFile.set(File(project.projectDir, "gradle.properties"))
+
+        assertThatThrownBy { task.commit() }
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining(EasyReleasePlugin.RELEASE_VERSION_PROPERTY)
     }
 
     @Suppress("UNCHECKED_CAST")

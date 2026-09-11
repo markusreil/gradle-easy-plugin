@@ -16,4 +16,9 @@ internal interface VcsOperations {
     fun push(): Provider<Boolean>
 
     fun fetch(): Provider<Boolean>
+
+    fun addAndCommit(
+        paths: List<String>,
+        message: String,
+    ): Provider<Boolean>
 }

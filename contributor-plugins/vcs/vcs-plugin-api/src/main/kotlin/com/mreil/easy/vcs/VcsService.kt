@@ -51,4 +51,9 @@ abstract class VcsService
         fun currentBranch(): Provider<String> = operations.branch()
 
         fun currentSha(): Provider<String> = operations.currentSha()
+
+        fun addAndCommit(
+            paths: List<String>,
+            message: String,
+        ): Provider<Boolean> = operations.addAndCommit(paths, message)
     }

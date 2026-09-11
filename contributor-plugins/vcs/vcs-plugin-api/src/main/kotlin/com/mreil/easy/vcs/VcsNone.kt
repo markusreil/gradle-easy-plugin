@@ -19,4 +19,9 @@ internal class VcsNone(
     override fun push(): Provider<Boolean> = providers.provider { false }
 
     override fun fetch(): Provider<Boolean> = providers.provider { false }
+
+    override fun addAndCommit(
+        paths: List<String>,
+        message: String,
+    ): Provider<Boolean> = providers.provider { false }
 }
