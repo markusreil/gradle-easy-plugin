@@ -23,9 +23,11 @@ class EasyReleaseFuncTest {
                 plugins {
                     id("com.mreil.easy.test.release")
                 }
+                version = "1.0.0"
                 easy {
                     release { enabled.set(true) }
                     vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
                 }
                 """.trimIndent(),
             )
@@ -35,6 +37,9 @@ class EasyReleaseFuncTest {
 
         assertSoftly { softly ->
             softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(result.output).contains("Releasing")
+            softly.assertThat(result.output).contains("release version 1.0.0")
+            softly.assertThat(result.output).contains("next version 1.0.1-SNAPSHOT")
         }
     }
 
@@ -47,9 +52,11 @@ class EasyReleaseFuncTest {
                 plugins {
                     id("com.mreil.easy.test.release")
                 }
+                version = "1.0.0"
                 easy {
                     release { enabled.set(true) }
                     vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
                 }
                 """.trimIndent(),
             )
@@ -60,6 +67,37 @@ class EasyReleaseFuncTest {
 
         assertSoftly { softly ->
             softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(result.output).contains("release version 1.0.0")
+            softly.assertThat(result.output).contains("next version 1.0.1-SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun `system properties override semver versions`() {
+        project.configure {
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0"
+                easy {
+                    release { enabled.set(true) }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+            systemProperty("easy.release.version", "9.9.9")
+            systemProperty("easy.release.nextVersion", "9.9.10-SNAPSHOT")
+        }
+
+        val result = project.build("release")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("BUILD SUCCESSFUL")
+            softly.assertThat(result.output).contains("release version 9.9.9")
+            softly.assertThat(result.output).contains("next version 9.9.10-SNAPSHOT")
         }
     }
 

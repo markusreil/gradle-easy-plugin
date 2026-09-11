@@ -8,11 +8,12 @@ import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 
 /**
- * Verifies release readiness; gates `release`.
+ * Verifies release readiness and resolves release versions; gates `release`.
  *
  * All git state is consumed at execution time via providers. When VCS is
  * absent (provider empty), VCS checks are skipped and coordinates checks
- * still run.
+ * still run. Release/next versions resolve as system property > semver, and
+ * fail here with guidance when neither is present.
  */
 abstract class PreReleaseCheckTask : DefaultTask() {
     @get:Input
@@ -36,12 +37,47 @@ abstract class PreReleaseCheckTask : DefaultTask() {
     @get:Input
     abstract val hasVersion: Property<Boolean>
 
+    @get:Input
+    abstract val projectName: Property<String>
+
+    @get:Input
+    abstract val currentVersion: Property<String>
+
+    @get:Input
+    @get:Optional
+    abstract val releaseVersion: Property<String>
+
+    @get:Input
+    @get:Optional
+    abstract val nextVersion: Property<String>
+
     @TaskAction
     fun check() {
         val failures = collectFailures()
         if (failures.isNotEmpty()) {
             throw GradleException("Release readiness check failed:\n- " + failures.joinToString("\n- "))
         }
+        logVersions()
+    }
+
+    private fun logVersions() {
+        val release =
+            releaseVersion.orNull ?: throw GradleException(
+                "No release version resolved: set -Deasy.release.version=<version> " +
+                    "or enable the semver plugin with a valid project version.",
+            )
+        val next =
+            nextVersion.orNull ?: throw GradleException(
+                "No next version resolved: set -Deasy.release.nextVersion=<version> " +
+                    "or enable the semver plugin with a valid project version.",
+            )
+        logger.lifecycle(
+            "Releasing {}: current version {}, release version {}, next version {}",
+            projectName.get(),
+            currentVersion.get(),
+            release,
+            next,
+        )
     }
 
     private fun collectFailures(): List<String> {

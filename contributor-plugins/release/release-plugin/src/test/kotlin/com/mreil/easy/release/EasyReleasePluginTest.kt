@@ -2,6 +2,7 @@ package com.mreil.easy.release
 
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.semver.EasySemverExtension
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.GradleException
@@ -89,6 +90,57 @@ class EasyReleasePluginTest {
             .hasMessageContaining("branch 'feature-x' does not match release pattern")
     }
 
+    @Test
+    fun `preReleaseCheck uses system property override`() {
+        System.setProperty(EasyReleasePlugin.RELEASE_VERSION_PROPERTY, "9.9.9")
+        System.setProperty(EasyReleasePlugin.NEXT_VERSION_PROPERTY, "9.9.10-SNAPSHOT")
+        try {
+            val project = ProjectBuilder.builder().build()
+            project.pluginManager.apply(ProjectPlugin::class.java)
+            (project as ProjectInternal).evaluate()
+            val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+            assertSoftly { softly ->
+                softly.assertThat(check.releaseVersion.get()).isEqualTo("9.9.9")
+                softly.assertThat(check.nextVersion.get()).isEqualTo("9.9.10-SNAPSHOT")
+            }
+        } finally {
+            System.clearProperty(EasyReleasePlugin.RELEASE_VERSION_PROPERTY)
+            System.clearProperty(EasyReleasePlugin.NEXT_VERSION_PROPERTY)
+        }
+    }
+
+    @Test
+    fun `preReleaseCheck fails without version or semver`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        val easy = project.extensions.getByType(EasyExtension::class.java)
+        easy.extensions
+            .getByType(EasySemverExtension::class.java)
+            .enabled
+            .set(false)
+        (project as ProjectInternal).evaluate()
+        val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+        assertThatThrownBy { check.check() }
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining(EasyReleasePlugin.RELEASE_VERSION_PROPERTY)
+    }
+
+    @Test
+    fun `preReleaseCheck derives release from snapshot version`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.2.3-SNAPSHOT"
+        (project as ProjectInternal).evaluate()
+        val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+        assertSoftly { softly ->
+            softly.assertThat(check.releaseVersion.get()).isEqualTo("1.2.3")
+            softly.assertThat(check.nextVersion.get()).isEqualTo("1.2.4-SNAPSHOT")
+        }
+    }
+
     private fun checkTask(
         group: String? = "com.example",
         version: String? = "1.0.0",
@@ -105,6 +157,8 @@ class EasyReleasePluginTest {
         check.branch.set(branch)
         check.clean.set(clean)
         check.upToDate.set(upToDate)
+        check.releaseVersion.set("1.0.0")
+        check.nextVersion.set("1.0.1-SNAPSHOT")
         return check
     }
 }
