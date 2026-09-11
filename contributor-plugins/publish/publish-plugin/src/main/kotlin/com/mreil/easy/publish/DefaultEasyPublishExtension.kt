@@ -45,7 +45,9 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
         toMavenLocal.set(true)
     }
 
-    @get:CopyMode(CopyMode.Mode.READ_ONLY)
+    // DEEP (inheritable convention, overridable per-project): a single subproject may opt
+    // into Maven Central from its own script while the root stays unset. READ_ONLY would
+    // disallow the per-project override.
     abstract val toMavenCentral: Property<Boolean>
 
     /**
@@ -59,7 +61,10 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
         toMavenCentral.set(true)
         signingEnabled.set(true)
         if (stagingPath.orNull == null) {
-            toMavenStaging()
+            // Best-effort default staging: a subproject inheriting READ_ONLY staging from the
+            // root (e.g. when the root is central) cannot change it here — that is intended, and
+            // the wiring falls back to the `stagingRepo` default when the path stays unset.
+            runCatching { toMavenStaging() }
         }
     }
 

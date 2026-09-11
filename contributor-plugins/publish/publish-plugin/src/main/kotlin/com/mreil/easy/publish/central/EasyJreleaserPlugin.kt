@@ -6,6 +6,7 @@ import com.mreil.easy.codemeta.EasyCodemetaExtension
 import com.mreil.easy.isEasyChildEnabled
 import com.mreil.easy.publish.EasyPublishExtension
 import com.mreil.easy.publish.RepoRouting
+import com.mreil.easy.publish.isCentralEnabled
 import com.mreil.easy.publish.publishExtension
 import com.mreil.easy.semver.EasySemver
 import com.mreil.easy.semver.EasySemverExtension
@@ -29,11 +30,13 @@ import org.gradle.api.Project
  * `maven-publish` through the [EasyPublishPlugin] fan-out is wired without nested
  * `afterEvaluate` blocks — the enabled-gate is simply `maven-publish` being applied.
  *
- * Registers `generateJreleaserConfig` (YAML generation, gated on every project's
- * `checkCentralPoms`), the root `publish` aggregation over subproject `publish`
- * tasks, and `publishToMavenCentral` (JReleaser `deploy`). `toMavenCentral` set on
- * the shared publish extension is the main switch: unless it is enabled, the plugin
- * wires nothing. Versions with a `-SNAPSHOT` pre-release are detected via the semver
+ * Registers `generateJreleaserConfig` (YAML generation, gated on every central-enabled
+ * project's `checkCentralPoms`), the root `publish` aggregation over subproject `publish`
+ * tasks, and `publishToMavenCentral` (JReleaser `deploy`). The gate is ANY: wiring becomes
+ * active when any project opts into Maven Central — a root `easy { publish { toMavenCentral() } }`
+ * (inherited by every subproject) or a single subproject setting `toMavenCentral()` from its
+ * own script. Unless that ANY condition holds, the plugin wires nothing. Versions with a
+ * `-SNAPSHOT` pre-release are detected via the semver
  * API and skip JReleaser entirely; other pre-releases like `1.0.0-RC1` are treated as
  * deployable releases. The codemeta extension is required so the published POMs
  * carry the metadata Maven Central validates (url, scm, license, developers).
@@ -41,17 +44,31 @@ import org.gradle.api.Project
 @EnabledBy(EasyPublishExtension::class)
 class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
     override fun afterEnabled(target: Project) {
-        // toMavenCentral is the main switch; the remaining skip reasons (snapshot, missing
-        // codemeta) share the same wiring skip + lifecycle-log behavior, factored into
-        // [skipReason] so this function stays within detekt's ReturnCount limit.
-        if (target.publishExtension()?.toMavenCentral?.get() != true) return
+        // toMavenCentral on the root is the fast path: it is inherited by every subproject
+        // (DEEP convention), so wiring can proceed immediately (backwards compatible). When
+        // the root is unset but a single subproject opts in from its own script, that value
+        // is only settled once the subproject is evaluated — which happens after root's
+        // afterEnabled — so the ANY check + wiring must be deferred until all projects are
+        // evaluated. The remaining skip reasons (snapshot, missing codemeta) share the same
+        // wiring skip + lifecycle-log behavior, factored into [skipReason] so this function
+        // stays within detekt's ReturnCount limit.
+        if (target.publishExtension()?.toMavenCentral?.get() == true) {
+            wireIfCentral(target)
+        } else {
+            target.gradle.projectsEvaluated { wireIfCentral(target) }
+        }
+    }
+
+    private fun wireIfCentral(target: Project) {
+        if (target.allprojects.none { it.isCentralEnabled() }) return
         skipReason(target)?.let { reason ->
             target.logger.lifecycle(reason)
         } ?: run {
             // Per-project Central wiring (checkCentralPoms / stripSignatureChecksums) lives on
             // maven-publish adopters, not on this root-only plugin: iterate all projects and
-            // wire each one live as soon as maven-publish is applied (EasyPublishPlugin's
-            // fan-out covers subprojects regardless of evaluation order). No nested afterEvaluate.
+            // wire each central-enabled one live as soon as maven-publish is applied
+            // (EasyPublishPlugin's fan-out covers subprojects regardless of evaluation order).
+            // No nested afterEvaluate.
             target.allprojects { project ->
                 project.plugins.withId("maven-publish") { CentralPublishingWiring.wire(project) }
             }

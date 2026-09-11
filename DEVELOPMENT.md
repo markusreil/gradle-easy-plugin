@@ -79,14 +79,16 @@ This section is the source of truth for the deployed artifact set — update it
 whenever the publish behaviour changes (e.g. new module, new publication,
 marker changes, harness publishing).
 
-All 17 non-harness projects publish (the 5 `*-test-plugin` harnesses set
-`easy.publish.enabled = false` in their `build.gradle.kts`):
+11 projects publish (the 5 `*-test-plugin` harnesses, 5 contributor plugin
+implementations, and `easy-plugin-core` set `easy.publish.enabled = false` in
+their `build.gradle.kts` — contributor plugins are Shadow-bundled into
+`easy-plugin` and `easy-plugin-core` is an internal dependency of the fat jar):
 
-* 7 easy modules: `easy-plugin`, `easy-plugin-core`, `easy-contributor-api`,
+* 6 easy modules: `easy-plugin`, `easy-contributor-api`,
   `easy-contributor-support`, `easy-test-support`, `gradle-plugin-testutils`,
   `gradle-plugin-utils`
-* 10 contributor modules (each `<name>-plugin` + its `<name>-plugin-api`):
-  `publish`, `jvm-defaults`, `semver`, `codemeta`, `project-defaults`
+* 5 contributor API modules: `publish-plugin-api`, `jvm-defaults-plugin-api`,
+  `semver-plugin-api`, `codemeta-plugin-api`, `project-defaults-plugin-api`
 * 2 plugin markers emitted by `easy-plugin` (via `java-gradle-plugin`):
   `com.mreil.easy.project.gradle.plugin` and `com.mreil.easy.settings.gradle.plugin`
   — POM-only, groupId = plugin ID (`com.mreil.easy.project` / `com.mreil.easy.settings`),

@@ -8,6 +8,7 @@ import com.mreil.easy.publish.MAVEN_STAGING_REPO
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
+import org.gradle.api.internal.GradleInternal
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.PublishingExtension
@@ -202,6 +203,7 @@ class EasyPublishCentralTest {
         }
         publishExtensionOf(root).enabled.set(true)
         publishExtensionOf(child).enabled.set(true)
+        publishExtensionOf(child).toMavenCentral()
 
         val childStaging =
             child.layout.buildDirectory
@@ -211,6 +213,93 @@ class EasyPublishCentralTest {
             softly
                 .assertThat(JreleaserConfigWiring.stagingDirsForPublishing(listOf(root, child)))
                 .containsExactly(childStaging)
+        }
+    }
+
+    /** ANY semantics (a): root `toMavenCentral` is inherited by every subproject and
+     *  activates central wiring for all of them. */
+    @Test
+    fun `root toMavenCentral inherits to subprojects and activates wiring`() {
+        val root = ProjectBuilderHelper.createRootWithChild("root")
+        val child = root.child
+        root.publish.enabled.set(true)
+        root.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(root.project)
+        ProjectBuilderHelper.evaluate(child.project)
+
+        val configTask = root.project.tasks.findByName("generateJreleaserConfig") as? GenerateJreleaserConfigTask
+        val rootStaging =
+            root.project.layout.buildDirectory
+                .get()
+                .asFile.invariantSeparatorsPath + "/stagingRepo"
+        val childStaging =
+            child.project.layout.buildDirectory
+                .get()
+                .asFile.invariantSeparatorsPath + "/stagingRepo"
+        assertSoftly { softly ->
+            softly.assertThat(child.publish.toMavenCentral.get()).isTrue()
+            softly.assertThat(configTask).isNotNull()
+            softly.assertThat(configTask?.stagingDirs?.get()).containsExactly(rootStaging, childStaging)
+            softly.assertThat(root.project.tasks.findByName("checkCentralPoms")).isNotNull()
+            softly.assertThat(child.project.tasks.findByName("checkCentralPoms")).isNotNull()
+            softly.assertThat(root.project.tasks.findByName("publishToMavenCentral")).isNotNull()
+        }
+    }
+
+    /** ANY semantics (b): a single subproject opting in (root unset) activates wiring,
+     *  but only that project's staging dir is collected and only it gets Central tasks. */
+    @Test
+    fun `single subproject toMavenCentral activates wiring with only that project collected`() {
+        val root = ProjectBuilderHelper.createRootWithChild("root")
+        val child = root.child
+        root.publish.enabled.set(true)
+        // root does NOT opt into Central; the child does from its own script.
+        child.publish.toMavenCentral()
+
+        ProjectBuilderHelper.evaluate(root.project)
+        ProjectBuilderHelper.evaluate(child.project)
+        ProjectBuilderHelper.fireProjectsEvaluated(root.project)
+
+        val configTask = root.project.tasks.findByName("generateJreleaserConfig") as? GenerateJreleaserConfigTask
+        val rootStaging =
+            root.project.layout.buildDirectory
+                .get()
+                .asFile.invariantSeparatorsPath + "/stagingRepo"
+        val childStaging =
+            child.project.layout.buildDirectory
+                .get()
+                .asFile.invariantSeparatorsPath + "/stagingRepo"
+        assertSoftly { softly ->
+            softly.assertThat(configTask).isNotNull()
+            // only the child's staging dir is collected
+            softly.assertThat(configTask?.stagingDirs?.get()).containsExactly(childStaging)
+            softly.assertThat(configTask?.stagingDirs?.get()).doesNotContain(rootStaging)
+            // child gets the per-project Central POM check; root does not
+            softly.assertThat(child.project.tasks.findByName("checkCentralPoms")).isNotNull()
+            softly.assertThat(root.project.tasks.findByName("checkCentralPoms")).isNull()
+            // deploy task exists on root
+            softly.assertThat(root.project.tasks.findByName("publishToMavenCentral")).isNotNull()
+        }
+    }
+
+    /** ANY semantics (c): no project opts in -> no central wiring at all. */
+    @Test
+    fun `no project toMavenCentral leaves central wiring inactive`() {
+        val root = ProjectBuilderHelper.createRootWithChild("root")
+        val child = root.child
+        root.publish.enabled.set(true)
+
+        ProjectBuilderHelper.evaluate(root.project)
+        ProjectBuilderHelper.evaluate(child.project)
+        ProjectBuilderHelper.fireProjectsEvaluated(root.project)
+
+        assertSoftly { softly ->
+            softly.assertThat(root.project.tasks.findByName("generateJreleaserConfig")).isNull()
+            softly.assertThat(root.project.tasks.findByName("publishToMavenCentral")).isNull()
+            softly.assertThat(root.project.tasks.findByName("checkCentralPoms")).isNull()
+            softly.assertThat(child.project.tasks.findByName("checkCentralPoms")).isNull()
+            softly.assertThat(root.project.tasks.findByName("stripSignatureChecksums")).isNull()
         }
     }
 
@@ -227,6 +316,7 @@ class EasyPublishCentralTest {
         publish.toMavenStaging()
 
         ProjectBuilderHelper.evaluate(project.project)
+        ProjectBuilderHelper.fireProjectsEvaluated(project.project)
 
         // EasyJreleaserPlugin skips wiring entirely when toMavenCentral is unset,
         // so the task must not exist (not "registered but disabled").
@@ -328,6 +418,7 @@ class EasyPublishCentralTest {
         project.publish.toMavenStaging()
 
         ProjectBuilderHelper.evaluate(project.project)
+        ProjectBuilderHelper.fireProjectsEvaluated(project.project)
 
         // EasyJreleaserPlugin skips CentralPublishingWiring when toMavenCentral is unset,
         // so the task must not exist (not "registered but disabled").
@@ -506,6 +597,7 @@ class EasyPublishCentralTest {
         project.publish.toMavenStaging()
 
         ProjectBuilderHelper.evaluate(project.project)
+        ProjectBuilderHelper.fireProjectsEvaluated(project.project)
 
         // EasyJreleaserPlugin skips JreleaserDeployWiring when toMavenCentral is unset,
         // so the task must not exist (not "registered but disabled").
@@ -557,6 +649,7 @@ class EasyPublishCentralTest {
         project.publish.toMavenStaging()
 
         ProjectBuilderHelper.evaluate(project.project)
+        ProjectBuilderHelper.fireProjectsEvaluated(project.project)
 
         val publish = project.project.tasks.getByName("publish")
         val deps = publish.taskDependencies.getDependencies(publish).map { it.name }
@@ -669,5 +762,12 @@ private object ProjectBuilderHelper {
     fun evaluate(project: Project) {
         val internal = project as ProjectInternal
         internal.evaluate()
+    }
+
+    /** Fires the Gradle-wide `projectsEvaluated` callback (the hook EasyJreleaserPlugin uses
+     *  to defer its ANY check until every subproject has been configured). */
+    fun fireProjectsEvaluated(project: Project) {
+        val gradle = project.gradle as GradleInternal
+        gradle.buildListenerBroadcaster.projectsEvaluated(gradle)
     }
 }
