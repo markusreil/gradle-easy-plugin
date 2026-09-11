@@ -45,6 +45,11 @@ class EasyReleasePlugin : AbstractEasyProjectPlugin() {
             it.description = "Release wiring task (other release tasks attach here)."
             it.dependsOn(check)
         }
+        target.tasks.configureEach {
+            if (it.name != "preReleaseCheck" && it.group == "release") {
+                it.dependsOn(check)
+            }
+        }
     }
 
     companion object {

@@ -33,6 +33,21 @@ class EasyReleasePluginTest {
     }
 
     @Test
+    fun `every release task runs after preReleaseCheck`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        (project as ProjectInternal).evaluate()
+        val check = project.tasks.getByName("preReleaseCheck")
+        val gated = project.tasks.filter { it.group == "release" && it.name != "preReleaseCheck" }
+        assertSoftly { softly ->
+            softly.assertThat(gated).isNotEmpty()
+            gated.forEach {
+                softly.assertThat(it.taskDependencies.getDependencies(it)).contains(check)
+            }
+        }
+    }
+
+    @Test
     fun `preReleaseCheck fails when version missing`() {
         val check = checkTask(group = "com.example", version = null)
         assertThatThrownBy { check.check() }
