@@ -1,6 +1,6 @@
 package com.mreil.easy.semver
 
-import com.mreil.easy.isExtensionEnabled
+import com.mreil.easy.gatedBy
 import com.mreil.utils.isSpecified
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
@@ -17,22 +17,26 @@ object EasySemver {
     /**
      * Lazily parses the project's version as [Semver].
      *
+     * Absent (`orNull == null`) when the semver extension is not enabled; fails
+     * lazily on an invalid version only when enabled.
+     *
      * @param project the project whose version should be read.
      * @return a [Provider] that yields the parsed [Semver] when realized.
      */
-    @Suppress("TooGenericExceptionCaught")
     fun of(project: Project): Provider<Semver> =
-        project.providers.provider { project.version.toString() }.map { raw ->
-            if (!project.isExtensionEnabled(EasySemverExtension::class)) {
-                error("EasySemver plugin is not enabled - add `easy { semver {} }` to enable it")
-            }
-            val clean =
-                raw.takeIf { it.isSpecified() }
-                    ?: error("Project version must be set for semver lookup (e.g. version = \"1.0.0\")")
-            try {
-                Semver.parse(clean) ?: error("Version '$clean' is not valid semver")
-            } catch (e: Exception) {
-                throw IllegalStateException("Version '$clean' is not valid semver: ${e.message}", e)
-            }
+        project.gatedBy(EasySemverExtension::class) {
+            project.providers.provider { project.version.toString() }.map(::parseStrict)
         }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun parseStrict(raw: String): Semver {
+        val clean =
+            raw.takeIf { it.isSpecified() }
+                ?: error("Project version must be set for semver lookup (e.g. version = \"1.0.0\")")
+        try {
+            return Semver.parse(clean) ?: error("Version '$clean' is not valid semver")
+        } catch (e: Exception) {
+            throw IllegalStateException("Version '$clean' is not valid semver: ${e.message}", e)
+        }
+    }
 }
