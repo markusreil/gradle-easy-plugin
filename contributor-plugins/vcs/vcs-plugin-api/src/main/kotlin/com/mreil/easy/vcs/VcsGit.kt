@@ -5,6 +5,7 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.process.ExecOutput
 
+@Suppress("TooManyFunctions")
 internal class VcsGit(
     private val providers: ProviderFactory,
     private val rootDir: DirectoryProperty,
