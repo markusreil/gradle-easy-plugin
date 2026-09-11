@@ -20,13 +20,7 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
 
     override fun init(target: Project) {
         if (!target.isRoot()) return
-        val service =
-            target.gradle.sharedServices.registerIfAbsent("release", ReleaseStateService::class.java) {
-                it.parameters.commitSha.convention("")
-                it.parameters.releaseVersion.convention("")
-                it.parameters.nextVersion.convention("")
-                it.parameters.projectName.convention("")
-            }
+        val service = target.gradle.sharedServices.registerIfAbsent("release", ReleaseStateService::class.java)
         listenerRegistry.onTaskCompletion(service)
     }
 

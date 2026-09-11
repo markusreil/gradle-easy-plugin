@@ -20,11 +20,18 @@ import org.gradle.tooling.events.task.TaskFinishEvent
 abstract class ReleaseStateService :
     BuildService<ReleaseStateService.Params>,
     OperationCompletionListener {
-    interface Params : BuildServiceParameters {
-        val commitSha: Property<String>
-        val releaseVersion: Property<String>
-        val nextVersion: Property<String>
-        val projectName: Property<String>
+    abstract class Params : BuildServiceParameters {
+        abstract val commitSha: Property<String>
+        abstract val releaseVersion: Property<String>
+        abstract val nextVersion: Property<String>
+        abstract val projectName: Property<String>
+
+        init {
+            commitSha.convention("")
+            releaseVersion.convention("")
+            nextVersion.convention("")
+            projectName.convention("")
+        }
     }
 
     private val logger = Logging.getLogger(ReleaseStateService::class.java)
