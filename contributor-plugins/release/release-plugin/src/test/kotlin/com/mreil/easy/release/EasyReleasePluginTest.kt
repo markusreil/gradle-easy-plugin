@@ -6,7 +6,9 @@ import com.mreil.easy.semver.EasySemverExtension
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.GradleException
+import org.gradle.api.Project
 import org.gradle.api.internal.project.ProjectInternal
+import org.gradle.api.services.BuildServiceRegistration
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 
@@ -154,6 +156,53 @@ class EasyReleasePluginTest {
             softly.assertThat(check.releaseVersion.get()).isEqualTo("1.2.3")
             softly.assertThat(check.nextVersion.get()).isEqualTo("1.2.4-SNAPSHOT")
         }
+    }
+
+    @Test
+    fun `preReleaseCheck records state on success`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        (project as ProjectInternal).evaluate()
+        val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+        check.branch.set("main")
+        check.clean.set(true)
+        check.upToDate.set(true)
+        check.commitSha.set("abc123")
+        check.releaseVersion.set("1.0.0")
+        check.nextVersion.set("1.0.1-SNAPSHOT")
+        check.check()
+        val state = releaseStateOf(project)
+        assertSoftly { softly ->
+            softly.assertThat(state.commitSha().get()).isEqualTo("abc123")
+            softly.assertThat(state.releaseVersion().get()).isEqualTo("1.0.0")
+            softly.assertThat(state.nextVersion().get()).isEqualTo("1.0.1-SNAPSHOT")
+            softly.assertThat(state.projectName().get()).isEqualTo(project.name)
+        }
+    }
+
+    @Test
+    fun `preReleaseCheck does not record state on failure`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.version = "1.0.0"
+        (project as ProjectInternal).evaluate()
+        val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+        assertThatThrownBy { check.check() }.isInstanceOf(GradleException::class.java)
+        val state = releaseStateOf(project)
+        assertSoftly { softly ->
+            softly.assertThat(state.commitSha().orNull.isNullOrBlank()).isTrue()
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun releaseStateOf(project: Project): ReleaseStateService {
+        val registration =
+            project.gradle.sharedServices.registrations
+                .findByName("release")
+                as BuildServiceRegistration<ReleaseStateService, *>
+        return registration.service.get()
     }
 
     private fun checkTask(

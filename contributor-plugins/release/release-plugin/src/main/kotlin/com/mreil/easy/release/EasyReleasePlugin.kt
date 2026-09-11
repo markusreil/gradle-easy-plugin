@@ -10,10 +10,24 @@ import com.mreil.utils.hasGroup
 import com.mreil.utils.hasVersion
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.build.event.BuildEventsListenerRegistry
+import javax.inject.Inject
 
 @EnabledBy(EasyReleaseExtension::class)
-class EasyReleasePlugin : AbstractEasyProjectPlugin() {
+abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
+    @get:Inject
+    abstract val listenerRegistry: BuildEventsListenerRegistry
+
     override fun init(target: Project) {
+        if (!target.isRoot()) return
+        val service =
+            target.gradle.sharedServices.registerIfAbsent("release", ReleaseStateService::class.java) {
+                it.parameters.commitSha.convention("")
+                it.parameters.releaseVersion.convention("")
+                it.parameters.nextVersion.convention("")
+                it.parameters.projectName.convention("")
+            }
+        listenerRegistry.onTaskCompletion(service)
     }
 
     override fun afterEnabled(target: Project) {
@@ -35,6 +49,7 @@ class EasyReleasePlugin : AbstractEasyProjectPlugin() {
                 it.branch.set(vcs.flatMap { service -> service.currentBranch() })
                 it.clean.set(vcs.flatMap { service -> service.isClean() })
                 it.upToDate.set(vcs.flatMap { service -> service.isUpToDateWithRemote() })
+                it.commitSha.set(vcs.flatMap { service -> service.currentSha() })
                 it.projectName.set(target.name)
                 it.currentVersion.set(target.version.toString())
                 it.releaseVersion.set(releaseVersion)

@@ -24,6 +24,8 @@ internal class VcsGit(
 
     override fun branch(): Provider<String> = firstLine("rev-parse", "--abbrev-ref", "HEAD")
 
+    override fun currentSha(): Provider<String> = firstLine("rev-parse", "HEAD")
+
     override fun isClean(): Provider<Boolean> = firstLine("status", "--porcelain").map { it.isEmpty() }
 
     override fun isUpToDateWithRemote(): Provider<Boolean> =

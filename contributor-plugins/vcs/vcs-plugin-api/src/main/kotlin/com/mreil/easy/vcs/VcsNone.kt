@@ -10,6 +10,8 @@ internal class VcsNone(
 
     override fun branch(): Provider<String> = providers.provider { "" }
 
+    override fun currentSha(): Provider<String> = providers.provider { "" }
+
     override fun isClean(): Provider<Boolean> = providers.provider { true }
 
     override fun isUpToDateWithRemote(): Provider<Boolean> = providers.provider { true }

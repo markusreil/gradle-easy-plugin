@@ -49,4 +49,6 @@ abstract class VcsService
         fun remoteUrl(): Provider<String> = operations.remoteUrl()
 
         fun currentBranch(): Provider<String> = operations.branch()
+
+        fun currentSha(): Provider<String> = operations.currentSha()
     }

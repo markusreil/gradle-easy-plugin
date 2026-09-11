@@ -101,6 +101,16 @@ class EasyVcsPluginTest {
     }
 
     @Test
+    fun `current sha is empty for none type`() {
+        val service = vcsService(project(tempDir))
+
+        assertSoftly { softly ->
+            softly.assertThat(service.type()).isEqualTo(VcsType.NONE)
+            softly.assertThat(service.currentSha().get()).isEmpty()
+        }
+    }
+
+    @Test
     fun `service registered in init even when disabled`() {
         val project = project(tempDir)
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware

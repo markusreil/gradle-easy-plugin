@@ -7,6 +7,8 @@ internal interface VcsOperations {
 
     fun branch(): Provider<String>
 
+    fun currentSha(): Provider<String>
+
     fun isClean(): Provider<Boolean>
 
     fun isUpToDateWithRemote(): Provider<Boolean>

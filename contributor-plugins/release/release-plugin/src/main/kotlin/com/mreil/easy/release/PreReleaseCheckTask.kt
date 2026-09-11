@@ -3,6 +3,7 @@ package com.mreil.easy.release
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
+import org.gradle.api.services.ServiceReference
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
@@ -51,6 +52,13 @@ abstract class PreReleaseCheckTask : DefaultTask() {
     @get:Optional
     abstract val nextVersion: Property<String>
 
+    @get:Input
+    @get:Optional
+    abstract val commitSha: Property<String>
+
+    @get:ServiceReference("release")
+    abstract val releaseState: Property<ReleaseStateService>
+
     @TaskAction
     fun check() {
         val failures = collectFailures()
@@ -58,6 +66,7 @@ abstract class PreReleaseCheckTask : DefaultTask() {
             throw GradleException("Release readiness check failed:\n- " + failures.joinToString("\n- "))
         }
         logVersions()
+        recordState()
     }
 
     private fun logVersions() {
@@ -96,5 +105,13 @@ abstract class PreReleaseCheckTask : DefaultTask() {
             failures.add("branch '$current' does not match release pattern '$pattern'")
         }
         return failures
+    }
+
+    private fun recordState() {
+        val state = releaseState.get()
+        commitSha.orNull?.takeIf { it.isNotBlank() }?.let { state.recordCommitSha(it) }
+        releaseVersion.orNull?.let { state.recordReleaseVersion(it) }
+        nextVersion.orNull?.let { state.recordNextVersion(it) }
+        state.recordProjectName(projectName.get())
     }
 }
