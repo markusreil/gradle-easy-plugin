@@ -36,7 +36,7 @@ jobs:
     name: Publish snapshots
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     env:
       ORG_GRADLE_PROJECT_mreilComGradlePluginsSnapshotsUsername: ${{ vars.ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSSNAPSHOTSUSERNAME }}
       ORG_GRADLE_PROJECT_mreilComGradlePluginsSnapshotsPassword: ${{ secrets.ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSSNAPSHOTSPASSWORD }}
@@ -60,4 +60,4 @@ jobs:
         # (see PublishAggregationWiring). The deploy edge stays out: snapshots are
         # published directly via maven-publish and never go through JReleaser
         # (which has no credentials in this job and is release-only by design).
-        run: ./gradlew publish -x publish
+        run: ./gradlew publish
