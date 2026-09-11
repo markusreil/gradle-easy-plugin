@@ -46,7 +46,7 @@ class EasyVcsPluginTest {
         val service = vcsService(project(tempDir))
 
         assertSoftly { softly ->
-            softly.assertThat(service.remoteUrl()).isEqualTo("https://github.com/example/repo")
+            softly.assertThat(service.remoteUrl().get()).isEqualTo("https://github.com/example/repo")
         }
     }
 
@@ -57,16 +57,16 @@ class EasyVcsPluginTest {
         val service = vcsService(project(tempDir))
 
         assertSoftly { softly ->
-            softly.assertThat(service.remoteUrl()).isEqualTo("https://github.com/example/repo")
+            softly.assertThat(service.remoteUrl().get()).isEqualTo("https://github.com/example/repo")
         }
     }
 
     @Test
-    fun `remote url is null for none type`() {
+    fun `remote url is empty for none type`() {
         val service = vcsService(project(tempDir))
 
         assertSoftly { softly ->
-            softly.assertThat(service.remoteUrl()).isNull()
+            softly.assertThat(service.remoteUrl().get()).isEmpty()
         }
     }
 
