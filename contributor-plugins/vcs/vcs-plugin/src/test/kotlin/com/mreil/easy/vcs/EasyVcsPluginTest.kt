@@ -2,12 +2,14 @@ package com.mreil.easy.vcs
 
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 class EasyVcsPluginTest {
@@ -37,6 +39,18 @@ class EasyVcsPluginTest {
         val output = process.inputStream.bufferedReader().use { it.readText() }
         check(process.waitFor() == 0) { "git ${args.joinToString(" ")} failed: $output" }
         return output
+    }
+
+    private fun configureGitAuthor(dir: Path) {
+        git(dir, "config", "user.email", "test@example.com")
+        git(dir, "config", "user.name", "Test")
+    }
+
+    private fun bareRemote(): Path {
+        val remoteDir = Files.createTempDirectory("git-remote-")
+        val process = ProcessBuilder("git", "init", "--bare").directory(remoteDir.toFile()).start()
+        check(process.waitFor() == 0) { "git init --bare failed" }
+        return remoteDir
     }
 
     @Test
@@ -156,6 +170,59 @@ class EasyVcsPluginTest {
         assertSoftly { softly ->
             softly.assertThat(service.hasTag("v1.0.0").get()).isFalse()
         }
+    }
+
+    @Test
+    fun `push tag succeeds with origin remote`() {
+        val remote = bareRemote()
+        git(tempDir, "init", "-b", "main")
+        configureGitAuthor(tempDir)
+        git(tempDir, "commit", "--allow-empty", "-m", "initial")
+        git(tempDir, "remote", "add", "origin", remote.toFile().absolutePath)
+        git(tempDir, "push", "-u", "origin", "main")
+        git(tempDir, "tag", "v1.0.0")
+        val service = vcsService(project(tempDir))
+
+        assertThat(service.push("v1.0.0").get()).isTrue()
+    }
+
+    @Test
+    fun `push tag succeeds when only upstream remote exists`() {
+        val remote = bareRemote()
+        git(tempDir, "init", "-b", "main")
+        configureGitAuthor(tempDir)
+        git(tempDir, "commit", "--allow-empty", "-m", "initial")
+        git(tempDir, "remote", "add", "upstream", remote.toFile().absolutePath)
+        git(tempDir, "push", "-u", "upstream", "main")
+        git(tempDir, "tag", "v1.0.0")
+        val service = vcsService(project(tempDir))
+
+        assertThat(service.push("v1.0.0").get()).isTrue()
+    }
+
+    @Test
+    fun `push tag succeeds with a custom-named remote when no upstream or origin`() {
+        val remote = bareRemote()
+        git(tempDir, "init", "-b", "main")
+        configureGitAuthor(tempDir)
+        git(tempDir, "commit", "--allow-empty", "-m", "initial")
+        git(tempDir, "remote", "add", "custom", remote.toFile().absolutePath)
+        git(tempDir, "push", "-u", "custom", "main")
+        git(tempDir, "tag", "v1.0.0")
+        val service = vcsService(project(tempDir))
+
+        assertThat(service.push("v1.0.0").get()).isTrue()
+    }
+
+    @Test
+    fun `push tag fails when no remote exists`() {
+        git(tempDir, "init", "-b", "main")
+        configureGitAuthor(tempDir)
+        git(tempDir, "commit", "--allow-empty", "-m", "initial")
+        git(tempDir, "tag", "v1.0.0")
+        val service = vcsService(project(tempDir))
+
+        assertThat(service.push("v1.0.0").get()).isFalse()
     }
 
     @Test

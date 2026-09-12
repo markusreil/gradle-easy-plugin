@@ -11,16 +11,8 @@ internal class VcsGit(
     private val rootDir: DirectoryProperty,
 ) : VcsOperations {
     override fun remoteUrl(): Provider<String> =
-        providers.provider {
-            sequenceOf(
-                upstreamRemoteUrl(),
-                originRemoteUrl(),
-                firstRemoteUrl(),
-            ).map { it.get() }
-                .firstOrNull { it.isNotEmpty() }
-                ?.let(::normalizeRemoteUrl)
-                .orEmpty()
-        }
+        resolveFirstRemote(listOf(upstreamRemoteUrl(), originRemoteUrl(), firstRemoteUrl()))
+            .map(::normalizeRemoteUrl)
 
     override fun branch(): Provider<String> = firstLine("rev-parse", "--abbrev-ref", "HEAD")
 
@@ -39,7 +31,12 @@ internal class VcsGit(
 
     override fun push(): Provider<Boolean> = success("push")
 
-    override fun push(tag: String): Provider<Boolean> = success("push", "--atomic", "origin", "HEAD", tag)
+    override fun push(tag: String): Provider<Boolean> =
+        providers.provider {
+            val remote = pushRemote().get()
+            remote.isNotEmpty() &&
+                output("push", "--atomic", remote, "HEAD", tag).result.get().exitValue == 0
+        }
 
     override fun fetch(): Provider<Boolean> = success("fetch")
 
@@ -77,20 +74,44 @@ internal class VcsGit(
         }
 
     private fun upstreamRemoteUrl(): Provider<String> =
-        providers.provider {
-            val upstream =
-                firstLine("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
-                    .get()
-                    .takeIf { it.isNotEmpty() } ?: return@provider ""
-            firstLine("remote", "get-url", upstream.substringBefore('/')).get()
+        upstreamRemoteName().flatMap { name ->
+            if (name.isBlank()) providers.provider { "" } else firstLine("remote", "get-url", name)
         }
 
     private fun originRemoteUrl(): Provider<String> = firstLine("remote", "get-url", "origin")
 
     private fun firstRemoteUrl(): Provider<String> =
+        firstRemoteName().flatMap { name ->
+            if (name.isBlank()) providers.provider { "" } else firstLine("remote", "get-url", name)
+        }
+
+    /**
+     * Push remote: same chain as [remoteUrl], but resolved to a *name* instead of a URL
+     * so `git push --atomic <name> HEAD <tag>` works for repos whose only remote is named
+     * `upstream` (or anything other than `origin`).
+     */
+    private fun pushRemote(): Provider<String> = resolveFirstRemote(listOf(upstreamRemoteName(), originRemoteName(), firstRemoteName()))
+
+    private fun upstreamRemoteName(): Provider<String> =
+        providers.provider {
+            val upstream =
+                firstLine("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+                    .get()
+                    .takeIf { it.isNotEmpty() } ?: return@provider ""
+            upstream.substringBefore('/').takeIf { it.isNotEmpty() } ?: ""
+        }
+
+    private fun originRemoteName(): Provider<String> = firstLine("remote", "get-url", "origin").map { if (it.isBlank()) "" else "origin" }
+
+    private fun firstRemoteName(): Provider<String> =
         providers.provider {
             val remote = firstLine("remote").get().takeIf { it.isNotEmpty() } ?: return@provider ""
-            firstLine("remote", "get-url", remote).get()
+            firstLine("remote", "get-url", remote).get().takeIf { it.isNotEmpty() }?.let { remote } ?: ""
+        }
+
+    private fun resolveFirstRemote(candidates: List<Provider<String>>): Provider<String> =
+        providers.provider {
+            candidates.map { it.get() }.firstOrNull { it.isNotEmpty() } ?: ""
         }
 
     private fun normalizeRemoteUrl(raw: String): String {
