@@ -18,11 +18,24 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
     @get:Inject
     abstract val listenerRegistry: BuildEventsListenerRegistry
 
+    /**
+     * Registers [ReleaseStateService] and the global task-completion listener eagerly at apply time.
+     *
+     * Mirrors the lifecycle contract documented in AGENTS.md: shared state consumed across
+     * contributors (here: any future reader of the `"release"` service) must be available
+     * at configuration time regardless of evaluation order. Task registration stays deferred
+     * to [afterEnabled] behind the `easy { release { enabled = ... } }` flag.
+     */
+    override fun init(target: Project) {
+        if (!target.isRoot()) return
+        val release = target.findEasyChild<EasyReleaseExtension, DefaultEasyReleaseExtension>() ?: return
+        registerService(target, release)
+    }
+
     override fun afterEnabled(target: Project) {
         if (!target.isRoot()) return
         val release = target.findEasyChild<EasyReleaseExtension, DefaultEasyReleaseExtension>() ?: return
         val vcs = EasyVcs.of(target)
-        registerService(target, release)
         val check =
             target.tasks.register("preReleaseCheck", PreReleaseCheckTask::class.java) {
                 it.group = "release"
