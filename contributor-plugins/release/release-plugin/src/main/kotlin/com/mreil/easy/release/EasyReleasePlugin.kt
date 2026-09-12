@@ -10,6 +10,7 @@ import com.mreil.utils.hasGroup
 import com.mreil.utils.hasVersion
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.provider.Provider
 import org.gradle.build.event.BuildEventsListenerRegistry
 import javax.inject.Inject
 
@@ -55,6 +56,10 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
                         service.isTracked(versionFileRef.get().asFile.absolutePath)
                     },
                 )
+                val releaseStateRef = it.releaseState
+                val tagNameRef: Provider<String> = releaseStateRef.flatMap { service -> service.tagNameProvider() }
+                it.tagName.set(tagNameRef)
+                it.tagExists.set(vcs.flatMap { service -> tagNameRef.flatMap { tag -> service.hasTag(tag) } })
             }
         target.tasks.register("preReleaseCommit", PreReleaseCommitTask::class.java) {
             it.group = "release"

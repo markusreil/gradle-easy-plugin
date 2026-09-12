@@ -137,6 +137,28 @@ class EasyVcsPluginTest {
     }
 
     @Test
+    fun `hasTag reports true for an existing tag and false otherwise`() {
+        git(tempDir, "init")
+        git(tempDir, "commit", "--allow-empty", "-m", "initial")
+        git(tempDir, "tag", "v1.0.0")
+        val service = vcsService(project(tempDir))
+
+        assertSoftly { softly ->
+            softly.assertThat(service.hasTag("v1.0.0").get()).isTrue()
+            softly.assertThat(service.hasTag("v9.9.9").get()).isFalse()
+        }
+    }
+
+    @Test
+    fun `hasTag is false for none type`() {
+        val service = vcsService(project(tempDir))
+
+        assertSoftly { softly ->
+            softly.assertThat(service.hasTag("v1.0.0").get()).isFalse()
+        }
+    }
+
+    @Test
     fun `service registered in init even when disabled`() {
         val project = project(tempDir)
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware

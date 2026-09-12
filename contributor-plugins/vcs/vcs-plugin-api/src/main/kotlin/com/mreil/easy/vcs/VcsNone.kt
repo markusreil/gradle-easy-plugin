@@ -30,5 +30,7 @@ internal class VcsNone(
 
     override fun tag(name: String): Provider<Boolean> = providers.provider { true }
 
+    override fun hasTag(name: String): Provider<Boolean> = providers.provider { false }
+
     override fun isTracked(path: String): Provider<Boolean> = providers.provider { true }
 }

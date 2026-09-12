@@ -20,10 +20,16 @@ import org.gradle.api.tasks.TaskAction
  * the plugin); the commit sha is snapshotted here at execution, right after the
  * gate passes (HEAD-at-gate — a lazily-wired sha could capture a moved HEAD).
  *
- * Also verifies the configured [versionFile] is tracked by git: an untracked or
- * ignored file survives `git reset --hard` on rollback, so a release that fails
- * after rewriting it would leave the half-written file behind. Fails fast at the
- * gate with a clear message instead.
+ * Also verifies:
+ * - the configured [versionFile] is tracked by git: an untracked or ignored file
+ *   survives `git reset --hard` on rollback, so a release that fails after
+ *   rewriting it would leave the half-written file behind;
+ * - the resolved [tagName] does not already exist locally: a tag collision
+ *   surfaces only at execution otherwise (`git tag <name>` fails, or
+ *   `git push --atomic` is rejected by the remote), so the user sees a raw
+ *   `git` error rather than a clear "version already released" message.
+ *
+ * Both checks fail fast at the gate with a clear message.
  */
 abstract class PreReleaseCheckTask : DefaultTask() {
     @get:Input
@@ -59,6 +65,14 @@ abstract class PreReleaseCheckTask : DefaultTask() {
     @get:Input
     @get:Optional
     abstract val versionFileTracked: Property<Boolean>
+
+    @get:Input
+    @get:Optional
+    abstract val tagName: Property<String>
+
+    @get:Input
+    @get:Optional
+    abstract val tagExists: Property<Boolean>
 
     @get:ServiceReference("release")
     internal abstract val releaseState: Property<ReleaseStateService>
@@ -113,6 +127,12 @@ abstract class PreReleaseCheckTask : DefaultTask() {
             failures.add(
                 "version file '${versionFile.get().asFile}' is not tracked by git " +
                     "(an untracked file would survive 'git reset --hard' on rollback)",
+            )
+        }
+        if (tagExists.isPresent && tagExists.get()) {
+            failures.add(
+                "release tag '${tagName.get()}' already exists; " +
+                    "bump the version or set -Deasy.release.version=<new-version> to re-release",
             )
         }
         return failures

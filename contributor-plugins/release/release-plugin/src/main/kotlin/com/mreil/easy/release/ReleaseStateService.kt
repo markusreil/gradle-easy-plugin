@@ -84,16 +84,28 @@ internal abstract class ReleaseStateService
 
         fun currentVersion(): Provider<String> = parameters.currentVersion
 
-        /**
+/**
          * Release tag name: `tagTemplate` with `$v` replaced by the release version.
          *
          * Null when no release version is resolved. Single resolution point for the tag name —
-         * release tasks and rollback all read it here so they can never disagree.
+         * release tasks, rollback, and the gate's tag-existence pre-flight all read it here
+         * (the deferred form is [tagNameProvider]) so they can never disagree.
          */
         fun tagName(): String? =
             parameters.releaseVersion.orNull
                 ?.takeIf { it.isNotBlank() }
                 ?.let { parameters.tagTemplate.get().replace("\$v", it) }
+
+        /**
+         * Deferred form of [tagName]: realized at execution time, never at configuration time.
+         *
+         * Used to wire task inputs (e.g. `preReleaseCheck`'s tag-existence check) so the
+         * configuration cache tracks the resolution instead of capturing an eager value.
+         * Empty string when no release version is resolved (Gradle `Provider<T>` requires
+         * `T : Any`, so null is signalled via the empty sentinel — `hasTag("")` is always
+         * false and short-circuits the existence check).
+         */
+        fun tagNameProvider(): Provider<String> = providers.provider { tagName() ?: "" }
 
         override fun onFinish(event: FinishEvent) {
             if (event !is TaskFinishEvent || event.result !is TaskFailureResult) return

@@ -62,5 +62,7 @@ abstract class VcsService
 
         fun tag(name: String): Provider<Boolean> = operations.tag(name)
 
+        fun hasTag(name: String): Provider<Boolean> = operations.hasTag(name)
+
         fun isTracked(path: String): Provider<Boolean> = operations.isTracked(path)
     }

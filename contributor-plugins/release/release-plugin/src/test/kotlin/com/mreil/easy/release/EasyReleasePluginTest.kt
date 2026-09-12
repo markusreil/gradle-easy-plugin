@@ -137,6 +137,42 @@ class EasyReleasePluginTest {
     }
 
     @Test
+    fun `preReleaseCheck fails when release tag already exists`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        (project as ProjectInternal).evaluate()
+        val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+        check.branch.set("main")
+        check.clean.set(true)
+        check.upToDate.set(true)
+        check.tagName.set("v1.0.0")
+        check.tagExists.set(true)
+
+        assertThatThrownBy { check.check() }
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining("release tag 'v1.0.0' already exists")
+    }
+
+    @Test
+    fun `preReleaseCheck passes when release tag does not exist`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        (project as ProjectInternal).evaluate()
+        val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+        check.branch.set("main")
+        check.clean.set(true)
+        check.upToDate.set(true)
+        check.tagName.set("v1.0.0")
+        check.tagExists.set(false)
+
+        check.check()
+    }
+
+    @Test
     fun `preReleaseCheck passes on blank branch`() {
         val check = checkTask(branch = "")
         check.check()

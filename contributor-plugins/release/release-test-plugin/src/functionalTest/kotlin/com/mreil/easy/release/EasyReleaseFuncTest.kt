@@ -444,7 +444,7 @@ class EasyReleaseFuncTest {
     }
 
     @Test
-    fun `pre-existing release tag survives rollback`() {
+    fun `preReleaseCheck fails when release tag already exists and preserves the pre-existing tag`() {
         project.configure {
             file(".gitignore", ".gradle/\nbuild/\n")
             project.version = "1.0.0-SNAPSHOT"
@@ -466,10 +466,11 @@ class EasyReleaseFuncTest {
         runGit(project.projectDir.absolutePath, "tag", "v1.0.0")
         val gateSha = gitRevParse(project, "HEAD")
 
-        val result = project.buildAndFail("release")
+        val result = project.buildAndFail("preReleaseCheck")
 
         assertSoftly { softly ->
-            softly.assertThat(result.output).contains("Rolling back local changes")
+            softly.assertThat(result.output).contains("release tag 'v1.0.0' already exists")
+            softly.assertThat(result.output).doesNotContain("Rolling back")
             softly.assertThat(gitRevParse(project, "HEAD")).isEqualTo(gateSha)
             softly.assertThat(gitTagExists(project, "v1.0.0")).isTrue()
             softly.assertThat(gitRevParse(project, "v1.0.0")).isEqualTo(gateSha)

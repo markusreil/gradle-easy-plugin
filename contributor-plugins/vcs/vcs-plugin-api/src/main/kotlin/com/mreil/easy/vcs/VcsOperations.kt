@@ -31,6 +31,16 @@ internal interface VcsOperations {
     fun tag(name: String): Provider<Boolean>
 
     /**
+     * Reports whether a tag named [name] already exists.
+     *
+     * Used to gate release-time tag creation: a collision surfaces only at execution otherwise
+     * (`git tag <name>` fails, or `git push --atomic` is rejected). Failing fast at the gate
+     * with a clear message is the difference between "version already released" and a raw
+     * `git` error.
+     */
+    fun hasTag(name: String): Provider<Boolean>
+
+    /**
      * Reports whether [path] is tracked by the VCS index.
      *
      * Used to gate mutations on tracked files (e.g. release version rewrites): an untracked or
