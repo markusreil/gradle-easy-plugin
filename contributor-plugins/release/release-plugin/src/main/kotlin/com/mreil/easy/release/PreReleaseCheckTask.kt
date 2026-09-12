@@ -61,7 +61,7 @@ abstract class PreReleaseCheckTask : DefaultTask() {
     abstract val versionFileTracked: Property<Boolean>
 
     @get:ServiceReference("release")
-    abstract val releaseState: Property<ReleaseStateService>
+    internal abstract val releaseState: Property<ReleaseStateService>
 
     @TaskAction
     fun check() {

@@ -18,13 +18,18 @@ import javax.inject.Inject
 /**
  * Holds versions and commit captured by `preReleaseCheck` for downstream release tasks.
  *
- * Registered by `EasyReleasePlugin` as a shared service, not exposed via public extension.
- * Listens for task completions: a failed release-group task rolls the local repository back
- * to the state captured at the gate (hard reset to the gate commit + guarded deletion of the
- * release tag); any other failure only logs the captured state.
+ * Internal implementation detail of `release-plugin`, not part of the public API: nothing in
+ * `release-plugin-api` references it (only `EasyReleaseExtension` is public), and `api` of
+ * `release-plugin` is not exposed to consumers. This keeps Gradle `tooling.events.*` types out
+ * of the consumer compile classpath.
+ *
+ * Registered by `EasyReleasePlugin` as a shared service. Listens for task completions: a failed
+ * release-group task rolls the local repository back to the state captured at the gate (hard reset
+ * to the gate commit + guarded deletion of the release tag); any other failure only logs the
+ * captured state.
  */
 @Suppress("TooManyFunctions")
-abstract class ReleaseStateService
+internal abstract class ReleaseStateService
     @Inject
     constructor(
         private val providers: ProviderFactory,

@@ -19,7 +19,7 @@ import org.gradle.api.tasks.TaskAction
  */
 abstract class PreReleaseTagTask : DefaultTask() {
     @get:ServiceReference("release")
-    abstract val releaseState: Property<ReleaseStateService>
+    internal abstract val releaseState: Property<ReleaseStateService>
 
     @get:ServiceReference("vcs")
     abstract val vcs: Property<VcsService>

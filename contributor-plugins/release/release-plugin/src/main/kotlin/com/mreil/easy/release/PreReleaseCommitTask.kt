@@ -35,7 +35,7 @@ abstract class PreReleaseCommitTask : DefaultTask() {
     abstract val commitMessageTemplate: Property<String>
 
     @get:ServiceReference("release")
-    abstract val releaseState: Property<ReleaseStateService>
+    internal abstract val releaseState: Property<ReleaseStateService>
 
     @get:ServiceReference("vcs")
     abstract val vcs: Property<VcsService>
