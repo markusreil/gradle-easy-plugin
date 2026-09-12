@@ -111,6 +111,32 @@ class EasyVcsPluginTest {
     }
 
     @Test
+    fun `isTracked reports true for a tracked file and false for an untracked file`() {
+        git(tempDir, "init")
+        val tracked = tempDir.resolve("gradle.properties").toFile().apply { writeText("version=1.0.0\n") }
+        tempDir.resolve("untracked.txt").toFile().apply { writeText("nope\n") }
+        git(tempDir, "add", "gradle.properties")
+        git(tempDir, "commit", "-m", "initial")
+        val service = vcsService(project(tempDir))
+
+        assertSoftly { softly ->
+            softly.assertThat(service.isTracked(tracked.absolutePath).get()).isTrue()
+            softly
+                .assertThat(service.isTracked(tempDir.resolve("untracked.txt").toFile().absolutePath).get())
+                .isFalse()
+        }
+    }
+
+    @Test
+    fun `isTracked is true for none type`() {
+        val service = vcsService(project(tempDir))
+
+        assertSoftly { softly ->
+            softly.assertThat(service.isTracked("anything").get()).isTrue()
+        }
+    }
+
+    @Test
     fun `service registered in init even when disabled`() {
         val project = project(tempDir)
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware

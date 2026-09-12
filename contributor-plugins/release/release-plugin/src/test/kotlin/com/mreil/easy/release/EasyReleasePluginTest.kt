@@ -100,6 +100,43 @@ class EasyReleasePluginTest {
     }
 
     @Test
+    fun `preReleaseCheck fails when version file is untracked`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        (project as ProjectInternal).evaluate()
+        val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+        check.branch.set("main")
+        check.clean.set(true)
+        check.upToDate.set(true)
+        check.versionFile.set(project.layout.projectDirectory.file("version.txt"))
+        check.versionFileTracked.set(false)
+
+        assertThatThrownBy { check.check() }
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining("version file")
+            .hasMessageContaining("is not tracked by git")
+    }
+
+    @Test
+    fun `preReleaseCheck passes when version file is tracked`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.group = "com.example"
+        project.version = "1.0.0"
+        (project as ProjectInternal).evaluate()
+        val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+        check.branch.set("main")
+        check.clean.set(true)
+        check.upToDate.set(true)
+        check.versionFile.set(project.layout.projectDirectory.file("gradle.properties"))
+        check.versionFileTracked.set(true)
+
+        check.check()
+    }
+
+    @Test
     fun `preReleaseCheck passes on blank branch`() {
         val check = checkTask(branch = "")
         check.check()

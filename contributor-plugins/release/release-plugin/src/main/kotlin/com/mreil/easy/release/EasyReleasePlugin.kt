@@ -36,6 +36,7 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
         if (!target.isRoot()) return
         val release = target.findEasyChild<EasyReleaseExtension, DefaultEasyReleaseExtension>() ?: return
         val vcs = EasyVcs.of(target)
+        val defaultVersionFile = release.versionFile.orElse(target.layout.projectDirectory.file("gradle.properties"))
         val check =
             target.tasks.register("preReleaseCheck", PreReleaseCheckTask::class.java) {
                 it.group = "release"
@@ -47,11 +48,18 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
                 it.clean.set(vcs.flatMap { service -> service.isClean() })
                 it.upToDate.set(vcs.flatMap { service -> service.isUpToDateWithRemote() })
                 it.commitSha.set(vcs.flatMap { service -> service.currentSha() })
+                it.versionFile.set(defaultVersionFile)
+                val versionFileRef = it.versionFile
+                it.versionFileTracked.set(
+                    vcs.flatMap { service ->
+                        service.isTracked(versionFileRef.get().asFile.absolutePath)
+                    },
+                )
             }
         target.tasks.register("preReleaseCommit", PreReleaseCommitTask::class.java) {
             it.group = "release"
             it.description = "Writes the release version into the version file and commits it."
-            it.versionFile.set(release.versionFile.orElse(target.layout.projectDirectory.file("gradle.properties")))
+            it.versionFile.set(defaultVersionFile)
             it.commitMessageTemplate.set(release.preReleaseCommitMessage)
         }
         target.tasks.register("preReleaseTag", PreReleaseTagTask::class.java) {
@@ -62,7 +70,7 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
         target.tasks.register("postReleasePush", PostReleasePushTask::class.java) {
             it.group = "release"
             it.description = "Bumps to the next development version, commits it and pushes commit and tag."
-            it.versionFile.set(release.versionFile.orElse(target.layout.projectDirectory.file("gradle.properties")))
+            it.versionFile.set(defaultVersionFile)
             it.commitMessageTemplate.set(release.postReleaseCommitMessage)
             it.dependsOn("preReleaseTag")
         }

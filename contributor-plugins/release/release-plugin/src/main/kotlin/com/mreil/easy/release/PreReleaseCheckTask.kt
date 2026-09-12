@@ -2,10 +2,14 @@ package com.mreil.easy.release
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.services.ServiceReference
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
 /**
@@ -15,6 +19,11 @@ import org.gradle.api.tasks.TaskAction
  * inputs. Versions and names resolve from [ReleaseStateService] (wired once in
  * the plugin); the commit sha is snapshotted here at execution, right after the
  * gate passes (HEAD-at-gate — a lazily-wired sha could capture a moved HEAD).
+ *
+ * Also verifies the configured [versionFile] is tracked by git: an untracked or
+ * ignored file survives `git reset --hard` on rollback, so a release that fails
+ * after rewriting it would leave the half-written file behind. Fails fast at the
+ * gate with a clear message instead.
  */
 abstract class PreReleaseCheckTask : DefaultTask() {
     @get:Input
@@ -41,6 +50,15 @@ abstract class PreReleaseCheckTask : DefaultTask() {
     @get:Input
     @get:Optional
     abstract val commitSha: Property<String>
+
+    @get:InputFile
+    @get:Optional
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val versionFile: RegularFileProperty
+
+    @get:Input
+    @get:Optional
+    abstract val versionFileTracked: Property<Boolean>
 
     @get:ServiceReference("release")
     abstract val releaseState: Property<ReleaseStateService>
@@ -90,6 +108,12 @@ abstract class PreReleaseCheckTask : DefaultTask() {
         val pattern = releaseBranchPattern.get()
         if (current.isNotBlank() && !Regex(pattern).matches(current)) {
             failures.add("branch '$current' does not match release pattern '$pattern'")
+        }
+        if (versionFileTracked.isPresent && !versionFileTracked.get()) {
+            failures.add(
+                "version file '${versionFile.get().asFile}' is not tracked by git " +
+                    "(an untracked file would survive 'git reset --hard' on rollback)",
+            )
         }
         return failures
     }

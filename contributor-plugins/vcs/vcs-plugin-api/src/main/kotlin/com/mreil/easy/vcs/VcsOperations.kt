@@ -2,6 +2,7 @@ package com.mreil.easy.vcs
 
 import org.gradle.api.provider.Provider
 
+@Suppress("TooManyFunctions")
 internal interface VcsOperations {
     fun remoteUrl(): Provider<String>
 
@@ -28,4 +29,13 @@ internal interface VcsOperations {
     ): Provider<Boolean>
 
     fun tag(name: String): Provider<Boolean>
+
+    /**
+     * Reports whether [path] is tracked by the VCS index.
+     *
+     * Used to gate mutations on tracked files (e.g. release version rewrites): an untracked or
+     * ignored file survives `git reset --hard` on rollback, so writes to it cannot be undone.
+     * Absolute paths are resolved against the VCS root directory.
+     */
+    fun isTracked(path: String): Provider<Boolean>
 }

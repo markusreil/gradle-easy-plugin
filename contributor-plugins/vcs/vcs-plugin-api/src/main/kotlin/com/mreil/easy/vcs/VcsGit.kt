@@ -55,6 +55,9 @@ internal class VcsGit(
 
     override fun tag(name: String): Provider<Boolean> = success("tag", name)
 
+    override fun isTracked(path: String): Provider<Boolean> =
+        providers.provider { output("ls-files", "--error-unmatch", "--", path).result.get().exitValue == 0 }
+
     private fun firstLine(vararg args: String): Provider<String> =
         output(*args)
             .standardOutput

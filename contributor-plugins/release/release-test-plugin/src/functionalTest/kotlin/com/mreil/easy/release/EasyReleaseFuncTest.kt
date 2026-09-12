@@ -541,6 +541,41 @@ class EasyReleaseFuncTest {
             softly.assertThat(project.file("gradle.properties").readText()).contains("version=1.0.1-SNAPSHOT")
         }
     }
+
+    @Test
+    fun `preReleaseCheck fails when version file is untracked`() {
+        project.configure {
+            file(".gitignore", ".gradle/\nbuild/\n")
+            project.version = "1.0.0-SNAPSHOT"
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.release")
+                }
+                version = "1.0.0-SNAPSHOT"
+                easy {
+                    release {
+                        enabled.set(true)
+                        versionFile.set(layout.projectDirectory.file("version.txt"))
+                    }
+                    vcs { enabled.set(true) }
+                    semver { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+        initGitWithRemote(project)
+        // Write version.txt AFTER the initial commit so it remains untracked in git's index.
+        project.file("version.txt", "version=1.0.0-SNAPSHOT\n")
+
+        val result = project.buildAndFail("preReleaseCheck")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("is not tracked by git")
+            softly.assertThat(gitTagExists(project, "v1.0.0")).isFalse()
+            softly.assertThat(project.file("version.txt").readText()).contains("version=1.0.0-SNAPSHOT")
+        }
+    }
 }
 
 private fun initGitWithRemote(project: GradleTestProject): File {

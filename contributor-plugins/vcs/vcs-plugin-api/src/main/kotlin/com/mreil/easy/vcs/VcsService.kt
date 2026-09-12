@@ -61,4 +61,6 @@ abstract class VcsService
         ): Provider<Boolean> = operations.addAndCommit(paths, message)
 
         fun tag(name: String): Provider<Boolean> = operations.tag(name)
+
+        fun isTracked(path: String): Provider<Boolean> = operations.isTracked(path)
     }

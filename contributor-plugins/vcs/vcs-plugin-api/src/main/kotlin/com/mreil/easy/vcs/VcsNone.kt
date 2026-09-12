@@ -3,6 +3,7 @@ package com.mreil.easy.vcs
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 
+@Suppress("TooManyFunctions")
 internal class VcsNone(
     private val providers: ProviderFactory,
 ) : VcsOperations {
@@ -28,4 +29,6 @@ internal class VcsNone(
     ): Provider<Boolean> = providers.provider { true }
 
     override fun tag(name: String): Provider<Boolean> = providers.provider { true }
+
+    override fun isTracked(path: String): Provider<Boolean> = providers.provider { true }
 }
