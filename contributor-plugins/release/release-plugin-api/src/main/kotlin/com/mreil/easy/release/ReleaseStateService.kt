@@ -38,7 +38,7 @@ abstract class ReleaseStateService
             abstract val currentVersion: Property<String>
             abstract val rootDir: DirectoryProperty
             abstract val tagTemplate: Property<String>
-            abstract val releaseTaskNames: ListProperty<String>
+            abstract val releaseTaskPaths: ListProperty<String>
 
             init {
                 commitSha.convention("")
@@ -47,7 +47,7 @@ abstract class ReleaseStateService
                 projectName.convention("")
                 currentVersion.convention("")
                 tagTemplate.convention("v\$v")
-                releaseTaskNames.convention(emptyList())
+                releaseTaskPaths.convention(emptyList())
             }
         }
 
@@ -93,9 +93,9 @@ abstract class ReleaseStateService
         override fun onFinish(event: FinishEvent) {
             if (event !is TaskFinishEvent || event.result !is TaskFailureResult) return
             val sha = parameters.commitSha.orNull?.takeIf { it.isNotBlank() } ?: return
-            val taskName = event.descriptor.taskPath.substringAfterLast(':')
-            if (taskName in parameters.releaseTaskNames.orNull.orEmpty()) {
-                rollback(event.descriptor.taskPath)
+            val taskPath = event.descriptor.taskPath
+            if (taskPath in parameters.releaseTaskPaths.orNull.orEmpty()) {
+                rollback(taskPath)
             } else {
                 logger.error(
                     "Task '{}' failed after release check at commit {}. No rollback for non-release-group tasks.",

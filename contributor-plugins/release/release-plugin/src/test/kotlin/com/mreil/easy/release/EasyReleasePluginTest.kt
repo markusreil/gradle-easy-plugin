@@ -483,6 +483,24 @@ class EasyReleasePluginTest {
         }
     }
 
+    @Test
+    fun `rollback trigger matches full task paths not simple names`() {
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0-SNAPSHOT"
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        (project as ProjectInternal).evaluate()
+        val state = releaseStateOf(project)
+
+        assertThat(state.parameters.releaseTaskPaths.get()).containsExactlyInAnyOrder(
+            ":preReleaseCheck",
+            ":preReleaseCommit",
+            ":preReleaseTag",
+            ":postReleasePush",
+            ":release",
+        )
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun releaseStateOf(project: Project): ReleaseStateService {
         val registration =

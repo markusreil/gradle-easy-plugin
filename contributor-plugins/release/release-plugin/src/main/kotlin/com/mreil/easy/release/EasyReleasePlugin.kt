@@ -81,14 +81,15 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
                     currentVersion.set(target.version.toString())
                     rootDir.set(target.layout.projectDirectory)
                     tagTemplate.set(release.tagTemplate)
-                    releaseTaskNames.set(
+                    val taskPathPrefix = if (target.path == ":") "" else target.path
+                    releaseTaskPaths.set(
                         listOf(
                             "preReleaseCheck",
                             "preReleaseCommit",
                             "preReleaseTag",
                             "postReleasePush",
                             "release",
-                        ),
+                        ).map { "$taskPathPrefix:$it" },
                     )
                 }
             }
