@@ -8,13 +8,17 @@ import org.gradle.api.provider.Property
 /**
  * Public API for the `easy.codemeta` extension.
  *
- * Empty for now - serves as a marker to enable the codemeta plugin via `easy { codemeta {} }`.
- * Future configuration (e.g. output path, authors, license) can be added here.
+ * Controls the root project's shared `codemeta.json`: `filename` selects the file location,
+ * `updateOnRelease` enables updating `version` and `dateModified` on every release via the
+ * release lifecycle (`com.mreil.easy.release.EasyRelease.beforePreReleaseCommit`).
  */
 interface EasyCodemetaExtension :
     EasyPluginExtension,
     CanBeEnabled {
     val filename: Property<String>
+
+    /** Whether the codemeta file is updated on every release (version + dateModified). */
+    val updateOnRelease: Property<Boolean>
 
     companion object : Named {
         override val name: String = "codemeta"
