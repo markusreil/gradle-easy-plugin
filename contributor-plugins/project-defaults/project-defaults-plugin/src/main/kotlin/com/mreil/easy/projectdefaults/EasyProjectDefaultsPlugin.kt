@@ -3,7 +3,7 @@ package com.mreil.easy.projectdefaults
 import com.mreil.easy.AbstractEasyProjectPlugin
 import com.mreil.easy.ApplyToSubprojects
 import com.mreil.easy.EnabledBy
-import com.mreil.utils.GradlePropertiesLocator
+import com.mreil.utils.GradleProperties
 import com.mreil.utils.hasGroup
 import com.mreil.utils.hasVersion
 import org.gradle.api.Project
@@ -47,7 +47,7 @@ class EasyProjectDefaultsPlugin : AbstractEasyProjectPlugin() {
                     "searched: ${searched.joinToString()})",
             )
         }
-        val declaringFile = GradlePropertiesLocator.locateDeclaringFile(propertiesDirs(target), "version")
+        val declaringFile = GradleProperties.locateDeclaringFile(propertiesDirs(target), "version")
         if (declaringFile != null) {
             target.logger.debug("Project version {} declared in {}", version, declaringFile)
         } else {

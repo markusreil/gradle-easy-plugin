@@ -7,6 +7,7 @@ import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import javax.inject.Inject
 
+@Suppress("TooManyFunctions")
 abstract class VcsService
     @Inject
     constructor(
@@ -44,9 +45,24 @@ abstract class VcsService
 
         fun push(): Provider<Boolean> = operations.push()
 
+        fun push(tag: String): Provider<Boolean> = operations.push(tag)
+
         fun fetch(): Provider<Boolean> = operations.fetch()
 
         fun remoteUrl(): Provider<String> = operations.remoteUrl()
 
-        private fun branch(): Provider<String> = operations.branch()
+        fun currentBranch(): Provider<String> = operations.branch()
+
+        fun currentSha(): Provider<String> = operations.currentSha()
+
+        fun addAndCommit(
+            paths: List<String>,
+            message: String,
+        ): Provider<Boolean> = operations.addAndCommit(paths, message)
+
+        fun tag(name: String): Provider<Boolean> = operations.tag(name)
+
+        fun hasTag(name: String): Provider<Boolean> = operations.hasTag(name)
+
+        fun isTracked(path: String): Provider<Boolean> = operations.isTracked(path)
     }

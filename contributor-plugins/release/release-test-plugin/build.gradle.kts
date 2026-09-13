@@ -13,7 +13,6 @@ repositories { mavenCentral() }
 
 dependencies {
     implementation(project(":easy-plugin-core"))
-    implementation(project(":contributor-plugins:codemeta:codemeta-plugin"))
     implementation(project(":contributor-plugins:release:release-plugin"))
     implementation(project(":contributor-plugins:vcs:vcs-plugin"))
     implementation(project(":contributor-plugins:semver:semver-plugin"))
@@ -24,9 +23,9 @@ dependencies {
 
 gradlePlugin {
     plugins {
-        create("codemetaTestHarness") {
-            id = "com.mreil.easy.test.codemeta"
-            implementationClass = "com.mreil.easy.codemeta.CodemetaTestHarnessPlugin"
+        create("releaseTestHarness") {
+            id = "com.mreil.easy.test.release"
+            implementationClass = "com.mreil.easy.release.ReleaseTestHarnessPlugin"
         }
     }
 }

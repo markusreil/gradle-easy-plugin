@@ -4,9 +4,13 @@ import com.mreil.easy.AbstractEasyProjectPlugin
 import com.mreil.easy.EnabledBy
 import com.mreil.easy.findEasyChild
 import com.mreil.easy.isRoot
+import com.mreil.easy.release.EasyRelease
+import com.mreil.easy.release.ReleaseLifecycleListener
 import com.mreil.easy.vcs.EasyVcs
 import org.gradle.api.Project
+import org.gradle.api.file.RegularFile
 import org.gradle.api.provider.Provider
+import java.io.File
 
 /**
  * Easy plugin that handles CodeMeta generation.
@@ -74,6 +78,32 @@ class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {
                 it.dependsOn(generateTask)
             }
         }
+
+        updateFileOnRelease(target, codemetaExt, codemetaFile)
+    }
+
+    /**
+     * Registers a [ReleaseLifecycleListener] that updates `version` + `dateModified` in
+     * `codemeta.json` on every release.
+     *
+     * Fires only when the release plugin registers `preReleaseCommit` (release enabled);
+     * the returned file is committed together with the version file.
+     */
+    private fun updateFileOnRelease(
+        target: Project,
+        codemetaExt: EasyCodemetaExtension,
+        codemetaFile: Provider<RegularFile>,
+    ) {
+        if (!codemetaExt.updateOnRelease.getOrElse(true)) return
+        val codemetaFileResolved: File = codemetaFile.get().asFile
+        EasyRelease.beforePreReleaseCommit(
+            target,
+            ReleaseLifecycleListener { releaseVersion ->
+                val version = releaseVersion.get()
+                if (version.isBlank()) return@ReleaseLifecycleListener emptyList()
+                CodemetaUpdater.updateVersionAndDateModified(codemetaFileResolved, version)
+            },
+        )
     }
 
     private fun codeRepository(target: Project): Provider<String> {
