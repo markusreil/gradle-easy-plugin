@@ -247,7 +247,7 @@ class EasyPublishPluginTest {
     }
 
     @Test
-    fun `publish throws when toPluginPortal enabled but no publishPlugins task`() {
+    fun `publish does not depend on publishPlugins when toPluginPortal enabled but project is not a plugin project`() {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0"
@@ -260,12 +260,31 @@ class EasyPublishPluginTest {
 
         evaluate(project)
 
-        org.assertj.core.api.Assertions
-            .assertThatThrownBy {
-                project.tasks.named("publish").get()
-            }.cause()
-            .isInstanceOf(GradleException::class.java)
-            .hasMessageContaining("publishPlugins")
+        val publishTask = project.tasks.named("publish").get()
+        assertSoftly { softly ->
+            softly.assertThat(publishTask.dependsOn.map { it.toString() }).noneMatch { it.contains("publishPlugins") }
+        }
+    }
+
+    @Test
+    fun `toPluginPortal does not fail when project has no publish task`() {
+        // Root-like project: no java plugin, so maven-publish is never applied and there is
+        // no `publish` task. toPluginPortal() is a build-wide toggle that inherits to every
+        // project, so wiring must not throw "Task with name 'publish' not found".
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
+        val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
+        publish.enabled.set(true)
+        publish.toPluginPortal()
+
+        evaluate(project)
+
+        assertSoftly { softly ->
+            softly.assertThat(project.tasks.findByName("publish")).isNull()
+        }
     }
 
     @Test
