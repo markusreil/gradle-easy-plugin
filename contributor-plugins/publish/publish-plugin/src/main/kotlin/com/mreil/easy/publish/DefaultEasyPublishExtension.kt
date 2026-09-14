@@ -24,6 +24,7 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
         toMavenLocal.convention(false)
         toMavenCentral.convention(false)
         sonatypeSnapshots.convention(false)
+        toPluginPortal.convention(false)
         // Signing is opt-in: staging-only / local / snapshot publishing skips it.
         // [toMavenCentral] turns it on because the JReleaser deploy verifies every artifact
         // is signed, so consumers must sign before deploy.
@@ -49,6 +50,12 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     // into Maven Central from its own script while the root stays unset. READ_ONLY would
     // disallow the per-project override.
     abstract val toMavenCentral: Property<Boolean>
+
+    abstract val toPluginPortal: Property<Boolean>
+
+    override fun toPluginPortal() {
+        toPluginPortal.set(true)
+    }
 
     /**
      * Enables the JReleaser Central deploy. Unless another staging repo was already chosen,

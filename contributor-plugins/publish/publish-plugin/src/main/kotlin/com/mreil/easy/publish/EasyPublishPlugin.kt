@@ -7,6 +7,7 @@ import com.mreil.easy.isEasyChildEnabled
 import com.mreil.easy.publish.central.SigningWiring
 import com.mreil.easy.semver.EasySemver
 import com.mreil.easy.semver.EasySemverExtension
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -79,6 +80,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             // Signing is handled by the Gradle `signing` plugin (see SigningWiring).
             SigningWiring.wire(target, propertyResolver)
         }
+        wirePluginPortalPublishing(target)
     }
 
     /**
@@ -120,6 +122,50 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         // and tasks.named is lazy, so no afterEvaluate deferral is needed here.
         if (target.publishExtension()?.toMavenLocal?.get() == true) {
             target.tasks.named("publish").configure { it.dependsOn("publishToMavenLocal") }
+        }
+    }
+
+    /**
+     * Wires the Gradle Plugin Portal `publishPlugins` task into `publish` for plugin projects
+     * applying `com.gradle.plugin-publish`, on release versions only.
+     *
+     * Opt-in via [EasyPublishExtension.toPluginPortal] (convention false). Snapshots never
+     * portal-publish (silently skipped). Failures surface eagerly — when `publish` is realized —
+     * with an actionable message instead of a cryptic plugin-portal error:
+     * - no `publishPlugins` task -> not a plugin project;
+     * - `gradle.publish.key` / `gradle.publish.secret` missing -> credentials absent.
+     * Reads happen at configuration time and only plain Booleans/task handles reach the
+     * configure action (CC-safe, mirrors SigningWiring).
+     */
+    private fun wirePluginPortalPublishing(target: Project) {
+        val publishExt = target.publishExtension() ?: return
+        if (!publishExt.toPluginPortal.get()) return
+        val isRelease = !resolveIsSnapshot(target)
+        target.tasks.named("publish").configure { publishTask ->
+            if (!isRelease) return@configure
+            val publishPlugins =
+                target.tasks.findByName("publishPlugins")
+                    ?: throw GradleException(
+                        "easy.publish.toPluginPortal() is enabled in project '${target.path}' but no 'publishPlugins' " +
+                            "task exists - the Gradle Plugin Portal is only available to plugin projects applying " +
+                            "`com.gradle.plugin-publish`. Apply the plugin or remove toPluginPortal() from the " +
+                            "easy { publish { } } block.",
+                    )
+            val hasKey = propertyResolver.get("gradle.publish.key").orNull != null
+            val hasSecret = propertyResolver.get("gradle.publish.secret").orNull != null
+            if (!hasKey || !hasSecret) {
+                val missing =
+                    buildList {
+                        if (!hasKey) add("gradle.publish.key")
+                        if (!hasSecret) add("gradle.publish.secret")
+                    }.joinToString(", ")
+                throw GradleException(
+                    "easy.publish.toPluginPortal() is enabled but Plugin Portal credentials are missing: $missing. " +
+                        "Provide them via the GRADLE_PUBLISH_KEY / GRADLE_PUBLISH_SECRET environment variables or " +
+                        "the gradle.publish.key / gradle.publish.secret Gradle properties.",
+                )
+            }
+            publishTask.dependsOn(publishPlugins)
         }
     }
 

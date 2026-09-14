@@ -161,6 +161,8 @@ Currently configured in GitHub:
 | Secret | `ORG_GRADLE_PROJECT_SONATYPESNAPSHOTSPASSWORD` | `sonatypeSnapshotsPassword` | Sonatype snapshots token |
 | Secret | `JRELEASER_PGP_PRIVATEKEY` | `jreleaser.gpg.privateKey` (env `JRELEASER_GPG_PRIVATE_KEY`) | PGP signing (base64 armored private key) |
 | Secret | `JRELEASER_PGP_PASSPHRASE` | `jreleaser.gpg.passphrase` (env `JRELEASER_GPG_PASSPHRASE`) | PGP signing passphrase |
+| Secret | `GRADLE_PUBLISH_KEY` | `gradle.publish.key` | Plugin Portal `publishPlugins` (`gradle.publish.key`) |
+| Secret | `GRADLE_PUBLISH_SECRET` | `gradle.publish.secret` | Plugin Portal `publishPlugins` (`gradle.publish.secret`) |
 
 Notes:
 

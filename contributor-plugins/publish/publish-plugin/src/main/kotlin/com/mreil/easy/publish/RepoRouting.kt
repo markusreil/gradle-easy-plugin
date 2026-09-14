@@ -31,5 +31,5 @@ internal object RepoRouting {
         }
     }
 
-    fun isSnapshot(semver: Semver?): Boolean? = semver?.let { it.getPreRelease() == listOf("SNAPSHOT") }
+    fun isSnapshot(semver: Semver?): Boolean? = semver?.let { it.preRelease == listOf("SNAPSHOT") }
 }
