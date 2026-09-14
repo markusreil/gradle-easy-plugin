@@ -3,6 +3,7 @@ package com.mreil.easy.publish
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
 import org.assertj.core.api.SoftAssertions.assertSoftly
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.ProjectConfigurationException
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
@@ -197,6 +198,143 @@ class EasyPublishPluginTest {
         val publishTask = project.tasks.getByName("publish")
         assertSoftly { softly ->
             softly.assertThat(publishTask.dependsOn.map { it.toString() }).noneMatch { it.contains("publishToMavenLocal") }
+        }
+    }
+
+    @Test
+    fun `toPluginPortal defaults to false`() {
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.pluginManager.apply("java-library")
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
+        val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
+        publish.enabled.set(true)
+
+        assertSoftly { softly ->
+            softly.assertThat(publish.toPluginPortal.get()).isFalse()
+        }
+    }
+
+    @Test
+    fun `publish depends on publishPlugins when toPluginPortal enabled on release with credentials`() {
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.pluginManager.apply("java-library")
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
+        val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
+        publish.enabled.set(true)
+        publish.toPluginPortal()
+        project.tasks.register("publishPlugins")
+
+        val oldKey = System.getProperty("gradle.publish.key")
+        val oldSecret = System.getProperty("gradle.publish.secret")
+        try {
+            System.setProperty("gradle.publish.key", "test-key")
+            System.setProperty("gradle.publish.secret", "test-secret")
+            evaluate(project)
+            val publishTask = project.tasks.named("publish").get()
+            assertSoftly { softly ->
+                softly.assertThat(publishTask.dependsOn.map { it.toString() }).anyMatch { it.contains("publishPlugins") }
+            }
+        } finally {
+            if (oldKey != null) System.setProperty("gradle.publish.key", oldKey) else System.clearProperty("gradle.publish.key")
+            if (oldSecret != null) System.setProperty("gradle.publish.secret", oldSecret) else System.clearProperty("gradle.publish.secret")
+        }
+    }
+
+    @Test
+    fun `publish throws when toPluginPortal enabled but no publishPlugins task`() {
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.pluginManager.apply("java-library")
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
+        val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
+        publish.enabled.set(true)
+        publish.toPluginPortal()
+
+        evaluate(project)
+
+        org.assertj.core.api.Assertions
+            .assertThatThrownBy {
+                project.tasks.named("publish").get()
+            }.cause()
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining("publishPlugins")
+    }
+
+    @Test
+    fun `publish throws when toPluginPortal enabled but credentials missing`() {
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.pluginManager.apply("java-library")
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
+        val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
+        publish.enabled.set(true)
+        publish.toPluginPortal()
+        project.tasks.register("publishPlugins")
+
+        val oldKey = System.getProperty("gradle.publish.key")
+        val oldSecret = System.getProperty("gradle.publish.secret")
+        try {
+            System.clearProperty("gradle.publish.key")
+            System.clearProperty("gradle.publish.secret")
+            evaluate(project)
+            org.assertj.core.api.Assertions
+                .assertThatThrownBy {
+                    project.tasks.named("publish").get()
+                }.cause()
+                .isInstanceOf(GradleException::class.java)
+                .hasMessageContaining("gradle.publish.key")
+        } finally {
+            if (oldKey != null) System.setProperty("gradle.publish.key", oldKey)
+            if (oldSecret != null) System.setProperty("gradle.publish.secret", oldSecret)
+        }
+    }
+
+    @Test
+    fun `publish does not throw when snapshot with toPluginPortal enabled`() {
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0-SNAPSHOT"
+        project.pluginManager.apply("java-library")
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
+        val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
+        publish.enabled.set(true)
+        publish.toPluginPortal()
+
+        evaluate(project)
+
+        val publishTask = project.tasks.named("publish").get()
+        assertSoftly { softly ->
+            softly.assertThat(publishTask.dependsOn.map { it.toString() }).noneMatch { it.contains("publishPlugins") }
+        }
+    }
+
+    @Test
+    fun `publish does not throw when toPluginPortal not enabled`() {
+        val project = ProjectBuilder.builder().build()
+        project.group = "com.example"
+        project.version = "1.0.0"
+        project.pluginManager.apply("java-library")
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
+        val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
+        publish.enabled.set(true)
+
+        evaluate(project)
+
+        val publishTask = project.tasks.named("publish").get()
+        assertSoftly { softly ->
+            softly.assertThat(publishTask).isNotNull()
         }
     }
 

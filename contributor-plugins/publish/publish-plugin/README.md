@@ -30,6 +30,7 @@ plugin infrastructure. It activates by default (`enabled` defaults to `true` in 
 * **Maven local wiring** – `toMavenLocal()` makes `publish` depend on `publishToMavenLocal`.
 * **Semver-aware routing** – when `easy.semver` is enabled (`easy { semver {} }`), the version is parsed via `semver4j` (`EasySemver.of(project)`). A version is a snapshot iff its semver pre-release is exactly `SNAPSHOT` (Maven convention); `0.x` releases and other pre-releases (e.g. `1.0.0-RC1`) are treated as releases. Snapshots skip `*release*` repos, releases skip `*snapshot*` repos; neutral names always publish. Without semver, a `-SNAPSHOT` version suffix decides instead, so routing always filters.
 * **Sonatype snapshots** – `toSonatypeSnapshots()` publishes snapshots directly to Central's snapshot repository via `maven-publish` (parallel, no JReleaser round-trip). Creates the `sonatypeSnapshots` repo (`https://central.sonatype.com/repository/maven-snapshots/` with standard `sonatypeSnapshotsUsername`/`sonatypeSnapshotsPassword` credentials) unless already declared manually. It is a pure repo shorthand: routing is decided by semver when enabled, or by the `-SNAPSHOT` suffix when semver is off — no semver requirement.
+* **Gradle Plugin Portal** – `toPluginPortal()` makes `publish` run the `publishPlugins` task (from `com.gradle.plugin-publish`) on release versions in plugin projects. Snapshots are silently skipped. Fails early with an actionable error when the project is not a plugin project (no `publishPlugins` task) or when Portal credentials (`gradle.publish.key` / `gradle.publish.secret`) are missing. Credentials can be provided via `GRADLE_PUBLISH_KEY`/`GRADLE_PUBLISH_SECRET` environment variables or the corresponding Gradle properties.
 
 ## Usage
 
@@ -60,6 +61,8 @@ easy {
         toMavenStaging("custom")
         /* Publish to Maven Central via jreleaser cli. */
         toMavenCentral()
+        /* Publish to the Gradle Plugin Portal on releases (plugin projects only). */
+        toPluginPortal()
         /* Enable PGP artifact signing. */
         signingEnabled = true
     }
@@ -147,6 +150,7 @@ implementation and not part of the public API – consumers use `mavenRepo(name)
 | `toMavenLocal()` | One-shot flag (`Property<Boolean> toMavenLocal`) — makes `publish` depend on `publishToMavenLocal`. | Nothing. |
 | `toMavenCentral()` | One-shot flag (`Property<Boolean> toMavenCentral`) — stages + deploys releases to Maven Central via JReleaser. | Turns on `signingEnabled` and a default `stagingPath` (`build/stagingRepo`) automatically. Requires the `codemeta` extension and a non-snapshot version — otherwise central wiring is skipped with a log message. |
 | `toSonatypeSnapshots()` | One-shot flag (`Property<Boolean> sonatypeSnapshots`) — creates the `sonatypeSnapshots` repo (Central snapshots URL + password credentials) unless present; routing via semver or `-SNAPSHOT` suffix. | Nothing (pure repo shorthand). |
+| `toPluginPortal()` | One-shot flag (`Property<Boolean> toPluginPortal`) — makes `publish` depend on `publishPlugins` (from `com.gradle.plugin-publish`) on releases in plugin projects; snapshots skip; fails early when not applicable. | Nothing; requires `com.gradle.plugin-publish` and `gradle.publish.key`/`gradle.publish.secret` credentials. |
 | `signingEnabled` | Enables PGP artifact signing (`Property<Boolean>`, default `false`). | Auto-enabled by `toMavenCentral()`; set `signingEnabled.set(false)` afterwards to opt out. |
 | `mavenRepos` | `NamedDomainObjectContainer<MavenRepoSpec>` of declared repositories (internal, on `DefaultEasyPublishExtension`). | — (populated via `mavenRepo(...)` / the `to*` shorthands). |
 | `stagingPath` | `Property<String>` holding staging template (creates `mavenStaging` per-project via `buildDirectory`). | Set via `toMavenStaging(...)`, or automatically by `toMavenCentral()`. |
@@ -175,6 +179,10 @@ Example for a repository named `releases`:
 
 > Note: `file://` repositories do not support credentials; use an `http(s)://` URL
 > (or a real remote) when enabling `passwordCredentials`.
+
+Portal credentials (`toPluginPortal()`) are separate: provide `gradle.publish.key` and
+`gradle.publish.secret` via the `GRADLE_PUBLISH_KEY`/`GRADLE_PUBLISH_SECRET` environment
+variables or the corresponding Gradle properties.
 
 ## Module overview
 
