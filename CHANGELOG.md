@@ -7,17 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- `preReleaseCommit` task in the release plugin: rewrites the `version=` line of a version file (default root `gradle.properties`, overridable via `EasyReleaseExtension.versionFile`) to the resolved release version and commits that file together with any files returned by `ReleaseLifecycleListener` implementations registered via `EasyRelease.beforePreReleaseCommit`. Commit message from `preReleaseCommitMessage` (default `Set version for release: $v`, `$v` = release version); no-op when the version file already has the release version and no listener contributed files; without a VCS the commit is a `VcsNone` no-op (files still updated). Requires a separate Gradle invocation afterwards to build/publish with the new version (the version file is read at configuration time).
-
-- Codemeta plugin release integration: when `easy.codemeta.updateOnRelease` is enabled (default `true`), the codemeta plugin registers a `ReleaseLifecycleListener` via `EasyRelease.beforePreReleaseCommit` that updates `version` (resolved release version) and `dateModified` (today, ISO date) in `codemeta.json` on every release; the file is committed together with the version file.
-
-- `preReleaseTag` task in the release plugin: tags the release commit with the release version. Tag name from `tagTemplate` (default `v$v`, `$v` = release version); runs after `preReleaseCommit` (tags the version-bump commit), `VcsNone` no-op when no VCS is available.
-
-- `postReleasePush` finalizes the release: bumps `version=` to the next development version (precedence `easy.release.nextVersion` > semver `withIncPatch().withPreRelease("SNAPSHOT")`), commits it with `postReleaseCommitMessage` (default `Set new version after release: $v`, `$v` = next version; no-op when already at the next version) and atomically pushes the commit and the release tag (`git push --atomic origin HEAD <tag>`). Runs after `preReleaseTag`; the `release` task now depends on the full chain (check → commit → tag → push).
-
-- `ReleaseStateService` now rolls a failed release-group task (`preReleaseCheck`, `preReleaseCommit`, `preReleaseTag`, `postReleasePush`, `release`) back to the state captured at the gate: it hard-resets the working tree to the gate commit (discarding the release/snapshot commits and the half-written version file) and deletes the release tag only if it points at a commit created after the gate, so a pre-existing tag is never deleted. Nothing is ever reset against the remote; non-release-group failures only log the captured state.
-
 ### Changed
 
 ### Deprecated
@@ -28,21 +17,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.0.108] - 2026-09-14
+
+### Added
+- Release plugin: complete `check → commit → tag → push` flow — `preReleaseCommit` commits
+  the version-file bump plus `ReleaseLifecycleListener` files (e.g. codemeta
+  `version`/`dateModified`), `preReleaseTag` tags the release commit, `postReleasePush`
+  bumps to the next development version and atomically pushes commit and tag, with
+  `ReleaseStateService` rollback to the gate state on failure.
+
 ## [0.0.107] - 2026-09-11
 
 ### Fixed
 
-- VCS configuration-cache compatibility (`Fix VCS cc issues #13`): `VcsService` no longer starts external Git processes at configuration time (moved to provider APIs via `VcsOperations`), with a new `VcsConfigurationCacheFuncTest` that fails on CC violations.
+- VCS configuration-cache compatibility (`Fix VCS cc issues #13`): `VcsService` no longer
+  starts external Git processes at configuration time (moved to provider APIs via
+  `VcsOperations`), with a new `VcsConfigurationCacheFuncTest` that fails on CC violations.
 
 ## [0.0.106] - 2026-09-11
 
 ### Added
 
-- VCS contributor plugin suite (`vcs-plugin-api`, `vcs-plugin`, `vcs-test-plugin`): Git detection via `VcsService` build service, exposed through the `EasyVcs` extension, with codemeta integration.
+- VCS contributor plugin suite (`vcs-plugin-api`, `vcs-plugin`, `vcs-test-plugin`):
+  Git detection via `VcsService` build service, exposed through the `EasyVcs` extension,
+  with codemeta integration.
 
 ### Changed
 
-- Maven Central publishing wiring supports per-project `toMavenCentral`, deferred to `projectsEvaluated` with ANY semantics.
+- Maven Central publishing wiring supports per-project `toMavenCentral`, deferred to
+  `projectsEvaluated` with ANY semantics.
 - Disabled publishing for `easy-plugin-core` and contributor plugin modules; only `easy-plugin` publishes.
 - Build on Java 17 (CI and toolchain).
 
