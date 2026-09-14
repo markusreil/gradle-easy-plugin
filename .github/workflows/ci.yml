@@ -42,6 +42,9 @@ jobs:
       ORG_GRADLE_PROJECT_mreilComGradlePluginsSnapshotsPassword: ${{ secrets.ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSSNAPSHOTSPASSWORD }}
       ORG_GRADLE_PROJECT_sonatypeSnapshotsUsername: ${{ vars.ORG_GRADLE_PROJECT_SONATYPESNAPSHOTSUSERNAME }}
       ORG_GRADLE_PROJECT_sonatypeSnapshotsPassword: ${{ secrets.ORG_GRADLE_PROJECT_SONATYPESNAPSHOTSPASSWORD }}
+      # Gradle Plugin Portal credentials (`gradle.publish.key` / `.secret` properties)
+      ORG_GRADLE_PROJECT_gradlePublishKey: ${{ secrets.GRADLE_PUBLISH_KEY }}
+      ORG_GRADLE_PROJECT_gradlePublishSecret: ${{ secrets.GRADLE_PUBLISH_SECRET }}
       # PGP signing (Gradle `signing` plugin via PropertyResolver) reads env vars
       # JRELEASER_GPG_PRIVATE_KEY / JRELEASER_GPG_PASSPHRASE directly. GitHub stores
       # different names, so remap secrets to the exact env names the build expects.
