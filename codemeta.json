@@ -2,8 +2,8 @@
   "@context" : "https://doi.org/10.5063/schema/codemeta-2.0",
   "@type" : "SoftwareSourceCode",
   "name" : "gradle-easy-plugin",
-  "description": "A Gradle plugin framework that simplifies plugin development with modular contributors and convention-based configuration",
-  "version" : "0.0.100-SNAPSHOT",
+  "description" : "A Gradle plugin framework that simplifies plugin development with modular contributors and convention-based configuration",
+  "version" : "0.0.109",
   "license" : "https://spdx.org/licenses/MIT",
   "codeRepository" : "https://github.com/markusreil/gradle-easy-plugin",
   "author" : [ {
@@ -12,5 +12,6 @@
     "familyName" : "Reil",
     "email" : "markus.reil@gmail.com"
   } ],
+  "dateModified" : "2026-09-14",
   "programmingLanguage" : "Kotlin"
 }
