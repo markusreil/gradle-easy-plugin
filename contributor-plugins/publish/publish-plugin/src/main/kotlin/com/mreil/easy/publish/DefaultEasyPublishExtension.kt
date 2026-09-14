@@ -51,7 +51,7 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     // disallow the per-project override.
     abstract val toMavenCentral: Property<Boolean>
 
-    abstract override val toPluginPortal: Property<Boolean>
+    abstract val toPluginPortal: Property<Boolean>
 
     override fun toPluginPortal() {
         toPluginPortal.set(true)

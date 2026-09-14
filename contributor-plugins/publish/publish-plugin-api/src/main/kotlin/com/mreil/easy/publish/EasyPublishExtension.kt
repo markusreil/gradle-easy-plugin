@@ -56,8 +56,6 @@ interface EasyPublishExtension :
      */
     fun toPluginPortal()
 
-    val toPluginPortal: Property<Boolean>
-
     val signingEnabled: Property<Boolean>
 
     /**

@@ -209,7 +209,7 @@ class EasyPublishPluginTest {
         project.pluginManager.apply("java-library")
         project.pluginManager.apply(ProjectPlugin::class.java)
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
-        val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
+        val publish = easy.extensions.getByType(EasyPublishExtension::class.java) as DefaultEasyPublishExtension
         publish.enabled.set(true)
 
         assertSoftly { softly ->
