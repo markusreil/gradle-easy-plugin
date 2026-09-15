@@ -1,9 +1,9 @@
 package com.mreil.easy.publish.central
 
-import com.mreil.easy.catalogVersionOrDefault
-import com.mreil.easy.isRoot
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
 import com.mreil.easy.publish.isCentralEnabled
+import com.mreil.utils.catalogVersionOrDefault
+import com.mreil.utils.isRoot
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 

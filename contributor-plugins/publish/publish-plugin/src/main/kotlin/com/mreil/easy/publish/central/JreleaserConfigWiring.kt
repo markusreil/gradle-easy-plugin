@@ -1,9 +1,9 @@
 package com.mreil.easy.publish.central
 
-import com.mreil.easy.isRoot
 import com.mreil.easy.publish.isCentralEnabled
 import com.mreil.easy.publish.publishExtension
 import com.mreil.utils.PropertyResolver
+import com.mreil.utils.isRoot
 import org.gradle.api.Project
 import org.gradle.api.publish.PublishingExtension
 

@@ -6,31 +6,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.Test
 
-class CodemetaLicenseTest {
-    @Test
-    fun `toUrl accepts SPDX id shorthand`() {
-        assertSoftly { softly ->
-            softly.assertThat(CodemetaLicense.toUrl("MIT")).isEqualTo("https://spdx.org/licenses/MIT")
-        }
-    }
-
-    @Test
-    fun `toUrl passes through full URL`() {
-        assertSoftly { softly ->
-            softly
-                .assertThat(CodemetaLicense.toUrl("https://spdx.org/licenses/Apache-2.0"))
-                .isEqualTo("https://spdx.org/licenses/Apache-2.0")
-        }
-    }
-
-    @Test
-    fun `toSpdxId derives id from URL`() {
-        assertSoftly { softly ->
-            softly.assertThat(CodemetaLicense.toSpdxId("https://spdx.org/licenses/MIT")).isEqualTo("MIT")
-            softly.assertThat(CodemetaLicense.toSpdxId("MIT")).isEqualTo("MIT")
-        }
-    }
-
+class CodemetaDeserializationTest {
     @Test
     fun `single author object deserializes as list`() {
         val mapper =

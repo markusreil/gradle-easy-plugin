@@ -17,6 +17,7 @@ dependencies {
     implementation(project(":contributor-plugins:vcs:vcs-plugin-api"))
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
+    implementation(project(":gradle-plugin-utils"))
     compileOnly(gradleApi())
 }
 

@@ -2,7 +2,7 @@ package com.mreil.easy.vcs
 
 import com.mreil.easy.AbstractEasyProjectPlugin
 import com.mreil.easy.EnabledBy
-import com.mreil.easy.isRoot
+import com.mreil.utils.isRoot
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.provider.Property

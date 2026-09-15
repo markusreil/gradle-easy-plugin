@@ -1,6 +1,6 @@
 package com.mreil.easy.publish.central
 
-import com.mreil.easy.isRoot
+import com.mreil.utils.isRoot
 import org.gradle.api.Project
 
 /**

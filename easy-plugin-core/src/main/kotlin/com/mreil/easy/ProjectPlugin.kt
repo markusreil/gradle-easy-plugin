@@ -1,5 +1,6 @@
 package com.mreil.easy
 
+import com.mreil.utils.isRoot
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 

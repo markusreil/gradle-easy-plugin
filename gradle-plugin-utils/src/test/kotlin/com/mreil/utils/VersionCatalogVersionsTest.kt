@@ -1,4 +1,4 @@
-package com.mreil.easy
+package com.mreil.utils
 
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.testfixtures.ProjectBuilder
