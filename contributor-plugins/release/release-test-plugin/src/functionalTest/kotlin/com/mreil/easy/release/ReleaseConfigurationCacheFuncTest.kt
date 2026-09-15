@@ -5,10 +5,9 @@ import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
 import com.mreil.gradletest.project.GradleTestProject
 import com.mreil.gradletest.project.GradleTestProjectExtension
 import com.mreil.gradletest.project.assertj.assertSoftly
+import com.mreil.gradletest.project.initGitWithRemote
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import java.io.File
-import java.nio.file.Files
 
 /**
  * Configuration-cache compatibility test for the `release` contributor.
@@ -92,31 +91,5 @@ class ReleaseConfigurationCacheFuncTest {
             softly.assertThat(first.output).doesNotContain("problems were found")
             softly.assertThat(first.output).doesNotContain("external process")
         }
-    }
-
-    private fun initGitWithRemote(project: GradleTestProject): File {
-        project.file("build.gradle.kts")
-        runGit(project.projectDir.absolutePath, "init", "-b", "main")
-        runGit(project.projectDir.absolutePath, "config", "user.email", "test@example.com")
-        runGit(project.projectDir.absolutePath, "config", "user.name", "Test")
-        runGit(project.projectDir.absolutePath, "add", "-A")
-        runGit(project.projectDir.absolutePath, "commit", "-m", "initial")
-        val remoteDir = Files.createTempDirectory("git-remote-").toFile()
-        runGit(remoteDir.absolutePath, "init", "--bare", "-b", "main")
-        runGit(project.projectDir.absolutePath, "remote", "add", "origin", remoteDir.absolutePath)
-        runGit(project.projectDir.absolutePath, "push", "-u", "origin", "main")
-        return remoteDir
-    }
-
-    private fun runGit(
-        workDir: String,
-        vararg args: String,
-    ) {
-        val process =
-            ProcessBuilder(listOf("git") + args.toList())
-                .directory(File(workDir))
-                .redirectErrorStream(true)
-                .start()
-        check(process.waitFor() == 0) { "git ${args.joinToString(" ")} failed with exit code $process.exitValue()" }
     }
 }

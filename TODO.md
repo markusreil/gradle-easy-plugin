@@ -23,3 +23,4 @@ This document keeps track of tasks that need to be completed.
 * declare Configuration Cache compatibility to silence Plugin Portal warning ("Consider declaring compatibility of your plugin with the following Gradle features: Configuration cache", https://plugins.gradle.org/docs/publish-plugin#declaring-compatibility) + note in README
 * Lifecycle listener that collects and reports build statistics
 * info task that gives detailed info about publications and repos
+* tests: GitAssertions

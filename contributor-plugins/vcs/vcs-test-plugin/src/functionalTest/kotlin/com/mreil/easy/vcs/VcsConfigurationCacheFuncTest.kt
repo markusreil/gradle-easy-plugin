@@ -5,6 +5,7 @@ import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
 import com.mreil.gradletest.project.GradleTestProject
 import com.mreil.gradletest.project.GradleTestProjectExtension
 import com.mreil.gradletest.project.assertj.assertSoftly
+import com.mreil.gradletest.project.gitInit
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -65,15 +66,5 @@ class VcsConfigurationCacheFuncTest {
             softly.assertThat(second.output).doesNotContain("problems were found")
             softly.assertThat(second.output).doesNotContain("external process")
         }
-    }
-
-    private fun gitInit(project: GradleTestProject) {
-        val process =
-            ProcessBuilder("git", "init")
-                .directory(project.projectDir)
-                .redirectErrorStream(true)
-                .start()
-        val exitCode = process.waitFor()
-        check(exitCode == 0) { "git init failed with exit code $exitCode" }
     }
 }
