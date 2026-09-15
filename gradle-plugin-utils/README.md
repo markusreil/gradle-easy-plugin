@@ -83,6 +83,7 @@ Extension functions for checking whether a project has usable coordinates:
 - `String?.isSpecified()` — returns true when the value is set (neither null, empty nor Gradle's `"unspecified"` default).
 - `Project.hasGroup()` — returns true when the project has a usable `group`.
 - `Project.hasVersion()` — returns true when the project has a usable `version`.
+- `Project.hasSnapshotVersion()` — returns true when the project's `version` uses the Maven `-SNAPSHOT` suffix convention.
 
 ### `ProjectExtensions` — project root and directory helpers
 
