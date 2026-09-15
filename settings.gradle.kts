@@ -7,13 +7,13 @@ pluginManagement {
     }
 }
 
-plugins { id("com.mreil.easy.settings") version "0.0.108" }
+plugins { id("com.mreil.easy.settings") version "0.0.110" }
 
 easy {
     publish {
         toMavenStaging()
         toSonatypeSnapshots()
-//        toPluginPortal()
+        toPluginPortal()
         mavenRepo(
             "mreilComGradlePluginsSnapshots",
             "https://repo.mreil.com/gradle-plugins-snapshots",
