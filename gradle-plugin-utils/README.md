@@ -10,7 +10,7 @@ Typical utilities include:
 
 - **Task helpers** — creation/registration, cacheability, input/output wiring.
 - **Property & provider helpers** — safe `Property<T>` / `Provider<T>` conventions, CC-compatible access.
-- **Project / Settings helpers** — extenabssion registration, plugin application, `withType` helpers.
+- **Project / Settings helpers** — extension registration, plugin application, `withType` helpers.
 - **File & path helpers** — layout-aware file resolution, directory creation.
 - **Testing helpers** — shared assertions or fixtures for `ProjectBuilder` / `GradleRunner` tests.
 
@@ -51,6 +51,16 @@ Inner `Provider<String>` wrapping a delegate.
 Delegates all `Provider` operations (`get()`, `isPresent`, `map`, `flatMap`, `orElse`, etc.) and adds:
 
 - `base64Decode(): Provider<String>` — lazy `Base64.getDecoder().decode` with UTF-8 via `Provider.map`; absent stays absent. Top-level `typealias StringProvider = PropertyResolver.StringProvider` kept for backward compat.
+
+### `ProviderExtensions` — fail-fast required values
+
+`src/main/kotlin/com/mreil/utils/ProviderExtensions.kt`
+
+- `Provider<T>.required(message)` — returns the provider's value, or throws `GradleException` with `message` when absent. Reads lazily at call time (task action or finalized configuration), so it stays configuration-cache compatible; prefer it over a throwing provider convention.
+
+```kotlin
+val username = mavenCentralUsername.required("Maven Central username is required")
+```
 
 ### `GradleProperties` — layout-preserving `gradle.properties` reader/writer
 
@@ -113,12 +123,14 @@ gradle-plugin-utils/
   build.gradle.kts
   README.md
   src/main/kotlin/com/mreil/utils/PropertyResolver.kt        # PropertyResolver + inner StringProvider
+  src/main/kotlin/com/mreil/utils/ProviderExtensions.kt      # Provider<T>.required(message)
   src/main/kotlin/com/mreil/utils/GradleProperties.kt         # GradleProperties (layout-preserving read/write)
   src/main/kotlin/com/mreil/utils/ProjectCoordinates.kt       # isSpecified, hasGroup, hasVersion
   src/main/kotlin/com/mreil/utils/ProjectExtensions.kt        # Project.isRoot(), Project.propertiesDirs()
   src/main/kotlin/com/mreil/utils/VersionCatalogVersions.kt   # Project.catalogVersionOrDefault(...)
   src/main/kotlin/com/mreil/utils/SpdxLicense.kt              # SpdxLicense (toUrl, toSpdxId)
   src/test/kotlin/com/mreil/utils/PropertyResolverTest.kt
+  src/test/kotlin/com/mreil/utils/ProviderExtensionsTest.kt
   src/test/kotlin/com/mreil/utils/GradlePropertiesTest.kt
   src/test/kotlin/com/mreil/utils/ProjectCoordinatesTest.kt
   src/test/kotlin/com/mreil/utils/ProjectExtensionsTest.kt

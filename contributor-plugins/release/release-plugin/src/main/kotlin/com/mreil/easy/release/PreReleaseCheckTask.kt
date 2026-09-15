@@ -1,5 +1,6 @@
 package com.mreil.easy.release
 
+import com.mreil.utils.required
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
@@ -90,12 +91,12 @@ abstract class PreReleaseCheckTask : DefaultTask() {
     private fun logVersions() {
         val state = releaseState.get()
         val release =
-            state.releaseVersion().orNull ?: throw GradleException(
+            state.releaseVersion().required(
                 "No release version resolved: set -Deasy.release.version=<version> " +
                     "or enable the semver plugin with a valid project version.",
             )
         val next =
-            state.nextVersion().orNull ?: throw GradleException(
+            state.nextVersion().required(
                 "No next version resolved: set -Deasy.release.nextVersion=<version> " +
                     "or enable the semver plugin with a valid project version.",
             )

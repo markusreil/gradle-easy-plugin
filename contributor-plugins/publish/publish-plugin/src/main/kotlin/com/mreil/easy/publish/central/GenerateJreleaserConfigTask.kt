@@ -1,7 +1,7 @@
 package com.mreil.easy.publish.central
 
+import com.mreil.utils.required
 import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
@@ -91,6 +91,4 @@ abstract class GenerateJreleaserConfigTask : DefaultTask() {
             ),
         )
     }
-
-    private fun Property<String>.required(message: String): String = orNull ?: throw GradleException(message)
 }
