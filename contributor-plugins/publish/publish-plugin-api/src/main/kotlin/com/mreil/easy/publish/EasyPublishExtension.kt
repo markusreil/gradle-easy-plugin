@@ -45,14 +45,15 @@ interface EasyPublishExtension :
     fun toSonatypeSnapshots()
 
     /**
-     * Publishes this project's Gradle plugin to the Gradle Plugin Portal by making `publish`
-     * depend on the `publishPlugins` task (from `com.gradle.plugin-publish`).
+     * Publishes Gradle plugins to the Gradle Plugin Portal by making `publish` depend on the
+     * `publishPlugins` task (from `com.gradle.plugin-publish`).
      *
-     * Opt-in only (convention `false`). Takes effect on release versions in plugin projects —
-     * projects applying `com.gradle.plugin-publish` are the only ones with a `publishPlugins`
-     * task; snapshots are never portal-published. When enabled but not applicable, `publish`
-     * fails early with an actionable error: missing `publishPlugins` task (not a plugin
-     * project) or missing `gradle.publish.key`/`gradle.publish.secret` credentials.
+     * Opt-in only (convention `false`), intended as a build-wide toggle set in the root
+     * `easy { publish { } }` block and inherited by every project. Takes effect on release
+     * versions only — snapshots are never portal-published — and only in plugin projects
+     * (the only ones with a `publishPlugins` task). Projects without one (plain libraries, a
+     * non-`java` root) are skipped with a lifecycle note; a plugin project missing
+     * `gradle.publish.key`/`gradle.publish.secret` fails `publish` with an actionable error.
      */
     fun toPluginPortal()
 

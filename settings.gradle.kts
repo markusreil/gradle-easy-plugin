@@ -13,6 +13,7 @@ easy {
     publish {
         toMavenStaging()
         toSonatypeSnapshots()
+//        toPluginPortal()
         mavenRepo(
             "mreilComGradlePluginsSnapshots",
             "https://repo.mreil.com/gradle-plugins-snapshots",
