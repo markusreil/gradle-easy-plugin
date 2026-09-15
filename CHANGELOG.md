@@ -17,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.0.110] - 2026-09-16
+
+### Fixed
+
+- Plugin portal publishing (`Fix plugin portal publishing #16`): `toPluginPortal` now skips
+  non-plugin projects and root projects without a `publish` task, logs lifecycle info for
+  skipped projects, and handles missing credentials more gracefully.
+
+## [0.0.109] - 2026-09-14
+
+### Added
+
+- CI publishes releases from version tags: the `publish` job now runs on `v*` tag pushes
+  in addition to `main` (workflows re-enabled on branch pushes), so releases are published
+  automatically from tags.
+
 ## [0.0.108] - 2026-09-14
 
 ### Added
