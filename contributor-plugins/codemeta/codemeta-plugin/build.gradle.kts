@@ -19,7 +19,6 @@ dependencies {
     implementation(project(":easy-contributor-support"))
     implementation(project(":gradle-plugin-utils"))
     compileOnly(gradleApi())
-    testImplementation(project(":gradle-plugin-testutils"))
 }
 
 tasks.withType<Test>().configureEach {
@@ -34,6 +33,7 @@ testing {
                 implementation(libs.assertj.core)
                 implementation(project(":easy-plugin-core"))
                 implementation(project(":contributor-plugins:vcs:vcs-plugin"))
+                implementation(project(":gradle-plugin-testutils"))
                 implementation(gradleTestKit())
             }
         }

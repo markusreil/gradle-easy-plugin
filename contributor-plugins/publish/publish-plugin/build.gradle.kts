@@ -22,7 +22,6 @@ dependencies {
     implementation(libs.jackson.dataformat.yaml)
     implementation(libs.jackson.module.kotlin)
     compileOnly(gradleApi())
-    testImplementation(project(":gradle-plugin-testutils"))
 }
 
 tasks.withType<Test>().configureEach {
@@ -43,6 +42,7 @@ testing {
                 // tests in EasyPublishCentralTest would otherwise fail EasyJreleaserPlugin's
                 // codemeta-required guard.
                 implementation(project(":contributor-plugins:codemeta:codemeta-plugin"))
+                implementation(project(":gradle-plugin-testutils"))
                 implementation(gradleTestKit())
             }
         }
