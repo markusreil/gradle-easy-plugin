@@ -164,15 +164,27 @@ internal fun newProjectProxy(
         arrayOf(Project::class.java),
     ) { _, method, args ->
         when (method.name) {
-            "getExtensions" -> holder.extensions
-            "getProviders" -> holder.providers
+            "getExtensions" -> {
+                holder.extensions
+            }
+
+            "getProviders" -> {
+                holder.providers
+            }
+
             "afterEvaluate" -> {
                 @Suppress("UNCHECKED_CAST")
                 captured.add(args[0] as Action<Project>)
                 null
             }
-            "getName" -> holder.name
-            else -> null
+
+            "getName" -> {
+                holder.name
+            }
+
+            else -> {
+                null
+            }
         }
     } as Project
 
@@ -216,6 +228,9 @@ internal fun newGradleProxy(captured: MutableList<Action<Settings>>): Gradle =
                 captured.add(args[0] as Action<Settings>)
                 null
             }
-            else -> null
+
+            else -> {
+                null
+            }
         }
     } as Gradle
