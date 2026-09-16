@@ -2,9 +2,8 @@ package com.mreil.easy.jvm
 
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.gradle.api.Project
-import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -32,7 +31,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply("java")
         project.pluginManager.apply(ProjectPlugin::class.java)
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("sourcesJar")).isNotNull()
@@ -49,7 +48,7 @@ class EasyJvmDefaultsPluginTest {
         javaExtension.withJavadocJar()
 
         project.pluginManager.apply(ProjectPlugin::class.java)
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("sourcesJar")).isNotNull()
@@ -61,7 +60,7 @@ class EasyJvmDefaultsPluginTest {
     fun `does not configure when java plugin absent`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply(ProjectPlugin::class.java)
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.extensions.findByType(JavaPluginExtension::class.java)).isNull()
@@ -75,7 +74,7 @@ class EasyJvmDefaultsPluginTest {
             val project = ProjectBuilder.builder().build()
             project.pluginManager.apply("java")
             project.pluginManager.apply(ProjectPlugin::class.java)
-            evaluate(project)
+            project.evaluate()
 
             val languageVersion =
                 project.extensions
@@ -95,7 +94,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply("java")
         project.pluginManager.apply(ProjectPlugin::class.java)
-        evaluate(project)
+        project.evaluate()
 
         val languageVersion =
             project.extensions
@@ -105,11 +104,5 @@ class EasyJvmDefaultsPluginTest {
         assertSoftly { softly ->
             softly.assertThat(languageVersion).isNull()
         }
-    }
-
-    private fun evaluate(project: Project) {
-        // Trigger afterEvaluate callbacks registered by AbstractEasyProjectPlugin
-        val internal = project as ProjectInternal
-        internal.evaluate()
     }
 }

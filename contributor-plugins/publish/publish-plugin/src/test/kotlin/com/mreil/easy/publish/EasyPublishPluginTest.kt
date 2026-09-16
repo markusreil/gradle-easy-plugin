@@ -2,12 +2,11 @@ package com.mreil.easy.publish
 
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.GradleException
-import org.gradle.api.Project
 import org.gradle.api.ProjectConfigurationException
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
-import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.internal.provider.MissingValueException
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.PublishingExtension
@@ -28,7 +27,7 @@ class EasyPublishPluginTest {
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("publish")).isNotNull()
@@ -47,7 +46,7 @@ class EasyPublishPluginTest {
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
 
-        val ex = assertThrows<ProjectConfigurationException> { evaluate(project) }
+        val ex = assertThrows<ProjectConfigurationException> { project.evaluate() }
 
         assertSoftly { softly ->
             softly.assertThat(ex.cause?.message).contains("Project group must be set")
@@ -65,7 +64,7 @@ class EasyPublishPluginTest {
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
 
-        val ex = assertThrows<ProjectConfigurationException> { evaluate(project) }
+        val ex = assertThrows<ProjectConfigurationException> { project.evaluate() }
 
         assertSoftly { softly ->
             softly.assertThat(ex.cause?.message).contains("Project version must be set")
@@ -85,7 +84,7 @@ class EasyPublishPluginTest {
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
 
-        evaluate(project)
+        project.evaluate()
 
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
         assertSoftly { softly ->
@@ -105,7 +104,7 @@ class EasyPublishPluginTest {
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
 
-        evaluate(project)
+        project.evaluate()
 
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
         assertSoftly { softly ->
@@ -127,7 +126,7 @@ class EasyPublishPluginTest {
         val repoDir = createTempDirectory("repo").toFile().apply { deleteOnExit() }
         publish.mavenRepo("testRepo", repoDir.toURI().toString())
 
-        evaluate(project)
+        project.evaluate()
 
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
         val repo = publishing.repositories.findByName("testRepo") as MavenArtifactRepository
@@ -149,7 +148,7 @@ class EasyPublishPluginTest {
         publish.enabled.set(true)
         publish.mavenRepo("secureRepo", "http://localhost:1/repo", true)
 
-        evaluate(project)
+        project.evaluate()
 
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
         val repo = publishing.repositories.findByName("secureRepo") as MavenArtifactRepository
@@ -174,7 +173,7 @@ class EasyPublishPluginTest {
         publish.enabled.set(true)
         publish.toMavenLocal()
 
-        evaluate(project)
+        project.evaluate()
 
         val publishTask = project.tasks.getByName("publish")
         assertSoftly { softly ->
@@ -193,7 +192,7 @@ class EasyPublishPluginTest {
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
 
-        evaluate(project)
+        project.evaluate()
 
         val publishTask = project.tasks.getByName("publish")
         assertSoftly { softly ->
@@ -235,7 +234,7 @@ class EasyPublishPluginTest {
         try {
             System.setProperty("gradle.publish.key", "test-key")
             System.setProperty("gradle.publish.secret", "test-secret")
-            evaluate(project)
+            project.evaluate()
             val publishTask = project.tasks.named("publish").get()
             assertSoftly { softly ->
                 softly.assertThat(publishTask.dependsOn.map { it.toString() }).anyMatch { it.contains("publishPlugins") }
@@ -258,7 +257,7 @@ class EasyPublishPluginTest {
         publish.enabled.set(true)
         publish.toPluginPortal()
 
-        evaluate(project)
+        project.evaluate()
 
         val publishTask = project.tasks.named("publish").get()
         assertSoftly { softly ->
@@ -280,7 +279,7 @@ class EasyPublishPluginTest {
         publish.enabled.set(true)
         publish.toPluginPortal()
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("publish")).isNull()
@@ -305,7 +304,7 @@ class EasyPublishPluginTest {
         try {
             System.clearProperty("gradle.publish.key")
             System.clearProperty("gradle.publish.secret")
-            evaluate(project)
+            project.evaluate()
             org.assertj.core.api.Assertions
                 .assertThatThrownBy {
                     project.tasks.named("publish").get()
@@ -330,7 +329,7 @@ class EasyPublishPluginTest {
         publish.enabled.set(true)
         publish.toPluginPortal()
 
-        evaluate(project)
+        project.evaluate()
 
         val publishTask = project.tasks.named("publish").get()
         assertSoftly { softly ->
@@ -349,17 +348,11 @@ class EasyPublishPluginTest {
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
 
-        evaluate(project)
+        project.evaluate()
 
         val publishTask = project.tasks.named("publish").get()
         assertSoftly { softly ->
             softly.assertThat(publishTask).isNotNull()
         }
-    }
-
-    private fun evaluate(project: Project) {
-        // Trigger afterEvaluate callbacks registered by AbstractEasyProjectPlugin / EasyPublishPlugin
-        val internal = project as ProjectInternal
-        internal.evaluate()
     }
 }

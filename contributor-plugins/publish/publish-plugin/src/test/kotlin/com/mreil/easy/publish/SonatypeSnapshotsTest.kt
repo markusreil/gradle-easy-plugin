@@ -3,10 +3,10 @@ package com.mreil.easy.publish
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.semver.EasySemverExtension
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
-import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.testfixtures.ProjectBuilder
@@ -61,7 +61,7 @@ class SonatypeSnapshotsTest {
         publish.toSonatypeSnapshots()
         publish.mavenRepo("myRelease", "https://example.com/releases")
 
-        evaluate(project)
+        project.evaluate()
 
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
         val snapshotsRepo =
@@ -82,7 +82,7 @@ class SonatypeSnapshotsTest {
         publish.toSonatypeSnapshots()
         publish.mavenRepo("myRelease", "https://example.com/releases")
 
-        evaluate(project)
+        project.evaluate()
 
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
         assertSoftly { softly ->
@@ -99,7 +99,7 @@ class SonatypeSnapshotsTest {
         semverOf(project).enabled.set(true)
         publish.toSonatypeSnapshots()
 
-        evaluate(project)
+        project.evaluate()
 
         val repo =
             project.extensions
@@ -120,7 +120,7 @@ class SonatypeSnapshotsTest {
         semverOf(project).enabled.set(true)
         publish.toSonatypeSnapshots()
 
-        evaluate(project)
+        project.evaluate()
 
         val repo =
             project.extensions
@@ -140,7 +140,7 @@ class SonatypeSnapshotsTest {
         semverOf(project).enabled.set(true)
         publish.toSonatypeSnapshots()
 
-        evaluate(project)
+        project.evaluate()
 
         val repo =
             project.extensions
@@ -160,7 +160,7 @@ class SonatypeSnapshotsTest {
         semverOf(project).enabled.set(true)
         publish.toSonatypeSnapshots()
 
-        evaluate(project)
+        project.evaluate()
 
         val repo =
             project.extensions
@@ -191,9 +191,4 @@ class SonatypeSnapshotsTest {
         (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
             .extensions
             .getByType(EasySemverExtension::class.java)
-
-    private fun evaluate(project: Project) {
-        val internal = project as ProjectInternal
-        internal.evaluate()
-    }
 }

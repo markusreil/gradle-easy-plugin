@@ -2,10 +2,9 @@ package com.mreil.easy.projectdefaults
 
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.gradle.api.Project
 import org.gradle.api.ProjectConfigurationException
-import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
@@ -19,7 +18,7 @@ class EasyProjectDefaultsPluginTest {
         project.version = "1.0.0"
         project.pluginManager.apply(ProjectPlugin::class.java)
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("clean")).isNotNull()
@@ -35,7 +34,7 @@ class EasyProjectDefaultsPluginTest {
         project.version = "1.0.0"
         project.pluginManager.apply(ProjectPlugin::class.java)
 
-        val ex = assertThrows<ProjectConfigurationException> { evaluate(project) }
+        val ex = assertThrows<ProjectConfigurationException> { project.evaluate() }
 
         assertSoftly { softly ->
             softly.assertThat(ex.cause?.message).contains("Project group must be set")
@@ -49,7 +48,7 @@ class EasyProjectDefaultsPluginTest {
         project.version = "unspecified"
         project.pluginManager.apply(ProjectPlugin::class.java)
 
-        val ex = assertThrows<ProjectConfigurationException> { evaluate(project) }
+        val ex = assertThrows<ProjectConfigurationException> { project.evaluate() }
 
         assertSoftly { softly ->
             softly.assertThat(ex.cause?.message).contains("Project version must be set")
@@ -68,16 +67,10 @@ class EasyProjectDefaultsPluginTest {
             .enabled
             .set(false)
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("clean")).isNotNull()
         }
-    }
-
-    private fun evaluate(project: Project) {
-        // Trigger afterEvaluate callbacks registered by AbstractEasyProjectPlugin
-        val internal = project as ProjectInternal
-        internal.evaluate()
     }
 }
