@@ -4,6 +4,7 @@ import org.assertj.core.api.AbstractAssert
 import org.w3c.dom.Document
 import org.w3c.dom.Node
 import java.io.File
+import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 
 /**
@@ -90,7 +91,7 @@ open class PomAssert(
             return factory.newDocumentBuilder().parse(actual)
         } catch (e: Exception) {
             failWithMessage("Expecting pom <%s> to be well-formed XML but parsing failed: %s", actual, e.message)
-            throw AssertionError("pom <%s> is not well-formed XML".format(actual), e)
+            throw AssertionError("pom <%s> is not well-formed XML".format(Locale.ROOT, actual), e)
         }
     }
 

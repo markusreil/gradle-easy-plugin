@@ -98,7 +98,7 @@ internal class VcsGit(
                 firstLine("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
                     .get()
                     .takeIf { it.isNotEmpty() } ?: return@provider ""
-            upstream.substringBefore('/').takeIf { it.isNotEmpty() } ?: ""
+            upstream.substringBefore('/')
         }
 
     private fun originRemoteName(): Provider<String> = firstLine("remote", "get-url", "origin").map { if (it.isBlank()) "" else "origin" }
@@ -106,12 +106,16 @@ internal class VcsGit(
     private fun firstRemoteName(): Provider<String> =
         providers.provider {
             val remote = firstLine("remote").get().takeIf { it.isNotEmpty() } ?: return@provider ""
-            firstLine("remote", "get-url", remote).get().takeIf { it.isNotEmpty() }?.let { remote } ?: ""
+            firstLine("remote", "get-url", remote)
+                .get()
+                .takeIf { it.isNotEmpty() }
+                ?.let { remote }
+                .orEmpty()
         }
 
     private fun resolveFirstRemote(candidates: List<Provider<String>>): Provider<String> =
         providers.provider {
-            candidates.map { it.get() }.firstOrNull { it.isNotEmpty() } ?: ""
+            candidates.map { it.get() }.firstOrNull { it.isNotEmpty() }.orEmpty()
         }
 
     private fun normalizeRemoteUrl(raw: String): String {

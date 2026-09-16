@@ -50,13 +50,14 @@ tasks.named("check") {
 // itself is unaffected — only the compile/test toolchain is pinned to 17 (auto-provisioned if absent).
 // Version is single-sourced from gradle.properties (java.toolchainVersion).
 subprojects {
-    // Leaf-project block: Spotless config, detekt source wiring.
+    // Leaf-project block: Spotless config, detekt task wiring.
     if (childProjects.isNotEmpty()) return@subprojects
     apply(plugin = "com.diffplug.spotless")
     configure<SpotlessExtension> {
         kotlin {
             target("src/**/*.kt")
-            ktlint()
+            // Pinned in gradle/libs.versions.toml; do not rely on Spotless's implicit ktlint default.
+            ktlint(libs.versions.ktlint.get())
             trimTrailingWhitespace()
             endWithNewline()
         }
@@ -67,20 +68,28 @@ subprojects {
             endWithNewline()
         }
     }
-    // The detekt task defaults to main+test sources only — include every Kotlin source set
-    // (functionalTest, testFixtures, ...) so `check` (which depends on detekt) guards all code.
-    // NOTE: detektMain/detektTest (type-resolution rules) are deliberately NOT wired into check:
-    // they are EXPERIMENTAL in detekt 1.x and crash analyzing some files under Kotlin 2.3
-    // (e.g. EasyCodemetaPlugin.kt). Run them manually; the abstract-base @Suppress annotations
-    // keep them clean when they do run. Revisit with detekt 2.x.
-    pluginManager.withPlugin("io.gitlab.arturbosch.detekt") {
-        tasks.named("detekt") {
-            val sourceTask = this as org.gradle.api.tasks.SourceTask
-            project.extensions.getByType<org.gradle.api.tasks.SourceSetContainer>().forEach { sourceSet ->
-                (sourceSet.extensions.findByName("kotlin") as? org.gradle.api.file.SourceDirectorySet)
-                    ?.srcDirs
-                    ?.forEach { sourceTask.source(it) }
-            }
+    // detekt 2.x analyses with type resolution, one task per source set (detektMain, detektTest,
+    // detektFunctionalTest, ...). Route the conventional `detekt` task — and therefore `check` —
+    // through those type-aware tasks, and disable the plain task's own non-type-aware run so no
+    // source is analysed twice. The dependency is resolved lazily when the task graph is built,
+    // once every per-source-set task (including functionalTest) has been registered; a disabled
+    // task's dependencies still execute, so `./gradlew detekt` and `./gradlew check` both run the
+    // type-aware analysis.
+    pluginManager.withPlugin("dev.detekt") {
+        val plainDetekt = tasks.named("detekt")
+        plainDetekt.configure {
+            dependsOn(
+                provider {
+                    tasks.names.filter {
+                        it.startsWith("detekt") &&
+                            it != "detekt" &&
+                            it != "detektGenerateConfig" &&
+                            !it.endsWith("SourceSet") &&
+                            !it.contains("Baseline")
+                    }
+                },
+            )
         }
+        plainDetekt.configure { enabled = false }
     }
 }

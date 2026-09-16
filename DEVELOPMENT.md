@@ -24,8 +24,8 @@ Discovery via `PluginRegistry`/`PluginRegistryService` (BuildService) + `EasyPlu
 settings.gradle.kts          # includes :easy-plugin, :easy-plugin-core, :easy-contributor-api, :easy-contributor-support, :easy-test-support, :gradle-plugin-testutils, :gradle-plugin-utils, :contributor-plugins:publish:..., :contributor-plugins:jvm-defaults:..., :contributor-plugins:semver:..., :contributor-plugins:codemeta:...
 build.gradle.kts             # root: lifecycle-base/jacoco-report-aggregation/test-report-aggregation + kotlin-jvm/detekt/spotless apply false; centralized Spotless; aggregated reports
 gradle.properties            # CC/parallel/caching/warning.mode=all + plugin.project/settings IDs (single source; runtime mirror in PluginIds.kt)
-gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 1.23.7, spotless 8.10.2)
-config/detekt/detekt.yml     # maxLineLength 140, EmptyFunctionBlock off
+gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 2.0.0-alpha.6, spotless 8.10.2)
+config/detekt/detekt.yml     # detekt 2.x config (maxLineLength 140, EmptyFunctionBlock off)
 easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella: registers com.mreil.easy.project/settings via providers.gradleProperty, aggregates easy-plugin-core + contributor libs via dynamic :contributor-plugins:*:*-plugin; test suites + pluginUnderTestMetadata + detekt; publishing.repositories for mreilComGradlePluginsSnapshots (marker publications via java-gradle-plugin)
 easy-plugin-core/build.gradle.kts      # java-library: ProjectPlugin, SettingsPlugin, PluginRegistryService, PluginRegistrar, ExtensionRegistrar, EasyExtension
 easy-contributor-api/src/main/kotlin/com/mreil/easy/ # PluginIds, PluginRegistry, EasyPluginContributor, ApplyToSubprojects, EnabledBy, Named, EasyPluginExtension, CanBeEnabled, PublicType
@@ -213,13 +213,13 @@ Use `./gradlew` (wrapper, Gradle 9.4.1) — not system `gradle`.
 
 ## Dependencies
 
-* All dependencies/plugins must be in `gradle/libs.versions.toml` and referenced by alias (`alias(libs.plugins.kotlin.jvm)`, `libs.assertj.core`). No hardcoded coordinates/versions.
-* Detekt 1.23.7 has upstream `ReportingExtension.file(String)` deprecation — ignore until 2.x.
+* All dependencies/plugins must be in `gradle/libs.versions.toml` and referenced by alias (`alias(libs.plugins.kotlin.jvm)`, `libs.assertj.core`). No hardcoded coordinates/versions. This includes the formatter: ktlint is pinned via `libs.versions.ktlint` (currently 1.8.0) in the root Spotless block, so a Spotless upgrade cannot silently change it.
 
 ## Code Analysis
 
-* Config in `config/detekt/detekt.yml` (maxLineLength 140, EmptyFunctionBlock off). `check` depends on `detekt` and `jacocoTestReport` (plus `functionalTest` where applicable).
-* Spotless (with `ktlint`) enforces formatting across Kotlin sources and Gradle scripts (centralized in root `build.gradle.kts` for leaf projects). Run `./gradlew spotlessCheck` / `spotlessApply`.
+* detekt 2.0.0-alpha.6 (`dev.detekt` plugin). Config in `config/detekt/detekt.yml` (maxLineLength 140, EmptyFunctionBlock off). Root `build.gradle.kts` routes the conventional `detekt` task — and therefore `check` — through the type-aware per-source-set tasks (`detektMain`, `detektTest`, `detektFunctionalTest`, …) and disables the plain task's own run. `check` also depends on `jacocoTestReport` (plus `functionalTest` where applicable). See AGENTS.md → "Code Analysis".
+* Spotless (with ktlint, version pinned as above) enforces formatting across Kotlin sources and Gradle scripts (centralized in root `build.gradle.kts` for leaf projects). Run `./gradlew spotlessCheck` / `spotlessApply`.
+* Spotless troubleshooting: a `spotlessKotlinCheck` failure shaped like `FILE:LINE_UNDEFINED ktlint(java.lang.reflect.InvocationTargetException) (...)` is not a real lint — it is Spotless wrapping a ktlint engine throw caused by stale/corrupt per-machine formatter state (seen when the same tree is green in CI/Docker). Re-run with `--rerun-tasks`; if it persists, `./gradlew --stop` and delete the cached ktlint artifacts (`rm -rf ~/.gradle/caches/modules-2/files-2.1/com.pinterest.ktlint`). Use `--info --stacktrace` to reveal the underlying `Caused by:` when the crash is genuine.
 
 ## Editing Guidelines
 

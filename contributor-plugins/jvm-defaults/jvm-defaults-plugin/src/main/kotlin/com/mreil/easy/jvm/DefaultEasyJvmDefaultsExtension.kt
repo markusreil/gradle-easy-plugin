@@ -9,7 +9,7 @@ import com.mreil.easy.PublicType
  *
  * Abstract for Gradle extension decoration via extensions.create (requires a non-final type).
  */
-@Suppress("UnnecessaryAbstractClass")
+@Suppress("AbstractClassCanBeInterface")
 @PublicType(EasyJvmDefaultsExtension::class)
 abstract class DefaultEasyJvmDefaultsExtension : EasyJvmDefaultsExtension {
     init {

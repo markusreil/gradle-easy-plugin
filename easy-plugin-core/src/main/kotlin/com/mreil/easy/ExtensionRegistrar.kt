@@ -86,7 +86,7 @@ class ExtensionRegistrar(
                 (extension.extensions.findByName(schema.name) as? CanBeEnabled)?.let { schema.name to it }
             }
         enabledExtensions.forEach { (name, ext) ->
-            check(ext.enabled.orNull != null) {
+            checkNotNull(ext.enabled.orNull) {
                 "Extension '$name' (${ext::class.qualifiedName}) must provide a convention for 'enabled' " +
                     "during initialization (e.g. enabled.convention(true) in init block)."
             }

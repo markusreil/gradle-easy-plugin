@@ -14,7 +14,7 @@ import org.gradle.api.Project
  *
  * Abstract for subclassing (Gradle instantiates concrete contributors); no abstract members by design.
  */
-@Suppress("UnnecessaryAbstractClass")
+@Suppress("AbstractClassCanBeConcreteClass")
 abstract class AbstractEasyProjectPlugin :
     Plugin<Project>,
     PluginLifecycle<Project> {

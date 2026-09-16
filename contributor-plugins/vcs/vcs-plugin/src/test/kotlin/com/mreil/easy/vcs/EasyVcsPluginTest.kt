@@ -129,7 +129,7 @@ class EasyVcsPluginTest {
         git(tempDir, "init")
         configureGitAuthor(tempDir)
         val tracked = tempDir.resolve("gradle.properties").toFile().apply { writeText("version=1.0.0\n") }
-        tempDir.resolve("untracked.txt").toFile().apply { writeText("nope\n") }
+        tempDir.resolve("untracked.txt").toFile().writeText("nope\n")
         git(tempDir, "add", "gradle.properties")
         git(tempDir, "commit", "-m", "initial")
         val service = vcsService(project(tempDir))
