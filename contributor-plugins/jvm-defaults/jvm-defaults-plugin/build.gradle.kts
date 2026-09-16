@@ -30,6 +30,7 @@ testing {
             dependencies {
                 implementation(libs.assertj.core)
                 implementation(project(":easy-plugin-core"))
+                implementation(project(":gradle-plugin-testutils"))
                 implementation(gradleTestKit())
             }
         }

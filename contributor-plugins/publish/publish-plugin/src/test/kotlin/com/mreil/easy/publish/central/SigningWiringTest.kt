@@ -3,6 +3,7 @@ package com.mreil.easy.publish.central
 import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
 import com.mreil.easy.publish.publishExtension
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -112,7 +113,7 @@ class SigningWiringTest {
         publishExt.enabled.set(true)
         publishExt.signingEnabled.set(signingEnabled)
         publishExt.toMavenStaging()
-        evaluate(project)
+        project.evaluate()
 
         // Ensure a Maven publication exists so signing.sign() has something to sign.
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
@@ -146,9 +147,5 @@ class SigningWiringTest {
         val tasks = project.tasks.withType(Sign::class.java).toList()
         assertThat(tasks).`as`("at least one Sign task must be registered").isNotEmpty
         return tasks.first()
-    }
-
-    private fun evaluate(project: Project) {
-        (project as org.gradle.api.internal.project.ProjectInternal).evaluate()
     }
 }

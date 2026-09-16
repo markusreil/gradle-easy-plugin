@@ -7,6 +7,7 @@ import com.mreil.easy.isEasyChildEnabled
 import com.mreil.easy.publish.central.SigningWiring
 import com.mreil.easy.semver.EasySemver
 import com.mreil.easy.semver.EasySemverExtension
+import com.mreil.utils.hasSnapshotVersion
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.publish.PublishingExtension
@@ -235,7 +236,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
      * default is gone, so `toSonatypeSnapshots()` needs no semver requirement.
      */
     private fun resolveIsSnapshot(target: Project): Boolean =
-        RepoRouting.isSnapshot(EasySemver.of(target).orNull) ?: target.version.toString().endsWith("-SNAPSHOT")
+        RepoRouting.isSnapshot(EasySemver.of(target).orNull) ?: target.hasSnapshotVersion()
 
     /**
      * Creates the default `maven` publication backed by the project's `java` component.

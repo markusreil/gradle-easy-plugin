@@ -30,6 +30,25 @@ class ProjectCoordinatesTest {
         }
     }
 
+    @ParameterizedTest(name = "version={0} expected={1}")
+    @CsvSource(
+        "1.0.0, false",
+        "1.0.0-SNAPSHOT, true",
+        "0.0.105-SNAPSHOT, true",
+        "1.0.0-RC1, false",
+    )
+    fun `hasSnapshotVersion detects the -SNAPSHOT suffix`(
+        version: String,
+        expected: Boolean,
+    ) {
+        val project = ProjectBuilder.builder().build()
+        project.version = version
+
+        assertSoftly { softly ->
+            softly.assertThat(project.hasSnapshotVersion()).isEqualTo(expected)
+        }
+    }
+
     @Test
     fun `hasGroup reflects project group`() {
         val project = ProjectBuilder.builder().build()

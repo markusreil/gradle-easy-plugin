@@ -11,7 +11,7 @@ import kotlin.reflect.KClass
  *
  * Deliberately `internal` to `easy-plugin-core`: contributors must not depend on
  * fan-out ordering or registry lookup. Contributor-facing helpers (e.g. `Project.isRoot`)
- * live in `easy-contributor-support`.
+ * live in `gradle-plugin-utils` (package `com.mreil.utils`).
  *
  * Returns the root project followed by all subprojects sorted by path.
  *

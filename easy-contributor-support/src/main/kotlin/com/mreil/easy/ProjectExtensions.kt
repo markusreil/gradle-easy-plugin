@@ -4,15 +4,6 @@ import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
 
 /**
- * Returns true when this project is the root project of the build.
- *
- * Centralizes the `project == project.rootProject` guard duplicated across
- * core (`ExtensionRegistrar`, `SettingsPlugin`) and contributors
- * (publish wirings, codemeta) for root-only wiring.
- */
-fun Project.isRoot(): Boolean = this == rootProject
-
-/**
  * Returns the `easy` extension, failing fast when absent.
  *
  * Callers run inside `withPlugin`/`withType` application context where core always

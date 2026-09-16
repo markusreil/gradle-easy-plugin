@@ -2,8 +2,8 @@ package com.mreil.easy.publish
 
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.PublishingExtension
@@ -37,8 +37,8 @@ class EasyPublishStagingTest {
         rootPublish.enabled.set(true)
         rootPublish.toMavenStaging()
 
-        evaluate(root)
-        evaluate(child)
+        root.evaluate()
+        child.evaluate()
 
         val rootRepo =
             root.extensions
@@ -92,8 +92,8 @@ class EasyPublishStagingTest {
         rootPublish.enabled.set(true)
         rootPublish.toMavenStaging("customStaging")
 
-        evaluate(root)
-        evaluate(child)
+        root.evaluate()
+        child.evaluate()
 
         val repo =
             root.extensions
@@ -140,8 +140,8 @@ class EasyPublishStagingTest {
         rootPublish.enabled.set(true)
         rootPublish.toMavenStaging("rootStaging")
 
-        evaluate(root)
-        evaluate(child)
+        root.evaluate()
+        child.evaluate()
 
         val childPublish =
             (child.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
@@ -170,7 +170,7 @@ class EasyPublishStagingTest {
         publish.enabled.set(true)
         publish.toMavenStaging("customStaging")
 
-        evaluate(project)
+        project.evaluate()
 
         val repo =
             project.extensions
@@ -201,7 +201,7 @@ class EasyPublishStagingTest {
         publish.enabled.set(true)
         publish.toMavenStaging()
 
-        evaluate(project)
+        project.evaluate()
 
         val upload = project.tasks.getByName("publishMavenPublicationToMavenStagingRepository")
         val uploadDeps = upload.taskDependencies.getDependencies(upload).map { it.name }
@@ -211,10 +211,5 @@ class EasyPublishStagingTest {
                 .isInstanceOf(Delete::class.java)
             softly.assertThat(uploadDeps).contains("cleanStagingRepo")
         }
-    }
-
-    private fun evaluate(project: Project) {
-        val internal = project as org.gradle.api.internal.project.ProjectInternal
-        internal.evaluate()
     }
 }

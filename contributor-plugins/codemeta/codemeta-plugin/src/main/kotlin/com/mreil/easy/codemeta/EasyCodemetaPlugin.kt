@@ -3,10 +3,10 @@ package com.mreil.easy.codemeta
 import com.mreil.easy.AbstractEasyProjectPlugin
 import com.mreil.easy.EnabledBy
 import com.mreil.easy.findEasyChild
-import com.mreil.easy.isRoot
 import com.mreil.easy.release.EasyRelease
 import com.mreil.easy.release.ReleaseLifecycleListener
 import com.mreil.easy.vcs.EasyVcs
+import com.mreil.utils.isRoot
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFile
 import org.gradle.api.provider.Provider

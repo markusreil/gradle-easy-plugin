@@ -12,3 +12,6 @@ fun Project.hasGroup(): Boolean = group.toString().isSpecified()
 
 /** Returns true when the project has a usable `version`. */
 fun Project.hasVersion(): Boolean = version.toString().isSpecified()
+
+/** Returns true when the project's `version` uses the Maven `-SNAPSHOT` suffix convention. */
+fun Project.hasSnapshotVersion(): Boolean = version.toString().endsWith("-SNAPSHOT")

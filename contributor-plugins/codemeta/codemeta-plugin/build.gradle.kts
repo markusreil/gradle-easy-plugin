@@ -17,6 +17,7 @@ dependencies {
     implementation(project(":contributor-plugins:vcs:vcs-plugin-api"))
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
+    implementation(project(":gradle-plugin-utils"))
     compileOnly(gradleApi())
 }
 
@@ -32,6 +33,7 @@ testing {
                 implementation(libs.assertj.core)
                 implementation(project(":easy-plugin-core"))
                 implementation(project(":contributor-plugins:vcs:vcs-plugin"))
+                implementation(project(":gradle-plugin-testutils"))
                 implementation(gradleTestKit())
             }
         }

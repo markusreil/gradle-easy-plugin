@@ -10,10 +10,10 @@ import com.mreil.easy.publish.EasyPublishExtension
 import com.mreil.easy.publish.EasyPublishPlugin
 import com.mreil.easy.publish.publishExtension
 import com.mreil.easy.semver.EasySemverExtension
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
-import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
@@ -58,7 +58,7 @@ class EasyJreleaserPluginTest {
                 .getByType(EasyCodemetaExtension::class.java)
         codemetaExt.enabled.set(false)
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNull()
@@ -80,7 +80,7 @@ class EasyJreleaserPluginTest {
         }
         project.version = "1.0.0-SNAPSHOT"
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNull()
@@ -99,7 +99,7 @@ class EasyJreleaserPluginTest {
         }
         project.version = "1.0.0"
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNotNull()
@@ -119,7 +119,7 @@ class EasyJreleaserPluginTest {
         }
         project.version = "1.0.0-RC1"
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNotNull()
@@ -138,7 +138,7 @@ class EasyJreleaserPluginTest {
         }
         project.version = "0.0.105"
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNotNull()
@@ -158,7 +158,7 @@ class EasyJreleaserPluginTest {
         project.version = "1.0.0-SNAPSHOT"
         semverOf(project).enabled.set(false)
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNull()
@@ -178,7 +178,7 @@ class EasyJreleaserPluginTest {
         project.version = "1.0.0"
         semverOf(project).enabled.set(false)
 
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNotNull()
@@ -200,8 +200,4 @@ class EasyJreleaserPluginTest {
         (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
             .extensions
             .getByType(EasySemverExtension::class.java)
-
-    private fun evaluate(project: Project) {
-        (project as ProjectInternal).evaluate()
-    }
 }

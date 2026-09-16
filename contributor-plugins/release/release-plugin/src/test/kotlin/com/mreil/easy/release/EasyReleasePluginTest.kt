@@ -4,12 +4,12 @@ import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.semver.EasySemverExtension
 import com.mreil.easy.vcs.VcsService
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.GradleException
 import org.gradle.api.Project
-import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.services.BuildServiceRegistration
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
@@ -29,7 +29,7 @@ class EasyReleasePluginTest {
             softly.assertThat(release).isNotNull()
             softly.assertThat(project.plugins.findPlugin(EasyReleasePlugin::class.java)).isNotNull()
         }
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("release")).isNotNull()
             softly.assertThat(project.tasks.findByName("preReleaseCheck")).isNotNull()
@@ -48,7 +48,7 @@ class EasyReleasePluginTest {
     fun `every release task runs after preReleaseCheck`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply(ProjectPlugin::class.java)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck")
         val gated = project.tasks.filter { it.group == "release" && it.name != "preReleaseCheck" }
         assertSoftly { softly ->
@@ -105,7 +105,7 @@ class EasyReleasePluginTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
         check.branch.set("main")
         check.clean.set(true)
@@ -125,7 +125,7 @@ class EasyReleasePluginTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
         check.branch.set("main")
         check.clean.set(true)
@@ -142,7 +142,7 @@ class EasyReleasePluginTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
         check.branch.set("main")
         check.clean.set(true)
@@ -161,7 +161,7 @@ class EasyReleasePluginTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
         check.branch.set("main")
         check.clean.set(true)
@@ -197,7 +197,7 @@ class EasyReleasePluginTest {
         try {
             val project = ProjectBuilder.builder().build()
             project.pluginManager.apply(ProjectPlugin::class.java)
-            (project as ProjectInternal).evaluate()
+            project.evaluate()
             val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
             val state = releaseStateOf(project)
             assertSoftly { softly ->
@@ -221,7 +221,7 @@ class EasyReleasePluginTest {
             .getByType(EasySemverExtension::class.java)
             .enabled
             .set(false)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
         assertThatThrownBy { check.check() }
             .isInstanceOf(GradleException::class.java)
@@ -234,7 +234,7 @@ class EasyReleasePluginTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.2.3-SNAPSHOT"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val state = releaseStateOf(project)
         assertSoftly { softly ->
             softly.assertThat(state.releaseVersion().get()).isEqualTo("1.2.3")
@@ -248,7 +248,7 @@ class EasyReleasePluginTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
         check.commitSha.set("abc123")
         check.check()
@@ -267,7 +267,7 @@ class EasyReleasePluginTest {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.version = "1.0.0"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
         assertThatThrownBy { check.check() }.isInstanceOf(GradleException::class.java)
         val state = releaseStateOf(project)
@@ -288,7 +288,7 @@ class EasyReleasePluginTest {
             .getByType(EasyReleaseExtension::class.java)
             .tagTemplate
             .set("release-\$v")
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val state = releaseStateOf(project)
         assertSoftly { softly ->
             softly.assertThat(state.releaseVersion().get()).isEqualTo("1.2.3")
@@ -300,7 +300,7 @@ class EasyReleasePluginTest {
     fun `preReleaseCommit is gated and defaults to root gradle properties`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply(ProjectPlugin::class.java)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
         assertSoftly { softly ->
             softly.assertThat(task.group).isEqualTo("release")
@@ -325,7 +325,7 @@ class EasyReleasePluginTest {
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         registerVcsService(project)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
         val versionFile = File(project.projectDir, "gradle.properties")
         versionFile.writeText("group=com.example\nversion=1.0.0-SNAPSHOT\n")
@@ -345,7 +345,7 @@ class EasyReleasePluginTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
         val original = "group=com.example\nversion=1.0.0\n"
         val versionFile = File(project.projectDir, "gradle.properties")
@@ -369,7 +369,7 @@ class EasyReleasePluginTest {
             .getByType(EasySemverExtension::class.java)
             .enabled
             .set(false)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
         task.versionFile.set(File(project.projectDir, "gradle.properties"))
 
@@ -382,7 +382,7 @@ class EasyReleasePluginTest {
     fun `preReleaseTag is gated and runs after preReleaseCommit`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply(ProjectPlugin::class.java)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseTag") as PreReleaseTagTask
         assertSoftly { softly ->
             softly.assertThat(task.group).isEqualTo("release")
@@ -400,7 +400,7 @@ class EasyReleasePluginTest {
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         registerVcsService(project)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseTag") as PreReleaseTagTask
 
         task.tag()
@@ -418,7 +418,7 @@ class EasyReleasePluginTest {
             .getByType(EasySemverExtension::class.java)
             .enabled
             .set(false)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseTag") as PreReleaseTagTask
 
         assertThatThrownBy { task.tag() }
@@ -430,7 +430,7 @@ class EasyReleasePluginTest {
     fun `postReleasePush is gated and runs after preReleaseTag`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply(ProjectPlugin::class.java)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("postReleasePush") as PostReleasePushTask
         assertSoftly { softly ->
             softly.assertThat(task.group).isEqualTo("release")
@@ -449,7 +449,7 @@ class EasyReleasePluginTest {
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         registerVcsService(project)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("postReleasePush") as PostReleasePushTask
         val versionFile = File(project.projectDir, "gradle.properties")
         versionFile.writeText("group=com.example\nversion=1.0.0-SNAPSHOT\n")
@@ -470,7 +470,7 @@ class EasyReleasePluginTest {
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         registerVcsService(project)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("postReleasePush") as PostReleasePushTask
         val original = "group=com.example\nversion=1.0.1-SNAPSHOT\n"
         val versionFile = File(project.projectDir, "gradle.properties")
@@ -494,7 +494,7 @@ class EasyReleasePluginTest {
             .getByType(EasySemverExtension::class.java)
             .enabled
             .set(false)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("postReleasePush") as PostReleasePushTask
         task.versionFile.set(File(project.projectDir, "gradle.properties"))
 
@@ -562,7 +562,7 @@ class EasyReleasePluginTest {
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         project.pluginManager.apply(ProjectPlugin::class.java)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val state = releaseStateOf(project)
 
         assertThat(state.parameters.releaseTaskPaths.get()).containsExactlyInAnyOrder(
@@ -594,7 +594,7 @@ class EasyReleasePluginTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         if (group != null) project.group = group
         if (version != null) project.version = version
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
         check.branch.set(branch)
         check.clean.set(clean)
@@ -614,7 +614,7 @@ class EasyReleasePluginTest {
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         project.pluginManager.apply(ProjectPlugin::class.java)
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         return releaseStateOf(project)
     }
 

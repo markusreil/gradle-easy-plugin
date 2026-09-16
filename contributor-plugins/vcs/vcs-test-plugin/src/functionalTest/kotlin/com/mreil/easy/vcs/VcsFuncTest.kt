@@ -5,6 +5,7 @@ import com.mreil.easy.test.support.DisableAllEasyPluginsExtension
 import com.mreil.gradletest.project.GradleTestProject
 import com.mreil.gradletest.project.GradleTestProjectExtension
 import com.mreil.gradletest.project.assertj.assertSoftly
+import com.mreil.gradletest.project.gitInit
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -63,15 +64,5 @@ class VcsFuncTest {
         assertSoftly { softly ->
             softly.assertThat(result.output).contains("> Task :vcsStatus")
         }
-    }
-
-    private fun gitInit(project: GradleTestProject) {
-        val process =
-            ProcessBuilder("git", "init")
-                .directory(project.projectDir)
-                .redirectErrorStream(true)
-                .start()
-        val exitCode = process.waitFor()
-        check(exitCode == 0) { "git init failed with exit code $exitCode" }
     }
 }

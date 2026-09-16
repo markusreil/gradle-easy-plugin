@@ -2,10 +2,10 @@ package com.mreil.easy.release
 
 import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.vcs.VcsService
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
-import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.services.BuildServiceRegistration
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
@@ -18,7 +18,7 @@ class EasyReleaseLifecycleTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.2.3-SNAPSHOT"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
 
         val service = releaseLifecycleOf(project)
 
@@ -33,7 +33,7 @@ class EasyReleaseLifecycleTest {
             project.pluginManager.apply(ProjectPlugin::class.java)
             project.group = "com.example"
             project.version = "1.2.3-SNAPSHOT"
-            (project as ProjectInternal).evaluate()
+            project.evaluate()
 
             val service = releaseLifecycleOf(project)
 
@@ -49,7 +49,7 @@ class EasyReleaseLifecycleTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
         val actionCountBefore = task.actions.size
         val recorded = mutableListOf<String>()
@@ -71,7 +71,7 @@ class EasyReleaseLifecycleTest {
         project.pluginManager.apply(ProjectPlugin::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
         val extraFile = File(project.projectDir, "extra.txt").apply { writeText("initial") }
 
@@ -90,7 +90,7 @@ class EasyReleaseLifecycleTest {
         project.version = "1.0.0-SNAPSHOT"
         val versionFile = File(project.projectDir, "gradle.properties").apply { writeText("version=1.0.0-SNAPSHOT\n") }
         val extraFile = File(project.projectDir, "changelog.md").apply { writeText("# initial\n") }
-        (project as ProjectInternal).evaluate()
+        project.evaluate()
         val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
 
         EasyRelease.beforePreReleaseCommit(

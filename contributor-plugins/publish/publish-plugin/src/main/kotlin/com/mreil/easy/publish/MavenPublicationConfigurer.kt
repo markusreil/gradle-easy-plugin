@@ -1,9 +1,9 @@
 package com.mreil.easy.publish
 
 import com.mreil.easy.codemeta.Codemeta
-import com.mreil.easy.codemeta.CodemetaLicense
 import com.mreil.easy.codemeta.EasyCodemeta
 import com.mreil.easy.codemeta.Person
+import com.mreil.utils.SpdxLicense
 import com.mreil.utils.hasGroup
 import com.mreil.utils.hasVersion
 import com.mreil.utils.isSpecified
@@ -77,8 +77,8 @@ internal object MavenPublicationConfigurer {
             codemeta?.license?.let { raw ->
                 pom.licenses { licenses ->
                     licenses.license { license ->
-                        license.name.set(CodemetaLicense.toSpdxId(raw))
-                        license.url.set(CodemetaLicense.toUrl(raw))
+                        license.name.set(SpdxLicense.toSpdxId(raw))
+                        license.url.set(SpdxLicense.toUrl(raw))
                     }
                 }
             }

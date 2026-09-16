@@ -6,6 +6,7 @@ import com.mreil.easy.EnabledBy
 import com.mreil.utils.GradleProperties
 import com.mreil.utils.hasGroup
 import com.mreil.utils.hasVersion
+import com.mreil.utils.propertiesDirs
 import org.gradle.api.Project
 import java.io.File
 
@@ -41,13 +42,13 @@ class EasyProjectDefaultsPlugin : AbstractEasyProjectPlugin() {
     private fun checkVersion(target: Project) {
         val version = target.version.toString()
         if (!target.hasVersion()) {
-            val searched = propertiesDirs(target).map { File(it, "gradle.properties") }
+            val searched = target.propertiesDirs().map { File(it, "gradle.properties") }
             error(
                 "Project version must be set (e.g. version = \"1.0.0\" in gradle.properties; " +
                     "searched: ${searched.joinToString()})",
             )
         }
-        val declaringFile = GradleProperties.locateDeclaringFile(propertiesDirs(target), "version")
+        val declaringFile = GradleProperties.locateDeclaringFile(target.propertiesDirs(), "version")
         if (declaringFile != null) {
             target.logger.debug("Project version {} declared in {}", version, declaringFile)
         } else {
@@ -58,9 +59,4 @@ class EasyProjectDefaultsPlugin : AbstractEasyProjectPlugin() {
             )
         }
     }
-
-    private fun propertiesDirs(target: Project): List<File> =
-        generateSequence(target.projectDir) { dir ->
-            dir.parentFile?.takeIf { dir != target.rootDir }
-        }.toList()
 }

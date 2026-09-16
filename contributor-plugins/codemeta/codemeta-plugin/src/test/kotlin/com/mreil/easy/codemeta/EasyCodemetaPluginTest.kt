@@ -3,9 +3,9 @@ package com.mreil.easy.codemeta
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.vcs.EasyVcsExtension
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
-import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
@@ -24,8 +24,6 @@ class EasyCodemetaPluginTest {
 
     private fun generateTask(project: Project): GenerateCodemetaTask =
         project.tasks.named("generateCodemeta", GenerateCodemetaTask::class.java).get()
-
-    private fun evaluate(project: Project) = (project as ProjectInternal).evaluate()
 
     private fun git(
         dir: Path,
@@ -49,7 +47,7 @@ class EasyCodemetaPluginTest {
         git(tempDir, "init")
         git(tempDir, "remote", "add", "origin", "https://github.com/example/repo.git")
         val project = project(tempDir)
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(generateTask(project).codeRepository.get()).isEqualTo("https://github.com/example/repo")
@@ -60,7 +58,7 @@ class EasyCodemetaPluginTest {
     fun `generate task falls back to placeholder when vcs disabled`() {
         val project = project(tempDir)
         disableVcs(project)
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly
@@ -72,7 +70,7 @@ class EasyCodemetaPluginTest {
     @Test
     fun `generate task falls back to placeholder without git remote`() {
         val project = project(tempDir)
-        evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly

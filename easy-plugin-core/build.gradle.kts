@@ -14,6 +14,7 @@ repositories { mavenCentral() }
 dependencies {
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
+    implementation(project(":gradle-plugin-utils"))
     testImplementation(project(":gradle-plugin-testutils"))
     testImplementation(project(":easy-test-support"))
     compileOnly(gradleApi())

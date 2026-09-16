@@ -2,6 +2,7 @@ package com.mreil.easy.release
 
 import com.mreil.easy.vcs.VcsService
 import com.mreil.utils.GradleProperties
+import com.mreil.utils.required
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
@@ -61,7 +62,7 @@ abstract class PreReleaseCommitTask :
     fun commit() {
         val state = releaseState.get()
         val releaseVersion =
-            state.releaseVersion().orNull ?: throw GradleException(
+            state.releaseVersion().required(
                 "No release version resolved: set -Deasy.release.version=<version> " +
                     "or enable the semver plugin with a valid project version.",
             )

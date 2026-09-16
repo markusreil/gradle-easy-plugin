@@ -5,11 +5,11 @@ import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.publish.DefaultEasyPublishExtension
 import com.mreil.easy.publish.EasyPublishExtension
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
+import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.internal.GradleInternal
-import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -28,8 +28,8 @@ class EasyPublishCentralTest {
         rootPublish.toMavenCentral()
         rootPublish.toMavenStaging("rootCentralStaging")
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(rootPublish.toMavenCentral.get()).isTrue()
@@ -53,7 +53,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val stagingRepo =
             project.project.extensions
@@ -114,8 +114,8 @@ class EasyPublishCentralTest {
         rootPublish.enabled.set(true)
         rootPublish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
 
         val rootTask = root.project.tasks.findByName("generateJreleaserConfig") as GenerateJreleaserConfigTask?
         val childTask = child.project.tasks.findByName("generateJreleaserConfig")
@@ -147,7 +147,7 @@ class EasyPublishCentralTest {
         publish.toMavenCentral()
         publish.toMavenStaging("myCustomStaging")
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val task = project.project.tasks.getByName("generateJreleaserConfig") as GenerateJreleaserConfigTask
         assertSoftly { softly ->
@@ -166,8 +166,8 @@ class EasyPublishCentralTest {
         root.publish.enabled.set(true)
         root.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
 
         val task = root.project.tasks.getByName("generateJreleaserConfig") as GenerateJreleaserConfigTask
         val rootStaging =
@@ -225,8 +225,8 @@ class EasyPublishCentralTest {
         root.publish.enabled.set(true)
         root.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
 
         val configTask = root.project.tasks.findByName("generateJreleaserConfig") as? GenerateJreleaserConfigTask
         val rootStaging =
@@ -257,8 +257,8 @@ class EasyPublishCentralTest {
         // root does NOT opt into Central; the child does from its own script.
         child.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
         ProjectBuilderHelper.fireProjectsEvaluated(root.project)
 
         val configTask = root.project.tasks.findByName("generateJreleaserConfig") as? GenerateJreleaserConfigTask
@@ -290,8 +290,8 @@ class EasyPublishCentralTest {
         val child = root.child
         root.publish.enabled.set(true)
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
         ProjectBuilderHelper.fireProjectsEvaluated(root.project)
 
         assertSoftly { softly ->
@@ -315,7 +315,7 @@ class EasyPublishCentralTest {
         publish.enabled.set(true)
         publish.toMavenStaging()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
         ProjectBuilderHelper.fireProjectsEvaluated(project.project)
 
         // EasyJreleaserPlugin skips wiring entirely when toMavenCentral is unset,
@@ -332,7 +332,7 @@ class EasyPublishCentralTest {
         publish.enabled.set(true)
         publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val deps =
             project.project.tasks
@@ -351,7 +351,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val strip = project.project.tasks.getByName("stripSignatureChecksums") as? StripSignatureChecksumsTask
         val stagingUploads =
@@ -375,8 +375,8 @@ class EasyPublishCentralTest {
         root.publish.enabled.set(true)
         root.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
 
         val rootTask = root.project.tasks.findByName("checkCentralPoms") as CheckCentralPomsTask?
         val childTask = child.project.tasks.findByName("checkCentralPoms") as CheckCentralPomsTask?
@@ -404,7 +404,7 @@ class EasyPublishCentralTest {
         publish.enabled.set(true)
         publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(project)
+        project.evaluate()
 
         assertSoftly { softly ->
             softly.assertThat(project.tasks.findByName("checkCentralPoms")).isNull()
@@ -417,7 +417,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenStaging()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
         ProjectBuilderHelper.fireProjectsEvaluated(project.project)
 
         // EasyJreleaserPlugin skips CentralPublishingWiring when toMavenCentral is unset,
@@ -433,7 +433,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val checker = project.project.tasks.getByName("checkCentralPoms")
         val deps = checker.taskDependencies.getDependencies(checker).map { it.name }
@@ -449,7 +449,7 @@ class EasyPublishCentralTest {
         project.publish.toMavenCentral()
         project.publish.mavenRepo("testRepo", "file:///tmp/test-repo")
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val publishTask = project.project.tasks.getByName("publishMavenPublicationToTestRepoRepository")
         val deps = publishTask.taskDependencies.getDependencies(publishTask).map { it.name }
@@ -465,8 +465,8 @@ class EasyPublishCentralTest {
         root.publish.enabled.set(true)
         root.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
 
         val rootPublish = root.project.tasks.getByName("publish")
         val deps = rootPublish.taskDependencies.getDependencies(rootPublish).map { it.path }
@@ -486,8 +486,8 @@ class EasyPublishCentralTest {
         root.publish.enabled.set(true)
         root.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
 
         val rootPomPath =
             root.project.tasks
@@ -523,7 +523,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val configTask = project.project.tasks.getByName("generateJreleaserConfig")
         val deps = configTask.taskDependencies.getDependencies(configTask).map { it.name }
@@ -539,8 +539,8 @@ class EasyPublishCentralTest {
         root.publish.enabled.set(true)
         root.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
 
         val configTask = root.project.tasks.getByName("generateJreleaserConfig")
         val deps = configTask.taskDependencies.getDependencies(configTask).map { it.path }
@@ -562,7 +562,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val task = project.project.tasks.getByName("generateJreleaserConfig") as GenerateJreleaserConfigTask
         assertSoftly { softly ->
@@ -577,8 +577,8 @@ class EasyPublishCentralTest {
         root.publish.enabled.set(true)
         root.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(root.project)
-        ProjectBuilderHelper.evaluate(child.project)
+        root.project.evaluate()
+        child.project.evaluate()
 
         val rootTask = root.project.tasks.findByName("publishToMavenCentral") as JreleaserPublishTask?
         val childTask = child.project.tasks.findByName("publishToMavenCentral")
@@ -596,7 +596,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenStaging()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
         ProjectBuilderHelper.fireProjectsEvaluated(project.project)
 
         // EasyJreleaserPlugin skips JreleaserDeployWiring when toMavenCentral is unset,
@@ -614,7 +614,7 @@ class EasyPublishCentralTest {
         project.publish.toMavenStaging("stagingRepo")
         project.publish.mavenRepo("testRepo", "file:///tmp/test-repo")
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val task = project.project.tasks.getByName("publishToMavenCentral")
         val deps = task.taskDependencies.getDependencies(task).map { it.name }
@@ -633,7 +633,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val publish = project.project.tasks.getByName("publish")
         val deps = publish.taskDependencies.getDependencies(publish).map { it.name }
@@ -648,7 +648,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenStaging()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
         ProjectBuilderHelper.fireProjectsEvaluated(project.project)
 
         val publish = project.project.tasks.getByName("publish")
@@ -665,7 +665,7 @@ class EasyPublishCentralTest {
         project.publish.toMavenCentral()
         project.project.version = "0.0.102-SNAPSHOT"
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val publish = project.project.tasks.getByName("publish")
         val deps = publish.taskDependencies.getDependencies(publish).map { it.name }
@@ -680,7 +680,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
 
-        ProjectBuilderHelper.evaluate(project.project)
+        project.project.evaluate()
 
         val conf = project.project.configurations.getByName("jreleaser")
         assertSoftly { softly ->
@@ -757,11 +757,6 @@ private object ProjectBuilderHelper {
                 .extensions
                 .getByType(EasyPublishExtension::class.java) as DefaultEasyPublishExtension
         return SingleProject(project, publish)
-    }
-
-    fun evaluate(project: Project) {
-        val internal = project as ProjectInternal
-        internal.evaluate()
     }
 
     /** Fires the Gradle-wide `projectsEvaluated` callback (the hook EasyJreleaserPlugin uses
