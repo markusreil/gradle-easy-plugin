@@ -17,7 +17,6 @@ dependencies {
     implementation(project(":easy-contributor-support"))
     implementation(project(":gradle-plugin-utils"))
     compileOnly(gradleApi())
-    testImplementation(project(":gradle-plugin-testutils"))
 }
 
 tasks.withType<Test>().configureEach {

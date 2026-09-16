@@ -22,7 +22,6 @@ dependencies {
     implementation(libs.jackson.dataformat.yaml)
     implementation(libs.jackson.module.kotlin)
     compileOnly(gradleApi())
-    testImplementation(project(":gradle-plugin-testutils"))
 }
 
 tasks.withType<Test>().configureEach {
