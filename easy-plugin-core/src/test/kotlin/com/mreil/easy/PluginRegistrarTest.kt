@@ -183,12 +183,16 @@ class PluginRegistrarTest {
                         }
                         null
                     }
+
                     "apply" -> {
                         val type = args[0] as Class<*>
                         appliedPlugins.add(type)
                         null
                     }
-                    else -> null
+
+                    else -> {
+                        null
+                    }
                 }
             } as PluginManager
 
@@ -242,12 +246,16 @@ class PluginRegistrarTest {
                         }
                         null
                     }
+
                     "apply" -> {
                         val type = args[0] as Class<*>
                         appliedSettingsPlugins.add(type)
                         null
                     }
-                    else -> null
+
+                    else -> {
+                        null
+                    }
                 }
             } as PluginManager
 

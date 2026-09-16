@@ -95,14 +95,20 @@ class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
      */
     private fun skipReason(target: Project): String? =
         when {
-            isSnapshot(target) ->
+            isSnapshot(target) -> {
                 "Skipping Maven Central deploy: snapshot versions do not deploy to Maven Central. " +
                     "The semver extension is required for snapshot detection."
-            !target.isEasyChildEnabled<EasyCodemetaExtension>() ->
+            }
+
+            !target.isEasyChildEnabled<EasyCodemetaExtension>() -> {
                 "Skipping Maven Central deploy: the codemeta extension is required to fill " +
                     "POM metadata that Maven Central validates (url, scm, license, developers). " +
                     "Enable it with `easy { codemeta { enabled.set(true) } }` and provide a codemeta.json."
-            else -> null
+            }
+
+            else -> {
+                null
+            }
         }
 
     private fun isSnapshot(target: Project): Boolean = RepoRouting.isSnapshot(EasySemver.of(target).orNull) ?: target.hasSnapshotVersion()

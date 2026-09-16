@@ -129,13 +129,18 @@ object ExtensionCopier {
         val fromValue = pair.from as Property<Any>
         val toValue = pair.to as Property<Any>
         when (mode) {
-            CopyMode.Mode.DEEP -> toValue.convention(fromValue)
+            CopyMode.Mode.DEEP -> {
+                toValue.convention(fromValue)
+            }
+
             CopyMode.Mode.READ_ONLY -> {
                 toValue.convention(fromValue)
                 toValue.disallowChanges()
             }
 
-            CopyMode.Mode.NONE -> Unit
+            CopyMode.Mode.NONE -> {
+                Unit
+            }
         }
     }
 

@@ -24,7 +24,7 @@ Discovery via `PluginRegistry`/`PluginRegistryService` (BuildService) + `EasyPlu
 settings.gradle.kts          # includes :easy-plugin, :easy-plugin-core, :easy-contributor-api, :easy-contributor-support, :easy-test-support, :gradle-plugin-testutils, :gradle-plugin-utils, :contributor-plugins:publish:..., :contributor-plugins:jvm-defaults:..., :contributor-plugins:semver:..., :contributor-plugins:codemeta:...
 build.gradle.kts             # root: lifecycle-base/jacoco-report-aggregation/test-report-aggregation + kotlin-jvm/detekt/spotless apply false; centralized Spotless; aggregated reports
 gradle.properties            # CC/parallel/caching/warning.mode=all + plugin.project/settings IDs (single source; runtime mirror in PluginIds.kt)
-gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 1.23.7, spotless 7.0.2)
+gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 1.23.7, spotless 8.10.2)
 config/detekt/detekt.yml     # maxLineLength 140, EmptyFunctionBlock off
 easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella: registers com.mreil.easy.project/settings via providers.gradleProperty, aggregates easy-plugin-core + contributor libs via dynamic :contributor-plugins:*:*-plugin; test suites + pluginUnderTestMetadata + detekt; publishing.repositories for mreilComGradlePluginsSnapshots (marker publications via java-gradle-plugin)
 easy-plugin-core/build.gradle.kts      # java-library: ProjectPlugin, SettingsPlugin, PluginRegistryService, PluginRegistrar, ExtensionRegistrar, EasyExtension
