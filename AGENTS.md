@@ -18,8 +18,8 @@ Shared discovery via `PluginRegistry`/`PluginRegistryService` (BuildService) +
 settings.gradle.kts          # includes :easy-plugin, :easy-plugin-core, :easy-contributor-api, :easy-contributor-support, :easy-test-support, :gradle-plugin-testutils, :gradle-plugin-utils, :contributor-plugins:publish:publish-plugin-api, :contributor-plugins:publish:publish-plugin, :contributor-plugins:publish:publish-test-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-plugin-api, :contributor-plugins:jvm-defaults:jvm-defaults-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-test-plugin, :contributor-plugins:semver:semver-plugin-api, :contributor-plugins:semver:semver-plugin, :contributor-plugins:semver:semver-test-plugin, :contributor-plugins:codemeta:codemeta-plugin-api, :contributor-plugins:codemeta:codemeta-plugin, :contributor-plugins:codemeta:codemeta-test-plugin, :contributor-plugins:project-defaults:project-defaults-plugin-api, :contributor-plugins:project-defaults:project-defaults-plugin, :contributor-plugins:project-defaults:project-defaults-test-plugin
 build.gradle.kts             # root: lifecycle-base/jacoco-report-aggregation/test-report-aggregation + kotlin-jvm/detekt/spotless apply false; centralized Spotless (ktlint) for leaf projects; aggregated testCodeCoverageReport/testAggregateTestReport
 gradle.properties            # CC/parallel/caching/warning.mode=all + plugin.project/settings IDs (single source; runtime mirror in PluginIds.kt)
-gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 1.23.7, spotless 8.10.2)
-config/detekt/detekt.yml     # detekt config (maxLineLength 140, EmptyFunctionBlock off)
+gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 2.0.0-alpha.6, spotless 8.10.2)
+config/detekt/detekt.yml     # detekt 2.x config (maxLineLength 140, EmptyFunctionBlock off; AbstractClassCanBeConcreteClass excludes test paths)
 easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella: registers com.mreil.easy.project/settings via providers.gradleProperty, aggregates easy-plugin-core + all :contributor-plugins:*:*-plugin (dynamic, APIs transitively); test suites + pluginUnderTestMetadata + detekt; publishing.repositories for mreilComGradlePluginsSnapshots (marker publications via java-gradle-plugin)
 easy-plugin-core/build.gradle.kts      # java-library: ProjectPlugin, SettingsPlugin, PluginRegistryService, PluginRegistrar, ExtensionRegistrar, EasyExtension
 easy-contributor-api/src/main/kotlin/com/mreil/easy/ # PluginIds, PluginRegistry, EasyPluginContributor, ApplyToSubprojects, EnabledBy, Named, EasyPluginExtension, CanBeEnabled, PublicType
@@ -114,13 +114,13 @@ defer extra-plugin application via
 - All dependencies/plugins must be in `gradle/libs.versions.toml` and referenced
 by alias (e.g., `alias(libs.plugins.kotlin.jvm)`, `libs.assertj.core`). No
 hardcoded coordinates/versions.
-- Detekt 1.23.7 has an upstream `ReportingExtension.file(String)` deprecation
-warning — ignore until 2.x.
+- detekt 2.0.0-alpha.6 uses the `dev.detekt` plugin id/group (renamed from
+`io.gitlab.arturbosch.detekt`); the 2.x config schema differs from 1.x — regenerate
+with `./gradlew detektGenerateConfig` (to a scratch path) before editing by hand.
 
 ## Code Analysis
-- Config in `config/detekt/detekt.yml` (maxLineLength 140, EmptyFunctionBlock off). `check` depends on `detekt` and `jacocoTestReport` (plus `functionalTest` where applicable). Fix `detekt` findings before submitting.
-- `detekt` analyzes every Kotlin source set (`main`, `test`, `functionalTest`, …) via centralized source wiring in root `build.gradle.kts` (the task defaults to `main`+`test` only). `FunctionNaming` excludes test paths; abstract plugin/extension bases carry `@Suppress("UnnecessaryAbstractClass")` (Gradle decoration requires non-final types).
-- `detektMain`/`detektTest` (type-resolution rules) are NOT in `check`: EXPERIMENTAL in detekt 1.x and crash on some files under Kotlin 2.3 — run manually, revisit with detekt 2.x.
+- detekt 2.0.0-alpha.6 (`dev.detekt` plugin). Config in `config/detekt/detekt.yml` (maxLineLength 140, EmptyFunctionBlock off). `check` depends on detekt and `jacocoTestReport` (plus `functionalTest` where applicable). Fix detekt findings before submitting.
+- detekt runs with type resolution by default in 2.x. Root `build.gradle.kts` routes the conventional `detekt` task (and therefore `check`) through the type-aware per-source-set tasks (`detektMain`, `detektTest`, `detektFunctionalTest`, …) and disables the plain task's own non-type-aware run; dependencies of a disabled task still execute, so `./gradlew detekt` and `./gradlew check` both run the type-aware analysis. `FunctionNaming` excludes test paths. Production abstract plugin bases carry `@Suppress("AbstractClassCanBeConcreteClass")` and abstract extension/implementation bases carry `@Suppress("AbstractClassCanBeInterface")` (Gradle decoration requires non-final types, and extension impls need class semantics); both rules exclude test/functionalTest/testFixtures paths.
 - Spotless (with `ktlint`) enforces code formatting across Kotlin sources and Gradle scripts (centralized in root `build.gradle.kts` for leaf projects). Run `./gradlew spotlessCheck` to verify and `./gradlew spotlessApply` to automatically format.
 
 ## Editing Guidelines

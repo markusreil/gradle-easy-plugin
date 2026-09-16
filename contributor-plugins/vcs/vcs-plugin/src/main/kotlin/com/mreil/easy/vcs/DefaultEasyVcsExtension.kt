@@ -7,6 +7,7 @@ import com.mreil.easy.PublicType
  *
  * Empty for now - no additional configuration needed.
  */
+@Suppress("AbstractClassCanBeInterface")
 @PublicType(EasyVcsExtension::class)
 abstract class DefaultEasyVcsExtension : EasyVcsExtension {
     init {

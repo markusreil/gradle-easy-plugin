@@ -2,7 +2,7 @@ package com.mreil.easy.release
 
 import com.mreil.easy.PublicType
 
-@Suppress("UnnecessaryAbstractClass")
+@Suppress("AbstractClassCanBeInterface")
 @PublicType(EasyReleaseExtension::class)
 abstract class DefaultEasyReleaseExtension : EasyReleaseExtension {
     init {

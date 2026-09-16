@@ -32,7 +32,12 @@ class EasyJvmDefaultsPluginFuncTest {
         val result =
             project.build("sourcesJar", "javadocJar")
 
-        val libs = project.file("build/libs").listFiles()?.map { it.name } ?: emptyList()
+        val libs =
+            project
+                .file("build/libs")
+                .listFiles()
+                ?.map { it.name }
+                .orEmpty()
         assertSoftly { softly ->
             softly.assertThat(result.output).contains("sourcesJar")
             softly.assertThat(libs.any { it.contains("sources") }).isTrue()

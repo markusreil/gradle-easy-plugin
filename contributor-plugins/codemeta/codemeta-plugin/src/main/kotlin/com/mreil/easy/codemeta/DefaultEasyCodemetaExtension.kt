@@ -7,6 +7,7 @@ import com.mreil.easy.PublicType
  *
  * Holds the default conventions; enabled by default.
  */
+@Suppress("AbstractClassCanBeInterface")
 @PublicType(EasyCodemetaExtension::class)
 abstract class DefaultEasyCodemetaExtension : EasyCodemetaExtension {
     init {

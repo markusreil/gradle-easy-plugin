@@ -198,7 +198,7 @@ class EasyReleasePluginTest {
             val project = ProjectBuilder.builder().build()
             project.pluginManager.apply(ProjectPlugin::class.java)
             project.evaluate()
-            val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
+            project.tasks.getByName("preReleaseCheck")
             val state = releaseStateOf(project)
             assertSoftly { softly ->
                 softly.assertThat(state.releaseVersion().get()).isEqualTo("9.9.9")

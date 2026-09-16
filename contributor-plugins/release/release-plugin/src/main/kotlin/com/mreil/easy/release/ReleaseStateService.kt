@@ -105,7 +105,7 @@ internal abstract class ReleaseStateService
          * `T : Any`, so null is signalled via the empty sentinel — `hasTag("")` is always
          * false and short-circuits the existence check).
          */
-        fun tagNameProvider(): Provider<String> = providers.provider { tagName() ?: "" }
+        fun tagNameProvider(): Provider<String> = providers.provider { tagName().orEmpty() }
 
         override fun onFinish(event: FinishEvent) {
             if (event !is TaskFinishEvent || event.result !is TaskFailureResult) return

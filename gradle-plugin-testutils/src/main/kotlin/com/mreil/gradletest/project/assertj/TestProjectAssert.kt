@@ -158,5 +158,6 @@ private fun TestProject.artifactCandidates(
                 file.name.startsWith(prefix) &&
                 file.name.endsWith(".${coordinates.extension}") &&
                 (coordinates.classifier == null || file.name.contains("-${coordinates.classifier}."))
-        }?.toList() ?: emptyList()
+        }?.toList()
+        .orEmpty()
 }

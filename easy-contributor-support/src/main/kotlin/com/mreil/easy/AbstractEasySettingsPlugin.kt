@@ -13,7 +13,7 @@ import org.gradle.api.plugins.ExtensionAware
  *
  * Abstract for subclassing (Gradle instantiates concrete contributors); no abstract members by design.
  */
-@Suppress("UnnecessaryAbstractClass")
+@Suppress("AbstractClassCanBeConcreteClass")
 abstract class AbstractEasySettingsPlugin :
     Plugin<Settings>,
     PluginLifecycle<Settings> {
