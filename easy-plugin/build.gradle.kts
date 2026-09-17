@@ -11,7 +11,6 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
     // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
     `java-gradle-plugin`
-    jacoco
 
     // Apply the Kotlin JVM plugin to add support for Kotlin.
     alias(libs.plugins.kotlin.jvm)
@@ -49,34 +48,12 @@ dependencies {
 
 testing {
     suites {
-        // Configure the built-in test suite
-        val test by getting(JvmTestSuite::class) {
-            useJUnitJupiter()
-            dependencies {
-                implementation(libs.assertj.core)
-                implementation(libs.junit.pioneer)
-            }
-        }
-
-        // Create a new test suite
+        // jvm-defaults registers/configures functionalTest (framework, main output, test kit and
+        // plugin-under-test metadata); only the repo-specific helper projects are declared here.
         val functionalTest by registering(JvmTestSuite::class) {
-            useJUnitJupiter()
-
             dependencies {
-                // functionalTest test suite depends on the production code in tests
-                implementation(project())
                 implementation(project(":easy-test-support"))
                 implementation(project(":gradle-plugin-testutils"))
-                implementation(gradleTestKit())
-                implementation(libs.assertj.core)
-                implementation(libs.junit.pioneer)
-            }
-
-            targets {
-                all {
-                    // This test suite should run after the built-in test suite has run its tests
-                    testTask.configure { shouldRunAfter(test) }
-                }
             }
         }
     }
@@ -110,8 +87,8 @@ gradlePlugin {
     }
 }
 
-gradlePlugin.testSourceSets.add(sourceSets["functionalTest"])
-
+// The functional tests need the fixtures configuration on top of the standard plugin-under-test
+// metadata; the runtimeOnly wiring itself is added by jvm-defaults.
 tasks.named<PluginUnderTestMetadata>("pluginUnderTestMetadata") {
     pluginClasspath.from(fixtures)
 }
@@ -135,15 +112,6 @@ tasks.named<ShadowJar>("shadowJar") {
 }
 
 tasks.named<Task>("check") {
-    // Include functionalTest as part of the check lifecycle
-    dependsOn(testing.suites.named("functionalTest"))
+    // functionalTest is wired into check by jvm-defaults; only detekt stays repo-specific here.
     dependsOn("detekt")
-    dependsOn("jacocoTestReport")
-}
-
-tasks.named<JacocoReport>("jacocoTestReport") {
-    reports {
-        xml.required.set(true)
-        html.required.set(true)
-    }
 }

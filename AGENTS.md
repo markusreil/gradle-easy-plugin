@@ -77,8 +77,15 @@ mirror is `easy-contributor-api/.../PluginIds.kt` — keep in sync.
 Contributor `publish-plugin`/`jvm-defaults` IDs are internal (contribute via SPI, not applied by ID externally).
 - Published artifact set is documented in `DEVELOPMENT.md` → "Publishing (deployed artifact set)" and is the source of truth for everything any `mavenRepo()`-declared repository receives. Whenever publish behaviour changes (new module, new publication, marker changes, harness publishing), update that section and the local-verification note (`publishAllPublicationsToMavenStagingRepository`) — keep both docs in sync.
 - Plugin registration via `gradlePlugin { plugins.creating { id,
-implementationClass } }`. Functional test source set wired via
-`gradlePlugin.testSourceSets.add(...)` (easy-plugin + contributor `publish-test-plugin`/`jvm-defaults-test-plugin` harnesses) and `check.dependsOn(functionalTest)` — keep.
+implementationClass } }`. The repo dogfoods the released `com.mreil.easy.settings` (version in
+`settings.gradle.kts`); its `jvm-defaults` contributor auto-configures the built-in `test` and
+discovered `*Test` suites (catalog-pinned JUnit Jupiter, catalog test deps, `main` output,
+`gradleTestKit()`/plugin-under-test metadata/`testSourceSets`, `check` + `shouldRunAfter`) and
+applies `jacoco` — so module build files declare only repo-specific test-helper deps (e.g.
+`:easy-test-support`, `:gradle-plugin-testutils`) plus `jvmArgs`, never
+`useJUnitJupiter`/AssertJ/Pioneer/JUnit params/Mockito, `jacoco`, `testSourceSets` or
+`check.dependsOn(functionalTest)`. JaCoCo report formats are centralized in the root
+`subprojects` block.
 - CC/parallel/caching/warning.mode=all are on — tasks must be CC-compatible
 (providers/properties, no `project` at execution).
 - ServiceLoader SPI: contributors implement `EasyPluginContributor` in

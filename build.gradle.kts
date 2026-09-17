@@ -1,5 +1,4 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 plugins {
     `lifecycle-base`
@@ -91,5 +90,15 @@ subprojects {
             )
         }
         plainDetekt.configure { enabled = false }
+    }
+    // jvm-defaults applies jacoco per project (0.0.112+); keep every report in both formats here
+    // so the individual build files need no jacoco wiring at all.
+    pluginManager.withPlugin("jacoco") {
+        tasks.named<JacocoReport>("jacocoTestReport") {
+            reports {
+                xml.required.set(true)
+                html.required.set(true)
+            }
+        }
     }
 }

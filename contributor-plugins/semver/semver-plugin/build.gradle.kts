@@ -1,6 +1,5 @@
 plugins {
     `java-library`
-    jacoco
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.detekt)
 }
@@ -25,9 +24,7 @@ tasks.withType<Test>().configureEach {
 testing {
     suites {
         val test by getting(JvmTestSuite::class) {
-            useJUnitJupiter()
             dependencies {
-                implementation(libs.assertj.core)
                 implementation(project(":easy-plugin-core"))
                 implementation(gradleTestKit())
             }
@@ -39,12 +36,4 @@ detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.ym
 
 tasks.named<Task>("check") {
     dependsOn("detekt")
-    dependsOn("jacocoTestReport")
-}
-
-tasks.named<JacocoReport>("jacocoTestReport") {
-    reports {
-        xml.required.set(true)
-        html.required.set(true)
-    }
 }
