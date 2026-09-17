@@ -1,12 +1,11 @@
 package com.mreil.easy
 
 import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.gradle.api.Plugin
-import org.gradle.api.Project
-import org.gradle.api.initialization.Settings
 import org.gradle.api.provider.Property
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import kotlin.reflect.KClass
 
 class ExtensionRegistrarCopyTest {
@@ -30,39 +29,17 @@ class ExtensionRegistrarCopyTest {
         }
     }
 
-    private class SimplePluginRegistry : PluginRegistry {
-        private val projectPlugins = mutableSetOf<KClass<out Plugin<Project>>>()
-        private val settingsPlugins = mutableSetOf<KClass<out Plugin<Settings>>>()
-        private val extensions = mutableSetOf<KClass<out EasyPluginExtension>>()
-
-        override fun registerProjectPlugin(pluginClass: KClass<out Plugin<Project>>) {
-            projectPlugins.add(pluginClass)
+    private fun registry(vararg extensions: KClass<out EasyPluginExtension>): PluginRegistry =
+        mock(PluginRegistry::class.java).apply {
+            `when`(getRegisteredExtensions()).thenReturn(extensions.toSet())
         }
-
-        override fun getProjectPlugins(): Set<KClass<out Plugin<Project>>> = projectPlugins.toSet()
-
-        override fun registerSettingsPlugin(pluginClass: KClass<out Plugin<Settings>>) {
-            settingsPlugins.add(pluginClass)
-        }
-
-        override fun getSettingsPlugins(): Set<KClass<out Plugin<Settings>>> = settingsPlugins.toSet()
-
-        override fun registerExtension(extensionClass: KClass<out EasyPluginExtension>) {
-            extensions.add(extensionClass)
-        }
-
-        override fun getRegisteredExtensions(): Set<KClass<out EasyPluginExtension>> = extensions.toSet()
-    }
 
     @Test
     fun `copies values when parent ExtensionAware is provided`() {
         val parentProject = ProjectBuilder.builder().build()
         val childProject = ProjectBuilder.builder().build()
 
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
         val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         val parentSub = parentExt.extensions.getByType(TestSubExtension::class.java)
@@ -81,10 +58,7 @@ class ExtensionRegistrarCopyTest {
         val parentProject = ProjectBuilder.builder().build()
         val childProject = ProjectBuilder.builder().build()
 
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
         val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         val parentSub = parentExt.extensions.getByType(TestSubExtension::class.java)
@@ -102,10 +76,7 @@ class ExtensionRegistrarCopyTest {
     fun `creates EasyExtension on ExtensionAware with parent ExtensionAware copies values`() {
         val parentProject = ProjectBuilder.builder().build()
         val childHolder = ProjectBuilder.builder().build()
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
         val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         val parentSub = parentExt.extensions.getByType(TestSubExtension::class.java)
@@ -123,10 +94,7 @@ class ExtensionRegistrarCopyTest {
     fun `creates EasyExtension on ExtensionAware with parent CanBeCopied copies values`() {
         val parentProject = ProjectBuilder.builder().build()
         val childHolder = ProjectBuilder.builder().build()
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
         val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         val parentSub = parentExt.extensions.getByType(TestSubExtension::class.java)
@@ -144,10 +112,7 @@ class ExtensionRegistrarCopyTest {
     fun `parent convention false is copied to child overriding child default true`() {
         val parentProject = ProjectBuilder.builder().build()
         val childProject = ProjectBuilder.builder().build()
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
         val parentExt = ExtensionRegistrar(parentProject, parentProject.providers).createExtension(registry)
         parentExt.extensions
@@ -166,10 +131,7 @@ class ExtensionRegistrarCopyTest {
     @Test
     fun `does not copy when parent is null but defaults to true`() {
         val project = ProjectBuilder.builder().build()
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
         val ext = ExtensionRegistrar(project, project.providers).createExtension(registry, parent = null)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)

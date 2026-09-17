@@ -47,7 +47,7 @@ class EasyPublishPluginFuncTest {
             javaSource()
         }
 
-        val result = project.build("publish", "--info")
+        val result = project.build("publish")
 
         val coordinates = MavenCoordinates(name = projectName)
         assertSoftly { softly ->
@@ -109,7 +109,7 @@ class EasyPublishPluginFuncTest {
             )
         }
 
-        val result = project.build("publish", "--info")
+        val result = project.build("publish")
 
         val markerCoordinates = MavenCoordinates(group = pluginId, name = "$pluginId.gradle.plugin")
         val pluginCoordinates = MavenCoordinates(name = projectName)

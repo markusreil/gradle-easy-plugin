@@ -61,7 +61,7 @@ class EasyPublishCodemetaFuncTest {
             javaSource()
         }
 
-        project.build("publish", "--info")
+        project.build("publish")
 
         val coordinates = MavenCoordinates(name = projectName)
         assertSoftly { softly ->

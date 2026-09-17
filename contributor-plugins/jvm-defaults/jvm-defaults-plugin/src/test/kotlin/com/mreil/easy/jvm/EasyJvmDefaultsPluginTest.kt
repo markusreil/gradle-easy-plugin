@@ -490,6 +490,44 @@ class EasyJvmDefaultsPluginTest {
     }
 
     @Test
+    fun `adds a project's built-in unit suite to the root aggregation`() {
+        val rootDir = Files.createTempDirectory("jvm-defaults-unit-root-").toFile()
+        val root = ProjectBuilder.builder().withProjectDir(rootDir).build()
+        root.pluginManager.apply("base")
+
+        val unit =
+            ProjectBuilder
+                .builder()
+                .withParent(root)
+                .withProjectDir(File(rootDir, "unit").apply { mkdirs() })
+                .build()
+        // No src/functionalTest -> only the built-in `test` suite exists.
+        unit.pluginManager.apply("java-library")
+
+        root.pluginManager.apply(ProjectPlugin::class.java)
+        root.evaluate()
+        unit.evaluate()
+
+        val reportProjects =
+            root.configurations
+                .getByName("testReportAggregation")
+                .dependencies
+                .filterIsInstance<ProjectDependency>()
+                .map { it.path }
+        val coverageProjects =
+            root.configurations
+                .getByName("jacocoAggregation")
+                .dependencies
+                .filterIsInstance<ProjectDependency>()
+                .map { it.path }
+
+        assertSoftly { softly ->
+            softly.assertThat(reportProjects).contains(unit.path)
+            softly.assertThat(coverageProjects).contains(unit.path)
+        }
+    }
+
+    @Test
     fun `does not apply jacoco aggregation when disabled on the root`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply("base")
