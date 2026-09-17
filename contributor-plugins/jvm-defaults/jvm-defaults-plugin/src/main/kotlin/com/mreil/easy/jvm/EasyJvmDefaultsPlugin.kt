@@ -12,7 +12,7 @@ import org.gradle.api.plugins.JavaPluginExtension
 @EnabledBy(EasyJvmDefaultsExtension::class)
 class EasyJvmDefaultsPlugin : AbstractEasyProjectPlugin() {
     override fun afterEnabled(target: Project) {
-        JacocoWiring.configureRootAggregation(target)
+        ReportAggregationWiring.configureRootAggregation(target)
         target.pluginManager.withPlugin("java") {
             ensureJarTask(target, "sourcesJar", "withSourcesJar()", JavaPluginExtension::withSourcesJar)
             ensureJarTask(target, "javadocJar", "withJavadocJar()", JavaPluginExtension::withJavadocJar)

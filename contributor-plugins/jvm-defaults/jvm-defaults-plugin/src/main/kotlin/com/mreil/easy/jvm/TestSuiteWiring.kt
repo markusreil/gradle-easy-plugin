@@ -1,7 +1,6 @@
 package com.mreil.easy.jvm
 
 import com.mreil.easy.easyInfo
-import com.mreil.easy.findEasyChild
 import com.mreil.utils.catalogLibrary
 import org.gradle.api.Project
 import org.gradle.api.plugins.jvm.JvmTestSuite
@@ -24,14 +23,12 @@ import org.gradle.testing.base.TestingExtension
  */
 internal object TestSuiteWiring {
     internal fun configure(target: Project) {
-        val extension = target.jvmDefaultsExtension() ?: return
+        val extension = target.jvmDefaults() ?: return
         if (!extension.configureTestSuites.get()) return
         applyUnitSuiteConfiguration(target)
+        registerRootAggregateReport(target, DEFAULT_UNIT_SUITE)
         configureFunctionalSuites(target)
     }
-
-    private fun Project.jvmDefaultsExtension(): DefaultEasyJvmDefaultsExtension? =
-        findEasyChild<EasyJvmDefaultsExtension, DefaultEasyJvmDefaultsExtension>()
 
     /** Configures the framework-provided `test` suite, which needs no registration or wiring. */
     private fun applyUnitSuiteConfiguration(target: Project) {
@@ -131,14 +128,16 @@ internal object TestSuiteWiring {
 
     /**
      * Registers a root-level [AggregateTestReport] for [suiteName] on the consuming build's root
-     * project, mirroring the root build's aggregate report setup for the `test` suite. No-op
-     * unless the root applies `test-report-aggregation`, and idempotent across projects sharing
-     * the same suite name.
+     * project, mirroring the root build's aggregate report setup for the built-in `test` suite.
+     * No-op unless [EasyJvmDefaultsExtension.aggregateReports] is enabled and the root applied
+     * `test-report-aggregation` (which [ReportAggregationWiring] does by default), and idempotent
+     * across projects sharing the same suite name.
      */
     private fun registerRootAggregateReport(
         target: Project,
         suiteName: String,
     ) {
+        if (!target.aggregateReportsEnabled()) return
         val root = target.rootProject
         root.pluginManager.withPlugin(TEST_REPORT_AGGREGATION_PLUGIN) {
             val reports = root.extensions.getByType(ReportingExtension::class.java).reports
@@ -251,14 +250,8 @@ internal val CATALOG_FUNCTIONAL_TEST_DEPENDENCIES =
         listOf("junit-jupiter-params"),
     )
 
-/** Plugin id of Gradle's test report aggregation plugin, applied to the consuming build's root. */
-private const val TEST_REPORT_AGGREGATION_PLUGIN = "test-report-aggregation"
-
 /** Task generating the `plugin-under-test-metadata.properties` consumed by `withPluginClasspath()`. */
 private const val PLUGIN_UNDER_TEST_METADATA = "pluginUnderTestMetadata"
-
-/** Configuration through which the root declares the projects whose test results are aggregated. */
-private const val TEST_REPORT_AGGREGATION = "testReportAggregation"
 
 private const val PROJECT_PATH = "path"
 

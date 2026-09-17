@@ -24,10 +24,24 @@ interface EasyJvmDefaultsExtension :
     val configureTestSuites: Property<Boolean>
 
     /**
-     * Whether JaCoCo is applied to the project and wire auto-configured functional suites into
-     * its coverage report (convention `true`). For the build's root project this also enables
-     * `jacoco-report-aggregation` and the root-level `<suite>CodeCoverageReport` tasks; disabling
-     * it on the root therefore disables coverage aggregation for the whole build.
+     * Whether root-level report aggregation is configured automatically (convention `true`): the
+     * plugin applies `test-report-aggregation` to the build's root (and, when [jacocoEnabled],
+     * `jacoco-report-aggregation`), registers a root `<suite>AggregateTestReport` and — for
+     * coverage — `<suite>CodeCoverageReport` for every configured suite (the built-in `test` suite
+     * and each discovered `*Test` suite), declares each contributing project in the root
+     * `testReportAggregation`/`jacocoAggregation` configurations and wires the reports into the
+     * root `check` task.
+     *
+     * Disable it to manage root aggregation manually; the per-project `jacocoTestReport` wiring is
+     * unaffected (it is gated by [jacocoEnabled] only).
+     */
+    val aggregateReports: Property<Boolean>
+
+    /**
+     * Whether JaCoCo is applied to the project and auto-configured functional suites are wired into
+     * its coverage report (convention `true`). Root-level coverage aggregation is gated by
+     * [aggregateReports]; disabling it here therefore also drops this project's coverage from the
+     * aggregated root report.
      */
     val jacocoEnabled: Property<Boolean>
 

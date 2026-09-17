@@ -148,6 +148,7 @@ class EasyJvmDefaultsPluginTest {
 
         assertSoftly { softly ->
             softly.assertThat(extension.configureTestSuites.get()).isTrue()
+            softly.assertThat(extension.aggregateReports.get()).isTrue()
             softly.assertThat(extension.jacocoEnabled.get()).isTrue()
         }
     }
@@ -365,7 +366,7 @@ class EasyJvmDefaultsPluginTest {
 
     @Test
     fun `registers root aggregate report for auto-configured functional suite`() {
-        val build = functionalSuiteBuild(aggregateTestReports = true)
+        val build = functionalSuiteBuild()
 
         val report =
             build.root.extensions
@@ -386,7 +387,7 @@ class EasyJvmDefaultsPluginTest {
 
     @Test
     fun `adds the functional suite project to the root aggregation`() {
-        val build = functionalSuiteBuild(aggregateTestReports = true)
+        val build = functionalSuiteBuild()
 
         val aggregated =
             build.root.configurations
@@ -401,17 +402,59 @@ class EasyJvmDefaultsPluginTest {
     }
 
     @Test
-    fun `does not register root aggregate report without the root aggregation plugin`() {
-        val build = functionalSuiteBuild(aggregateTestReports = false)
+    fun `applies report aggregation to the root automatically`() {
+        val build = functionalSuiteBuild()
 
         assertSoftly { softly ->
+            softly.assertThat(build.root.plugins.hasPlugin("test-report-aggregation")).isTrue()
+            softly.assertThat(build.root.plugins.hasPlugin("jacoco-report-aggregation")).isTrue()
+            softly.assertThat(build.root.tasks.findByName("functionalTestAggregateTestReport")).isNotNull()
+            softly.assertThat(build.root.tasks.findByName("testAggregateTestReport")).isNotNull()
+            softly.assertThat(build.root.tasks.findByName("functionalTestCodeCoverageReport")).isNotNull()
+            softly.assertThat(build.root.tasks.findByName("testCodeCoverageReport")).isNotNull()
+        }
+    }
+
+    @Test
+    fun `does not apply report aggregation when disabled`() {
+        val build = functionalSuiteBuild(aggregateReports = false)
+
+        assertSoftly { softly ->
+            softly.assertThat(build.root.plugins.hasPlugin("test-report-aggregation")).isFalse()
+            softly.assertThat(build.root.plugins.hasPlugin("jacoco-report-aggregation")).isFalse()
             softly.assertThat(build.root.tasks.findByName("functionalTestAggregateTestReport")).isNull()
+            softly.assertThat(build.root.tasks.findByName("testAggregateTestReport")).isNull()
+            softly.assertThat(build.root.tasks.findByName("functionalTestCodeCoverageReport")).isNull()
+            softly.assertThat(build.root.tasks.findByName("testCodeCoverageReport")).isNull()
+        }
+    }
+
+    @Test
+    fun `registers root aggregate reports for the built-in unit suite`() {
+        val build = functionalSuiteBuild()
+
+        val aggregate =
+            build.root.extensions
+                .getByType(ReportingExtension::class.java)
+                .reports
+                .findByName("testAggregateTestReport")
+        val coverage =
+            build.root.extensions
+                .getByType(ReportingExtension::class.java)
+                .reports
+                .findByName("testCodeCoverageReport")
+
+        assertSoftly { softly ->
+            softly.assertThat(aggregate).isInstanceOf(AggregateTestReport::class.java)
+            softly.assertThat((aggregate as AggregateTestReport).testSuiteName.get()).isEqualTo("test")
+            softly.assertThat(coverage).isInstanceOf(JacocoCoverageReport::class.java)
+            softly.assertThat((coverage as JacocoCoverageReport).testSuiteName.get()).isEqualTo("test")
         }
     }
 
     @Test
     fun `registers root code coverage report for auto-configured functional suite`() {
-        val build = functionalSuiteBuild(aggregateTestReports = false)
+        val build = functionalSuiteBuild()
 
         val report =
             build.root.extensions
@@ -432,7 +475,7 @@ class EasyJvmDefaultsPluginTest {
 
     @Test
     fun `adds the functional suite project to the root jacoco aggregation`() {
-        val build = functionalSuiteBuild(aggregateTestReports = false)
+        val build = functionalSuiteBuild()
 
         val aggregated =
             build.root.configurations
@@ -456,6 +499,7 @@ class EasyJvmDefaultsPluginTest {
 
         assertSoftly { softly ->
             softly.assertThat(project.plugins.hasPlugin("jacoco-report-aggregation")).isFalse()
+            softly.assertThat(project.plugins.hasPlugin("test-report-aggregation")).isTrue()
         }
     }
 
@@ -549,11 +593,10 @@ class EasyJvmDefaultsPluginTest {
         }
     }
 
-    private fun functionalSuiteBuild(aggregateTestReports: Boolean): TestBuild {
+    private fun functionalSuiteBuild(aggregateReports: Boolean = true): TestBuild {
         val rootDir = Files.createTempDirectory("jvm-defaults-root-").toFile()
         val root = ProjectBuilder.builder().withProjectDir(rootDir).build()
         root.pluginManager.apply("base")
-        if (aggregateTestReports) root.pluginManager.apply("test-report-aggregation")
 
         val functionalDir = File(rootDir, "functional").apply { mkdirs() }
         val functional =
@@ -566,6 +609,10 @@ class EasyJvmDefaultsPluginTest {
         functional.pluginManager.apply("java-library")
 
         root.pluginManager.apply(ProjectPlugin::class.java)
+        if (!aggregateReports) {
+            jvmDefaultsExtension(root).aggregateReports.set(false)
+            jvmDefaultsExtension(functional).aggregateReports.set(false)
+        }
 
         root.evaluate()
         functional.evaluate()
