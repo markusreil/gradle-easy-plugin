@@ -53,7 +53,7 @@ class EasyPublishRoutingFuncTest {
             javaSource()
         }
 
-        project.build("publish", "--info")
+        project.build("publish")
 
         val coordinates = MavenCoordinates(name = project.projectDir.name, version = "1.0.0-SNAPSHOT")
         assertSoftly { softly ->
@@ -95,7 +95,7 @@ class EasyPublishRoutingFuncTest {
             javaSource()
         }
 
-        project.build("publish", "--info")
+        project.build("publish")
 
         val coordinates = MavenCoordinates(name = project.projectDir.name)
         assertSoftly { softly ->
@@ -136,7 +136,7 @@ class EasyPublishRoutingFuncTest {
             javaSource()
         }
 
-        project.build("publish", "--info")
+        project.build("publish")
 
         val coordinates = MavenCoordinates(name = project.projectDir.name, version = "1.0.0-SNAPSHOT")
         assertSoftly { softly ->
@@ -179,7 +179,7 @@ class EasyPublishRoutingFuncTest {
             javaSource()
         }
 
-        project.build("publish", "--info")
+        project.build("publish")
 
         val coordinates = MavenCoordinates(name = project.projectDir.name, version = "0.0.100")
         assertSoftly { softly ->

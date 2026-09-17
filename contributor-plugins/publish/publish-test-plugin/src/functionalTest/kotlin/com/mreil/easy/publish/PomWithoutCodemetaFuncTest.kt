@@ -46,7 +46,7 @@ class PomWithoutCodemetaFuncTest {
 
         // publishToMavenCentral does not exist when toMavenCentral() is not requested
         // (EasyJreleaserPlugin now skips wiring entirely), so no -x is needed.
-        project.build("publish", "--info")
+        project.build("publish")
 
         val stagedPom = project.mavenArtifact(project.file("build/stagingRepo"), MavenCoordinates(name = rootName, extension = "pom"))
         assertSoftly { softly ->
@@ -92,7 +92,7 @@ class PomWithoutCodemetaFuncTest {
             javaSource()
         }
 
-        val result = project.build("verifyCentralWiringSkipped", "--info")
+        val result = project.build("verifyCentralWiringSkipped")
 
         assertSoftly { softly ->
             softly.assertThat(result.output).contains("codemeta extension is required")

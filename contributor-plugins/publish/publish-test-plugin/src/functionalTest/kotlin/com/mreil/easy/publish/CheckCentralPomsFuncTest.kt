@@ -78,7 +78,7 @@ class CheckCentralPomsFuncTest {
 
         // `publish` includes the JReleaser deploy via `publishToMavenCentral`, which needs
         // real credentials — excluded here to keep this staging/validation test hermetic.
-        val result = project.build("publish", "--info", "-x", "publishToMavenCentral")
+        val result = project.build("publish", "-x", "publishToMavenCentral")
 
         val stagingRepo = project.file("build/stagingRepo")
         val childStagingRepo = project.file("child/build/stagingRepo")
@@ -199,7 +199,7 @@ class CheckCentralPomsFuncTest {
             javaSource()
         }
 
-        val result = project.buildAndFail("publish", "--info", "-x", "publishToMavenCentral")
+        val result = project.buildAndFail("publish", "-x", "publishToMavenCentral")
 
         val stagingRepo = project.file("build/stagingRepo")
         val stagedPom = project.mavenArtifact(stagingRepo, MavenCoordinates(name = rootName, extension = "pom"))
@@ -253,7 +253,7 @@ class CheckCentralPomsFuncTest {
         }
 
         // Excluded deploy: see above — this test only asserts POM content after staging.
-        project.build("publish", "--info", "-x", "publishToMavenCentral")
+        project.build("publish", "-x", "publishToMavenCentral")
 
         val stagingRepo = project.file("build/stagingRepo")
         assertSoftly { softly ->

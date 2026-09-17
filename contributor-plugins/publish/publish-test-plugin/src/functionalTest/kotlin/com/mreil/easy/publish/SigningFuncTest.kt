@@ -35,7 +35,7 @@ class SigningFuncTest {
             systemProperty(PROPERTY_GPG_PASSPHRASE, "easy-test-passphrase")
         }
 
-        val result = project.build("publish", "--info")
+        val result = project.build("publish")
         // Second build must reuse the entry — task actions capturing the project fail CC store.
         val reused = project.build("publish")
 
@@ -98,7 +98,7 @@ class SigningFuncTest {
             systemProperty(PROPERTY_GPG_PASSPHRASE, "easy-test-passphrase")
         }
 
-        val result = project.build("publish", "--info")
+        val result = project.build("publish")
         // Second build must reuse the entry — task actions capturing the project fail CC store.
         val reused = project.build("publish")
 
@@ -128,7 +128,7 @@ class SigningFuncTest {
             javaSource()
         }
 
-        val result = project.buildAndFail("publish", "--info")
+        val result = project.buildAndFail("publish")
 
         assertSoftly { softly ->
             softly.assertThat(result.output).contains("Signing is enabled but missing GPG properties")
