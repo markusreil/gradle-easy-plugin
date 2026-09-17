@@ -12,7 +12,6 @@ dependencies {
     implementation(project(":easy-contributor-api"))
     implementation(project(":gradle-plugin-utils"))
     compileOnly(gradleApi())
-    testImplementation(gradleTestKit())
 }
 
 tasks.withType<Test>().configureEach {
@@ -22,6 +21,16 @@ tasks.withType<Test>().configureEach {
         "--add-opens",
         "java.base/java.util=ALL-UNNAMED",
     )
+}
+
+testing {
+    suites {
+        val test by getting(JvmTestSuite::class) {
+            dependencies {
+                implementation(gradleTestKit())
+            }
+        }
+    }
 }
 
 detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml")) }
