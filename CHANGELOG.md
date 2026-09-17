@@ -9,13 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `jvm-defaults`: root report aggregation is now automatic via the new `aggregateReports`
-  property (default `true`). The plugin applies `test-report-aggregation` (and, with
-  `jacocoEnabled`, `jacoco-report-aggregation`) to the root and registers
-  `<suite>AggregateTestReport`/`<suite>CodeCoverageReport` for the built-in `test` suite and every
-  auto-configured `*Test` suite, so consumers no longer wire the root aggregation plugins,
-  `reporting { }` blocks or `testReportAggregation`/`jacocoAggregation` dependencies themselves.
-
 ### Changed
 
 ### Deprecated
@@ -25,6 +18,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Security
+
+## [0.0.113] - 2026-09-18
+
+### Added
+
+- `jvm-defaults`: root report aggregation is now automatic via the new `aggregateReports`
+  property (default `true`). The plugin applies `test-report-aggregation` (and, with
+  `jacocoEnabled`, `jacoco-report-aggregation`) to the root and registers
+  `<suite>AggregateTestReport`/`<suite>CodeCoverageReport` for the built-in `test` suite and every
+  auto-configured `*Test` suite, so consumers no longer wire the root aggregation plugins,
+  `reporting { }` blocks or `testReportAggregation`/`jacocoAggregation` dependencies themselves.
+
+### Changed
+
+- `jvm-defaults`: JaCoCo report configuration centralized in the root project and redundant
+  per-module references removed; modules now rely on the contributor for test-suite, dependency
+  and coverage wiring (`Centralize JaCoCo report configuration #21`).
+- `codemeta`/`publish`: replaced Jackson with kotlinx.serialization for `codemeta.json` and the
+  JReleaser configuration, which is now emitted as JSON instead of YAML (`Jackson to kotlinx #23`).
+- Gradle upgraded to 9.7.1 and the Kotlin Gradle plugins to 2.4.20, with Gradle test-suite
+  configuration standardized across modules (`Upgrade Gradle #25`).
+
+### Removed
+
+- Unused `test-projects/` smoke projects and their related configuration.
 
 ## [0.0.112] - 2026-09-17
 
