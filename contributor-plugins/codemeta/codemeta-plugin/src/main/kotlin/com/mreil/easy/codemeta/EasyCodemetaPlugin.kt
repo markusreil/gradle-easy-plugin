@@ -17,7 +17,7 @@ import java.io.File
  *
  * Reads `codemeta.json` from the root project directory via [CodemetaService]
  * (hidden, not on public extension) and ensures an initial file exists.
- * The file is mapped to [Codemeta] via Jackson (`@JsonProperty` for `@context`/`@type`).
+ * The file is mapped to [Codemeta] via kotlinx.serialization (`@SerialName` for `@context`/`@type`).
  */
 @EnabledBy(EasyCodemetaExtension::class)
 class EasyCodemetaPlugin : AbstractEasyProjectPlugin() {

@@ -130,7 +130,7 @@ class EasyPublishCentralTest {
                         ?.get()
                         ?.asFile
                         ?.invariantSeparatorsPath,
-                ).contains("build/jreleaser/jreleaser.yml")
+                ).contains("build/jreleaser/jreleaser.json")
             softly.assertThat(rootTask?.stagingDirs?.get()).contains(
                 root.project.layout.buildDirectory
                     .get()

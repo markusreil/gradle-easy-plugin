@@ -126,7 +126,7 @@ lazily and only become active when the feature that needs them is switched on.
 
 | Task | Active when | What it does / how it is wired |
 | ---- | ----------- | ------------------------------- |
-| `generateJreleaserConfig` (`publishing`) | `toMavenCentral()` | Generates `build/jreleaser/jreleaser.yml` from the enabled projects' staging dirs (projects with publications only), project coordinates and Maven Central credentials (or the test-Nexus override properties). Depends on every project's `checkCentralPoms`, keeping POM validation a separate step ahead of generation. |
+| `generateJreleaserConfig` (`publishing`) | `toMavenCentral()` | Generates `build/jreleaser/jreleaser.json` from the enabled projects' staging dirs (projects with publications only), project coordinates and Maven Central credentials (or the test-Nexus override properties). Depends on every project's `checkCentralPoms`, keeping POM validation a separate step ahead of generation. |
 | `publishToMavenCentral` (`publishing`) | `toMavenCentral()`, run manually or via root `publish` on a non-`-SNAPSHOT` version | Runs the JReleaser CLI (`deploy`) via `JavaExec` against the generated config. Depends on `generateJreleaserConfig` and every `mavenStaging` upload + `stripSignatureChecksums`, so one invocation stages, validates and deploys. Skips with a warning when nothing was staged. |
 | `publish` (root) (`publishing`) | Always (registered on first use) | Lifecycle aggregation task: depends on every subproject `publish`, so a single `./gradlew publish` stages all modules. When central is on it additionally depends on `publishToMavenCentral`. |
 
@@ -194,7 +194,7 @@ EasyPublishPlugin (@ApplyToSubprojects)
 └── mavenStaging repo + RepoRouting (release/snapshot filtering)
 
 EasyJreleaserPlugin (root-only)
-├── JreleaserConfigWiring -> GenerateJreleaserConfigTask -> JreleaserYaml + JreleaserDeployers
+├── JreleaserConfigWiring -> GenerateJreleaserConfigTask -> JreleaserJson + JreleaserDeployers
 ├── PublishAggregationWiring -> root `publish` (see ensureRootPublishTask)
 └── JreleaserDeployWiring -> publishToMavenCentral (JreleaserPublishTask)
 

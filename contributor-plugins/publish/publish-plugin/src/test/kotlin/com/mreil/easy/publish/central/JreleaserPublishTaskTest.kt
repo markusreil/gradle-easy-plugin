@@ -15,7 +15,7 @@ class JreleaserPublishTaskTest {
     @Test
     fun `buildArgs runs deploy with config file`() {
         val task = createTask()
-        task.configFile.set(File(tempDir, "jreleaser.yml"))
+        task.configFile.set(File(tempDir, "jreleaser.json"))
         task.projectVersion.set("1.0.0")
         task.dryRun.set(false)
 
@@ -23,7 +23,7 @@ class JreleaserPublishTaskTest {
             softly.assertThat(task.buildArgs()).containsExactly(
                 "deploy",
                 "-c",
-                File(tempDir, "jreleaser.yml").absolutePath,
+                File(tempDir, "jreleaser.json").absolutePath,
             )
         }
     }
@@ -31,7 +31,7 @@ class JreleaserPublishTaskTest {
     @Test
     fun `buildArgs supports dry-run and deployer filter`() {
         val task = createTask()
-        task.configFile.set(File(tempDir, "jreleaser.yml"))
+        task.configFile.set(File(tempDir, "jreleaser.json"))
         task.projectVersion.set("1.0.0")
         task.dryRun.set(true)
         task.deployerName.set("local-test")
@@ -40,7 +40,7 @@ class JreleaserPublishTaskTest {
             softly.assertThat(task.buildArgs()).containsExactly(
                 "deploy",
                 "-c",
-                File(tempDir, "jreleaser.yml").absolutePath,
+                File(tempDir, "jreleaser.json").absolutePath,
                 "--dry-run",
                 "-yn",
                 "local-test",

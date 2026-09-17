@@ -30,7 +30,7 @@ import org.gradle.api.Project
  * `maven-publish` through the [EasyPublishPlugin] fan-out is wired without nested
  * `afterEvaluate` blocks — the enabled-gate is simply `maven-publish` being applied.
  *
- * Registers `generateJreleaserConfig` (YAML generation, gated on every central-enabled
+ * Registers `generateJreleaserConfig` (JSON generation, gated on every central-enabled
  * project's `checkCentralPoms`), the root `publish` aggregation over subproject `publish`
  * tasks, and `publishToMavenCentral` (JReleaser `deploy`). The gate is ANY: wiring becomes
  * active when any project opts into Maven Central — a root `easy { publish { toMavenCentral() } }`

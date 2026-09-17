@@ -12,12 +12,12 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
 /**
- * Generates a JReleaser YAML config for Maven Central deployment.
+ * Generates a JReleaser JSON config for Maven Central deployment.
  *
  * Registered only on the root project when [DefaultEasyPublishExtension.toMavenCentral]
  * is set (see [EasyJreleaserPlugin] for the gating rule).
- * Holds the lazy `@Input` properties and delegates rendering to [MavenCentralWiring.buildYaml].
- * See [MavenCentralWiring.Config] for the resolved values (including the test-only nexus
+ * Holds the lazy `@Input` properties and delegates rendering to [JreleaserJson.buildJson].
+ * See [JreleaserJson.Config] for the resolved values (including the test-only nexus
  * escape hatch that swaps in a `nexus3/local-test` deployer and demotes `mavenCentral`
  * to `NEVER` so smoke runs can never touch real Central).
  */
@@ -74,8 +74,8 @@ abstract class GenerateJreleaserConfigTask : DefaultTask() {
         val file = outputFile.get().asFile
         file.parentFile.mkdirs()
         file.writeText(
-            JreleaserYaml.buildYaml(
-                JreleaserYaml.Config(
+            JreleaserJson.buildJson(
+                JreleaserJson.Config(
                     projectName = projectName.get(),
                     projectVersion = projectVersion.get(),
                     projectGroupId = projectGroupId.get(),

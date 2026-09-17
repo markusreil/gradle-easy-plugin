@@ -1,8 +1,5 @@
 package com.mreil.easy.codemeta
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
@@ -59,17 +56,10 @@ abstract class GenerateCodemetaTask : DefaultTask() {
                     ),
                 programmingLanguage = "Kotlin",
             )
-        mapper.writerWithDefaultPrettyPrinter().writeValue(file, codemeta)
+        CodemetaJson.write(file, codemeta)
         throw GradleException(
             "codemeta.json was not found - created initial file at ${file.absolutePath} " +
                 "with placeholder values. Please review, fill correct values, and re-run the build.",
         )
-    }
-
-    companion object {
-        private val mapper: ObjectMapper =
-            jacksonObjectMapper().apply {
-                enable(SerializationFeature.INDENT_OUTPUT)
-            }
     }
 }

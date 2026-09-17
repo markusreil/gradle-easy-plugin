@@ -1,22 +1,24 @@
 package com.mreil.easy.codemeta
 
-import com.fasterxml.jackson.annotation.JsonAlias
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.annotation.JsonProperty
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 
 /**
- * CodeMeta POJO mapped via Jackson.
+ * CodeMeta POJO mapped via kotlinx.serialization.
  *
- * JSON-LD fields `@context` and `@type` use [JsonProperty] for weird names.
- * Unknown fields are ignored via mapper config; nulls are omitted via [JsonInclude].
+ * JSON-LD fields `@context` and `@type` use [SerialName] for weird names.
+ * Unknown fields are ignored via config; nulls are omitted via config (`explicitNulls = false`).
  * Covers the easily-supportable CodeMeta terms (schema.org Software/Thing/Person + CodeMeta terms).
  * Complex graph nodes (MediaObject, DataFeed, Review, Role) are omitted; URL/text projections use String.
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
 data class Codemeta(
-    @param:JsonProperty("@context")
+    @SerialName("@context")
     val context: String = "https://doi.org/10.5063/schema/codemeta-2.0",
-    @param:JsonProperty("@type")
+    @SerialName("@type")
     val type: String = "SoftwareSourceCode",
     val name: String,
     val description: String,
@@ -67,15 +69,15 @@ data class Codemeta(
     val developmentStatus: String? = null,
     val funding: String? = null,
     val referencePublication: String? = null,
-    @param:JsonAlias("contIntegration")
+    @JsonNames("contIntegration")
     val continuousIntegration: String? = null,
-    @param:JsonAlias("embargoDate")
+    @JsonNames("embargoDate")
     val embargoEndDate: String? = null,
 )
 
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@Serializable
 data class Person(
-    @param:JsonProperty("@type")
+    @SerialName("@type")
     val type: String = "Person",
     val givenName: String? = null,
     val familyName: String? = null,

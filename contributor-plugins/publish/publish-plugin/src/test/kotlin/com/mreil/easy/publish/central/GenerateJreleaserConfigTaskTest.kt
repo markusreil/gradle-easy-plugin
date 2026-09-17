@@ -1,9 +1,11 @@
 package com.mreil.easy.publish.central
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import com.fasterxml.jackson.module.kotlin.readValue
-import com.mreil.easy.publish.central.JreleaserYaml.Config
+import com.mreil.easy.publish.central.JreleaserJson.Config
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
@@ -18,38 +20,55 @@ class GenerateJreleaserConfigTaskTest {
     lateinit var tempDir: File
 
     @Test
-    fun `central yaml has mavenCentral deployer and no signing`() {
-        val yaml = JreleaserYaml.buildYaml(centralConfig())
+    fun `central json has mavenCentral deployer and no signing`() {
+        val json = parse(JreleaserJson.buildJson(centralConfig()))
+        val project = json["project"]!!.jsonObject
+        val maven = json["deploy"]!!.jsonObject["maven"]!!.jsonObject
+        val central = mavenCentral(json)
 
         assertSoftly { softly ->
-            softly.assertThat(yaml).contains("name: demo")
-            softly.assertThat(yaml).contains("version: 1.0.0")
-            softly.assertThat(yaml).contains("languages:")
-            softly.assertThat(yaml).contains("groupId: com.example")
-            softly.assertThat(yaml).doesNotContain("signing:")
-            softly.assertThat(yaml).contains("mavenCentral:")
-            softly.assertThat(yaml).contains("active: RELEASE")
-            softly.assertThat(yaml).contains("https://central.sonatype.com/api/v1/publisher")
-            softly.assertThat(yaml).contains("stagingRepositories:")
-            softly.assertThat(yaml).contains("build/stagingRepo")
-            softly.assertThat(yaml).doesNotContain("nexus3:")
-            softly.assertThat(yaml).doesNotContain("release:")
+            softly.assertThat(project["name"]?.jsonPrimitive?.content).isEqualTo("demo")
+            softly.assertThat(project["version"]?.jsonPrimitive?.content).isEqualTo("1.0.0")
+            softly
+                .assertThat(
+                    project["languages"]
+                        ?.jsonObject
+                        ?.get("java")
+                        ?.jsonObject
+                        ?.get("groupId")
+                        ?.jsonPrimitive
+                        ?.content,
+                ).isEqualTo("com.example")
+            softly.assertThat(maven).containsKey("mavenCentral")
+            softly.assertThat(central["active"]?.jsonPrimitive?.content).isEqualTo("RELEASE")
+            softly
+                .assertThat(central["url"]?.jsonPrimitive?.content)
+                .isEqualTo("https://central.sonatype.com/api/v1/publisher")
+            softly
+                .assertThat(central["stagingRepositories"]?.jsonArray?.map { it.jsonPrimitive.content })
+                .containsExactly("build/stagingRepo")
+            softly.assertThat(json).doesNotContainKeys("signing", "release")
+            softly.assertThat(maven).doesNotContainKey("nexus3")
         }
     }
 
-    /** Task action writes the rendered YAML to `outputFile` and creates parent directories. */
+    /** Task action writes the rendered JSON to `outputFile` and creates parent directories. */
     @Test
-    fun `generate writes yaml to outputFile when invoked as task action`() {
+    fun `generate writes json to outputFile when invoked as task action`() {
         val task = createTask()
 
         task.generate()
 
-        val generated = File(tempDir, "jreleaser/jreleaser.yml")
+        val generated = File(tempDir, "jreleaser/jreleaser.json")
         assertThat(generated).exists()
-        val text = generated.readText()
-        assertThat(text).contains("name: demo")
-        assertThat(text).contains("version: 1.0.0")
-        assertThat(text).contains("active: RELEASE")
+        val json = parse(generated.readText())
+        val project = json["project"]!!.jsonObject
+        val central = mavenCentral(json)
+        assertSoftly { softly ->
+            softly.assertThat(project["name"]?.jsonPrimitive?.content).isEqualTo("demo")
+            softly.assertThat(project["version"]?.jsonPrimitive?.content).isEqualTo("1.0.0")
+            softly.assertThat(central["active"]?.jsonPrimitive?.content).isEqualTo("RELEASE")
+        }
     }
 
     /** Missing Central credentials must fail at task action (not configuration) so absent
@@ -81,79 +100,89 @@ class GenerateJreleaserConfigTaskTest {
                 it.projectVersion.set("1.0.0")
                 it.projectGroupId.set("com.example")
                 it.stagingDirs.set(listOf("build/stagingRepo"))
-                it.outputFile.set(File(tempDir, "jreleaser/jreleaser.yml"))
+                it.outputFile.set(File(tempDir, "jreleaser/jreleaser.json"))
                 it.mavenCentralUsername.set("user")
                 it.mavenCentralPassword.set("pass")
             }.get()
     }
 
     @Test
-    fun `yaml omits snapshots deployer`() {
-        val yaml = JreleaserYaml.buildYaml(centralConfig())
+    fun `json omits snapshots deployer`() {
+        val json = parse(JreleaserJson.buildJson(centralConfig()))
+        val maven = json["deploy"]!!.jsonObject["maven"]!!.jsonObject
 
         assertSoftly { softly ->
             // Snapshots publish directly via maven-publish (toSonatypeSnapshots), never via JReleaser.
-            softly.assertThat(yaml).doesNotContain("nexus2:")
-            softly.assertThat(yaml).doesNotContain("sonatype-snapshots:")
-            softly.assertThat(yaml).doesNotContain("active: SNAPSHOT")
-            softly.assertThat(yaml).doesNotContain("https://central.sonatype.com/repository/maven-snapshots/")
-            softly.assertThat(yaml).doesNotContain("snapshotSupported")
+            softly.assertThat(maven).doesNotContainKey("nexus2")
+            softly.assertThat(maven).doesNotContainKey("sonatype-snapshots")
+            softly.assertThat(json.toString()).doesNotContain("SNAPSHOT")
+            softly.assertThat(json.toString()).doesNotContain("https://central.sonatype.com/repository/maven-snapshots/")
+            softly.assertThat(json.toString()).doesNotContain("snapshotSupported")
         }
     }
 
     @Test
-    fun `nexus yaml demotes central and snapshots and adds nexus3 deployer`() {
-        val yaml =
-            JreleaserYaml.buildYaml(
-                centralConfig().copy(
-                    nexusUrl = "http://localhost:8081/service/rest/v1/components?repository=maven-releases",
-                    nexusUsername = "admin",
-                    nexusPassword = "admin123",
+    fun `nexus json demotes central and snapshots and adds nexus3 deployer`() {
+        val json =
+            parse(
+                JreleaserJson.buildJson(
+                    centralConfig().copy(
+                        nexusUrl = "http://localhost:8081/service/rest/v1/components?repository=maven-releases",
+                        nexusUsername = "admin",
+                        nexusPassword = "admin123",
+                    ),
                 ),
             )
+        val maven = json["deploy"]!!.jsonObject["maven"]!!.jsonObject
+        val central = mavenCentral(json)
+        val nexus3 = maven["nexus3"]!!.jsonObject["local-test"]!!.jsonObject
 
         assertSoftly { softly ->
-            softly.assertThat(yaml).contains("nexus3:")
-            softly.assertThat(yaml).contains("local-test:")
-            softly.assertThat(yaml).contains("http://localhost:8081/service/rest/v1/components?repository=maven-releases")
-            softly.assertThat(yaml).contains("authorization: BASIC")
-            softly.assertThat(yaml).doesNotContain("applyMavenCentralRules")
-            softly.assertThat(yaml).contains("active: NEVER")
-            softly.assertThat(yaml).doesNotContain("active: SNAPSHOT")
+            softly
+                .assertThat(nexus3["url"]?.jsonPrimitive?.content)
+                .isEqualTo("http://localhost:8081/service/rest/v1/components?repository=maven-releases")
+            softly.assertThat(nexus3["authorization"]?.jsonPrimitive?.content).isEqualTo("BASIC")
+            softly.assertThat(central["active"]?.jsonPrimitive?.content).isEqualTo("NEVER")
+            softly.assertThat(json.toString()).doesNotContain("applyMavenCentralRules")
+            softly.assertThat(json.toString()).doesNotContain("\"SNAPSHOT\"")
         }
     }
 
     @Test
-    fun `sequences use indented indicators`() {
-        val yaml = JreleaserYaml.buildYaml(centralConfig())
+    fun `stagingRepositories is a json array`() {
+        val central = mavenCentral(parse(JreleaserJson.buildJson(centralConfig())))
 
-        assertSoftly { softly ->
-            // JReleaser rejects indicators at the parent key indent - guard the indented form.
-            softly.assertThat(yaml).contains("stagingRepositories:\n          - build/stagingRepo")
-        }
+        assertThat(central["stagingRepositories"]?.jsonArray?.map { it.jsonPrimitive.content })
+            .containsExactly("build/stagingRepo")
     }
 
     @Test
-    fun `yaml parses back to expected structure`() {
-        val parsed: Map<String, Any> = yamlReader.readValue(JreleaserYaml.buildYaml(centralConfig()))
-
-        @Suppress("UNCHECKED_CAST")
-        val maven = ((parsed["deploy"] as Map<String, Any>)["maven"] as Map<String, Any>)
-
-        @Suppress("UNCHECKED_CAST")
-        val central = (maven["mavenCentral"] as Map<String, Any>)["sonatype"] as Map<String, Any>
-
-        @Suppress("UNCHECKED_CAST")
-        val project = parsed["project"] as Map<String, Any>
+    fun `json parses back to expected structure`() {
+        val json = parse(JreleaserJson.buildJson(centralConfig()))
+        val project = json["project"]!!.jsonObject
+        val central = mavenCentral(json)
 
         assertSoftly { softly ->
-            softly.assertThat(project["name"]).isEqualTo("demo")
-            softly.assertThat(project["version"]).isEqualTo("1.0.0")
-            softly.assertThat(central["active"]).isEqualTo("RELEASE")
-            softly.assertThat(central["url"]).isEqualTo("https://central.sonatype.com/api/v1/publisher")
-            softly.assertThat(central["stagingRepositories"]).isEqualTo(listOf("build/stagingRepo"))
+            softly.assertThat(project["name"]?.jsonPrimitive?.content).isEqualTo("demo")
+            softly.assertThat(project["version"]?.jsonPrimitive?.content).isEqualTo("1.0.0")
+            softly.assertThat(central["active"]?.jsonPrimitive?.content).isEqualTo("RELEASE")
+            softly
+                .assertThat(central["url"]?.jsonPrimitive?.content)
+                .isEqualTo("https://central.sonatype.com/api/v1/publisher")
+            softly
+                .assertThat(central["stagingRepositories"]?.jsonArray?.map { it.jsonPrimitive.content })
+                .containsExactly("build/stagingRepo")
         }
     }
+
+    private fun parse(json: String): JsonObject = Json.parseToJsonElement(json).jsonObject
+
+    private fun mavenCentral(json: JsonObject): JsonObject =
+        json["deploy"]!!
+            .jsonObject["maven"]!!
+            .jsonObject["mavenCentral"]!!
+            .jsonObject["sonatype"]!!
+            .jsonObject
 
     private fun centralConfig(): Config =
         Config(
@@ -164,8 +193,4 @@ class GenerateJreleaserConfigTaskTest {
             mavenCentralUsername = "dummy-mavencentral-username",
             mavenCentralPassword = "dummy-mavencentral-password",
         )
-
-    companion object {
-        private val yamlReader = ObjectMapper(YAMLFactory())
-    }
 }

@@ -1,6 +1,8 @@
 package com.mreil.easy.publish.central
 
-import com.mreil.easy.publish.central.JreleaserYaml.Config
+import com.mreil.easy.publish.central.JreleaserJson.Config
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.Test
 
@@ -30,17 +32,12 @@ class JreleaserDeployersTest {
     @Test
     fun `each deployer renders its unique keys plus shared keys`() {
         assertSoftly { softly ->
-            softly.assertThat(MavenCentralDeployer("RELEASE", listOf("build/stagingRepo"), "u", "p").toMap()).containsKeys(
-                "active",
-                "url",
-                "stagingRepositories",
-                "username",
-                "password",
-            )
-            softly
-                .assertThat(
-                    Nexus3TestDeployer("http://localhost:8081", listOf("build/stagingRepo"), "u", "p").toMap(),
-                ).containsEntry("authorization", "BASIC")
+            val central = MavenCentralDeployer("RELEASE", listOf("build/stagingRepo"), "u", "p").toJson()
+            softly.assertThat(central.keys).contains("active", "url", "stagingRepositories", "username", "password")
+            softly.assertThat(central.containsKey("stagingRepositories")).isTrue()
+            val nexus = Nexus3TestDeployer("http://localhost:8081", listOf("build/stagingRepo"), "u", "p").toJson()
+            softly.assertThat(nexus["authorization"]?.jsonPrimitive?.content).isEqualTo("BASIC")
+            softly.assertThat(nexus.containsKey("stagingRepositories")).isTrue()
         }
     }
 
@@ -50,9 +47,9 @@ class JreleaserDeployersTest {
 
         assertSoftly { softly ->
             deployers.forEach { deployer ->
-                softly.assertThat(deployer.toMap()["stagingRepositories"]).isEqualTo(
-                    listOf("root/build/stagingRepo", "child/build/stagingRepo"),
-                )
+                softly
+                    .assertThat(deployer.toJson()["stagingRepositories"]?.jsonArray?.map { it.jsonPrimitive.content })
+                    .isEqualTo(listOf("root/build/stagingRepo", "child/build/stagingRepo"))
             }
         }
     }
