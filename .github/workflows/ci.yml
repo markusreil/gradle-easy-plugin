@@ -18,12 +18,105 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Runner resources
+        run: |
+          echo "CPUs: $(nproc)"
+          echo "Memory:"
+          free -h
+          echo "cgroup memory.max: $(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo n/a)"
       - name: Build
         if: github.event_name != 'pull_request'
-        run: ./gradlew build --build-cache
+        run: |
+          # Temporary profiling: sample free memory every 10s while Gradle runs.
+          ( while true; do
+              printf '%s ' "$(date +%T)"
+              free -m | awk 'NR==2{printf "mem used=%sMB avail=%sMB ",$3,$7} NR==3{printf "swap used=%sMB\n",$3}'
+              sleep 10
+            done ) &
+          SAMPLER=$!
+          RC=0
+          ./gradlew build --build-cache --profile || RC=$?
+          kill "$SAMPLER" 2>/dev/null || true
+          exit $RC
       - name: Check (PR)
         if: github.event_name == 'pull_request'
-        run: ./gradlew check --build-cache
+        run: |
+          ( while true; do
+              printf '%s ' "$(date +%T)"
+              free -m | awk 'NR==2{printf "mem used=%sMB avail=%sMB ",$3,$7} NR==3{printf "swap used=%sMB\n",$3}'
+              sleep 10
+            done ) &
+          SAMPLER=$!
+          RC=0
+          ./gradlew check --build-cache --profile || RC=$?
+          kill "$SAMPLER" 2>/dev/null || true
+          exit $RC
+      - name: Gradle profile summary
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, os, re
+          from collections import defaultdict
+
+          files = sorted(glob.glob("build/reports/profile/profile-*.html"))
+          if not files:
+              print("no Gradle profile report found")
+              raise SystemExit(0)
+          txt = open(files[-1], encoding="utf-8").read()
+
+          def cell(label):
+              m = re.search(r"<td[^>]*>" + re.escape(label) + r"</td>\s*<td[^>]*>([^<]*)</td>", txt)
+              return m.group(1).strip() if m else "?"
+
+          print(f"=== {os.path.basename(files[-1])} ===")
+          for label in ("Total Build Time", "Configuring Projects", "Task Execution"):
+              print(f"{label}: {cell(label)}")
+
+          rows = []
+          for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", txt, re.S):
+              cells = [re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
+              if len(cells) >= 2 and cells[0].startswith(":") and re.match(r"^\d", cells[1]):
+                  rows.append((cells[1], cells[0]))
+
+          def secs(value):
+              if "m" in value:
+                  minutes, rest = value.split("m", 1)
+                  return int(minutes) * 60 + float(rest.replace("s", ""))
+              return float(value[:-2]) / 1000 if value.endswith("ms") else float(value.replace("s", ""))
+
+          def is_task(name):
+              last = name.rsplit(":", 1)[-1]
+              return any(ch.isupper() for ch in last) or last in {"test", "jar", "check", "build", "clean", "classes"}
+
+          def category(name):
+              for needle, label in (
+                  ("detekt", "detekt"),
+                  ("functionalTest", "functionalTest"),
+                  ("compile", "compile"),
+                  ("spotless", "spotless"),
+                  ("jacoco", "jacoco"),
+                  ("CodeCoverage", "jacoco"),
+              ):
+                  if needle in name:
+                      return label
+              return "unitTest" if name.endswith(":test") else "other"
+
+          totals, counts = defaultdict(float), defaultdict(int)
+          for duration, name in rows:
+              if not is_task(name):
+                  continue
+              totals[category(name)] += secs(duration)
+              counts[category(name)] += 1
+
+          total = sum(totals.values()) or 1
+          print("\n-- task time by category (sum over parallel workers) --")
+          for name, value in sorted(totals.items(), key=lambda kv: -kv[1]):
+              print(f"  {value:8.1f}s {100 * value / total:4.0f}%  {counts[name]:4d} tasks  {name}")
+
+          print("\n-- top 20 tasks --")
+          for duration, name in sorted(rows, key=lambda r: secs(r[0]), reverse=True)[:20]:
+              print(f"  {duration:>10}  {name}")
+          PY
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
