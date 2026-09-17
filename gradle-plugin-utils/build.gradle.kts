@@ -11,7 +11,6 @@ repositories {
 dependencies {
     implementation(libs.commons.configuration2)
     compileOnly(gradleApi())
-    testImplementation(gradleTestKit())
 }
 
 tasks.withType<Test>().configureEach {
@@ -21,6 +20,16 @@ tasks.withType<Test>().configureEach {
         "--add-opens",
         "java.base/java.util=ALL-UNNAMED",
     )
+}
+
+testing {
+    suites {
+        val test by getting(JvmTestSuite::class) {
+            dependencies {
+                implementation(gradleTestKit())
+            }
+        }
+    }
 }
 
 detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml")) }

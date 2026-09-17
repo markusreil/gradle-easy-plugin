@@ -27,8 +27,3 @@ This document keeps track of tasks that need to be completed.
 * tests: GitAssertions
 * test-utils: Helper classes for ProjectBuilder?
 * revisit func tests: required or just blowing up build time?
-
-## post plugin update tasks/questions
-
-* gradleTestKit() still needed in func test suite?
-* report aggregation in root project still not automatic

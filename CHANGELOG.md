@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `jvm-defaults`: root report aggregation is now automatic via the new `aggregateReports`
+  property (default `true`). The plugin applies `test-report-aggregation` (and, with
+  `jacocoEnabled`, `jacoco-report-aggregation`) to the root and registers
+  `<suite>AggregateTestReport`/`<suite>CodeCoverageReport` for the built-in `test` suite and every
+  auto-configured `*Test` suite, so consumers no longer wire the root aggregation plugins,
+  `reporting { }` blocks or `testReportAggregation`/`jacocoAggregation` dependencies themselves.
+
 ### Changed
 
 ### Deprecated

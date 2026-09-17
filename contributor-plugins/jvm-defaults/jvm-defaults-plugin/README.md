@@ -69,6 +69,8 @@ For the framework-provided `test` suite the plugin:
 * adds the catalog-declared unit-test dependencies — AssertJ (`assertj-core`, falling back to
   `assertj`), JUnit Pioneer (`junit-pioneer`), JUnit Jupiter params (`junit-jupiter-params`) and
   Mockito (`mockito-core`) — using the catalog's coordinates and version;
+* registers the root-level `testAggregateTestReport` / `testCodeCoverageReport` aggregate reports
+  for it (same as for functional suites, gated by `aggregateReports`);
 * nothing else: no suite registration, ordering, `check` wiring or `testSourceSets` entry. In
   plugin projects Gradle's `java-gradle-plugin` already puts `gradleTestKit()` and the
   plugin-under-test metadata on the built-in `test` suite's classpath, so the plugin does not
@@ -99,11 +101,12 @@ For each functional suite the plugin:
   `gradleApi()` on `implementation`, the `pluginUnderTestMetadata` output on `runtimeOnly` — so
   `GradleRunner.withPluginClasspath()` sees the metadata — and the suite's source set in
   `gradlePlugin.testSourceSets`;
-* when the consuming build's **root** applies `test-report-aggregation`, registers a root-level
-  `AggregateTestReport` named `<suite>AggregateTestReport` (e.g. `functionalTestAggregateTestReport`,
-  mirroring Gradle's automatic naming) targeting the suite's results, declares this project in the
-  root's `testReportAggregation` configuration, and wires the report into the root `check` task —
-  the same setup the root build uses for its own `testAggregateTestReport`.
+* when `aggregateReports` is enabled (default), registers a root-level `AggregateTestReport`
+  named `<suite>AggregateTestReport` (e.g. `functionalTestAggregateTestReport`, mirroring Gradle's
+  automatic naming) targeting the suite's results, declares this project in the root's
+  `testReportAggregation` configuration, and wires the report into the root `check` task — the
+  same setup the root build uses for its own `testAggregateTestReport`. `ReportAggregationWiring`
+  applies `test-report-aggregation` to the root, so no consumer setup is needed.
 
 Registration uses the **live** `testing.suites` container: configuration is applied to every
 matching suite whenever it appears, so a suite the build declares itself is configured the same
@@ -142,7 +145,8 @@ easy {
 
 ### Code coverage
 
-Gated by `jacocoEnabled` (default `true`). When enabled, each project with the `java` plugin gets
+Gated by `jacocoEnabled` (default `true`); root-level aggregation additionally requires
+`aggregateReports`. When enabled, each project with the `java` plugin gets
 the `jacoco` plugin applied, which instruments every test task; the project's `jacocoTestReport`
 then also consumes each auto-configured functional suite's execution data and is wired into
 `check`:
@@ -151,13 +155,14 @@ then also consumes each auto-configured functional suite's execution data and is
   the built-in `test` suite's execution data by default, so every functional suite's execution data
   is added explicitly (via the task's `JacocoTaskExtension.destinationFile`) together with a task
   dependency on it;
-* on the build's **root** project the plugin applies `jacoco-report-aggregation` and registers a
-  root-level `JacocoCoverageReport` named `<suite>CodeCoverageReport` per functional suite (e.g.
-  `functionalTestCodeCoverageReport`, matching the `<suite>CodeCoverageReport` convention of the
-  root build's own `testCodeCoverageReport`), declares the project in the root's
-  `jacocoAggregation` configuration, and wires the report into the root `check` task. Coverage
-  aggregation is per test suite, so functional suites get their own root report rather than being
-  merged into the `test` suite's one;
+* on the build's **root** project the plugin applies `jacoco-report-aggregation` (when coverage is
+  enabled there) and registers a root-level `JacocoCoverageReport` named `<suite>CodeCoverageReport`
+  for the built-in `test` suite and every auto-configured functional suite (e.g.
+  `testCodeCoverageReport`, `functionalTestCodeCoverageReport`, matching the
+  `<suite>CodeCoverageReport` convention of the root build's own coverage report), declares the
+  project in the root's `jacocoAggregation` configuration, and wires the report into the root
+  `check` task. Coverage aggregation is per test suite, so functional suites get their own root
+  report rather than being merged into the `test` suite's report;
 * coverage is all-or-nothing per project: with `jacocoEnabled.set(false)` nothing is applied (no
   `jacoco`/`jacoco-report-aggregation`); disabling it on the root project disables root-level
   coverage aggregation for the whole build.
@@ -200,6 +205,7 @@ instantiating the implementation.
 | ------ | ----------- | ------- |
 | `enabled` | Master switch for the plugin (`Property<Boolean>`). | `true` |
 | `configureTestSuites` | Whether test suites are auto-configured (the framework-provided `test` suite and discovered `*Test` suites) (`Property<Boolean>`). | `true` |
+| `aggregateReports` | Whether root-level report aggregation is configured automatically: applies `test-report-aggregation` (and, with `jacocoEnabled`, `jacoco-report-aggregation`) to the root and registers `<suite>AggregateTestReport`/`<suite>CodeCoverageReport` for the built-in `test` suite and every auto-configured `*Test` suite (`Property<Boolean>`). | `true` |
 | `jacocoEnabled` | Whether JaCoCo is applied and functional suites are wired into the coverage report (and, on the root project, whether coverage is aggregated) (`Property<Boolean>`). | `true` |
 
 ## Structure
@@ -226,17 +232,18 @@ instantiating the implementation.
    as `easy.jvmDefaults`.
 2. `AbstractEasyProjectPlugin.apply` runs `init()` eagerly and defers `afterEnabled()` to
    `afterEvaluate`, where `enabled` reflects user configuration.
-3. `afterEnabled` applies `jacoco-report-aggregation` to the build's root (when coverage is
-   enabled there), waits for the `java` plugin and then, in order: ensures the sources/javadoc
-   jars, calls `ToolchainWiring.configure(target)` (toolchain pinning),
-   `TestSuiteWiring.configure(target)`, and `JacocoWiring.configure(target)`.
+3. `afterEnabled` calls `ReportAggregationWiring.configureRootAggregation(target)` (root only,
+   gated by `aggregateReports`: applies `test-report-aggregation`, plus
+   `jacoco-report-aggregation` when coverage is enabled), waits for the `java` plugin and then, in
+   order: ensures the sources/javadoc jars, calls `ToolchainWiring.configure(target)` (toolchain
+   pinning), `TestSuiteWiring.configure(target)`, and `JacocoWiring.configure(target)`.
 4. `TestSuiteWiring` checks `configureTestSuites`, configures the framework-provided `test` suite
    in place (framework + catalog test dependencies), discovers suites via
    `Project.findTestSuites()` (classification in `TestSourceDiscovery`), and registers/configures
    the functional ones through the live `testing.suites` container.
 5. `JacocoWiring` checks `jacocoEnabled`, applies `jacoco`, extends `jacocoTestReport` with every
-   auto-configured functional suite's execution data, and registers a root-level
-   `<suite>CodeCoverageReport` per functional suite.
+   auto-configured functional suite's execution data, and — with `aggregateReports` — registers a
+   root-level `<suite>CodeCoverageReport` for the built-in `test` suite and every functional suite.
 
 ## Tests and verification
 
@@ -266,7 +273,9 @@ aggregated into a root-level `functionalTestAggregateTestReport`, and a multi-pr
 `functionalTestCodeCoverageReport` records coverage of a main class exercised only by the
 functional suite; the aggregation builds run with `--configuration-cache` twice, asserting the
 entry is stored and reused without problems (configuration-cache compatibility, per the
-contributor-plugin requirement).
+contributor-plugin requirement). Automatic root aggregation (`aggregateReports`, including the
+auto-applied `test-report-aggregation` and the built-in `test` suite's reports) and its opt-out are
+covered by the unit and functional tests.
 
 ## Known limitations
 
@@ -275,8 +284,10 @@ contributor-plugin requirement).
   `functionalTest`).
 * Coverage aggregation is per test suite: auto-configured functional suites are aggregated at the
   root via a `<suite>CodeCoverageReport` (e.g. `functionalTestCodeCoverageReport`), not merged
-  into an existing `testCodeCoverageReport`, which keeps covering the `test` suite only. The root
-  project needs a repository for the JaCoCo Ant library used by the report.
+  into the `test` suite's `testCodeCoverageReport`. The root project needs a repository for the
+  JaCoCo Ant library used by the report.
+* Root aggregation is gated by `aggregateReports` (default `true`); setting it to `false` leaves
+  `test-report-aggregation`/`jacoco-report-aggregation` and all root reports to the consumer.
 * Suite discovery reads the filesystem at configuration time; Gradle's configuration cache does
   not track directory listings as inputs, so adding a brand-new `src/<name>Test` directory may
   not invalidate a cached configuration.

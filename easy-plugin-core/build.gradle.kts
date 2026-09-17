@@ -14,14 +14,23 @@ dependencies {
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
     implementation(project(":gradle-plugin-utils"))
-    testImplementation(project(":gradle-plugin-testutils"))
-    testImplementation(project(":easy-test-support"))
     compileOnly(gradleApi())
-    testImplementation(gradleTestKit())
 }
 
 tasks.withType<Test>().configureEach {
     jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
+}
+
+testing {
+    suites {
+        val test by getting(JvmTestSuite::class) {
+            dependencies {
+                implementation(project(":gradle-plugin-testutils"))
+                implementation(project(":easy-test-support"))
+                implementation(gradleTestKit())
+            }
+        }
+    }
 }
 
 detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml")) }

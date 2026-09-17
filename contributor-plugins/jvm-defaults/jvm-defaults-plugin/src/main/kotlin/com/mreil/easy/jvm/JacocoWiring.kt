@@ -1,7 +1,6 @@
 package com.mreil.easy.jvm
 
 import com.mreil.easy.easyInfo
-import com.mreil.easy.findEasyChild
 import org.gradle.api.Project
 import org.gradle.api.plugins.jvm.JvmTestSuite
 import org.gradle.api.reporting.ReportingExtension
@@ -18,19 +17,13 @@ import org.gradle.testing.jacoco.tasks.JacocoReport
  *
  * Applying the `jacoco` plugin instruments every `Test` task, but the project's `jacocoTestReport`
  * only consumes the built-in `test` suite's execution data — each functional suite's execution
- * data is added explicitly. On the build's root project the same gate applies
- * `jacoco-report-aggregation` and registers a root-level `<suite>CodeCoverageReport` per functional
- * suite, mirroring the `<suite>CodeCoverageReport` convention of the root build's own coverage
- * report, and wires them into the root `check` task.
+ * data is added explicitly. Root-level aggregation is gated by
+ * [EasyJvmDefaultsExtension.aggregateReports]: [ReportAggregationWiring] applies
+ * `jacoco-report-aggregation` to the build's root and this object registers the root-level
+ * `<suite>CodeCoverageReport` for the built-in `test` suite and every auto-configured functional
+ * suite, mirroring the root build's own coverage report convention.
  */
 internal object JacocoWiring {
-    /** Applies report aggregation to the build's root, once, when coverage is enabled there. */
-    internal fun configureRootAggregation(target: Project) {
-        if (target != target.rootProject || !target.jacocoEnabled()) return
-        target.pluginManager.apply(JACOCO_REPORT_AGGREGATION_PLUGIN)
-        target.easyInfo("Applied JaCoCo report aggregation to the root project")
-    }
-
     internal fun configure(target: Project) {
         if (!target.jacocoEnabled()) return
         target.pluginManager.apply(JACOCO_PLUGIN)
@@ -47,6 +40,7 @@ internal object JacocoWiring {
             .withType(JvmTestSuite::class.java)
             .matching { it.name in names }
             .configureEach { wireFunctionalSuite(target, report, it) }
+        registerRootCodeCoverageReport(target, DEFAULT_UNIT_SUITE)
         target.tasks.named(CHECK_TASK).configure { check -> check.dependsOn(report) }
         target.easyInfo("Applied JaCoCo to the project's test suites")
     }
@@ -72,19 +66,28 @@ internal object JacocoWiring {
     /**
      * Registers a root-level [JacocoCoverageReport] for [suiteName] on the consuming build's root
      * project, declares this project in the root's `jacocoAggregation` configuration and wires the
-     * report into the root `check` task. No-op unless the root aggregates coverage, and idempotent
-     * across projects sharing the same suite name.
+     * report into the root `check` task. No-op unless
+     * [EasyJvmDefaultsExtension.aggregateReports] is enabled and the root applied
+     * `jacoco-report-aggregation` (which [ReportAggregationWiring] does when coverage is enabled),
+     * and idempotent across projects sharing the same suite name.
      */
     private fun registerRootCodeCoverageReport(
         target: Project,
         suiteName: String,
     ) {
+        if (!target.aggregateReportsEnabled()) return
         val root = target.rootProject
         root.pluginManager.withPlugin(JACOCO_REPORT_AGGREGATION_PLUGIN) {
             val reports = root.extensions.getByType(ReportingExtension::class.java).reports
             val reportName = codeCoverageReportName(suiteName)
             val report = reports.maybeCreate(reportName, JacocoCoverageReport::class.java)
             report.testSuiteName.set(suiteName)
+            report.reportTask.configure { jacocoReport ->
+                jacocoReport.reports.xml.required
+                    .set(true)
+                jacocoReport.reports.html.required
+                    .set(true)
+            }
             root.dependencies.add(
                 JACOCO_AGGREGATION,
                 root.dependencies.project(mapOf(PROJECT_PATH to target.path)),
@@ -99,12 +102,6 @@ internal object JacocoWiring {
             )
         }
     }
-
-    private fun Project.jacocoEnabled(): Boolean =
-        findEasyChild<EasyJvmDefaultsExtension, DefaultEasyJvmDefaultsExtension>()
-            ?.jacocoEnabled
-            ?.get()
-            ?: false
 }
 
 /** Mirrors the root build's `testCodeCoverageReport` naming (`<suiteName>CodeCoverageReport`). */
@@ -112,13 +109,7 @@ private fun codeCoverageReportName(suiteName: String): String = "${suiteName}Cod
 
 private const val JACOCO_PLUGIN = "jacoco"
 
-/** Plugin id of Gradle's JaCoCo report aggregation plugin. */
-private const val JACOCO_REPORT_AGGREGATION_PLUGIN = "jacoco-report-aggregation"
-
 private const val JACOCO_REPORT_TASK = "jacocoTestReport"
-
-/** Configuration through which the root declares the projects whose coverage is aggregated. */
-private const val JACOCO_AGGREGATION = "jacocoAggregation"
 
 private const val CHECK_TASK = "check"
 
