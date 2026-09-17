@@ -10,7 +10,11 @@ import org.gradle.api.plugins.AppliedPlugin
 import org.gradle.api.plugins.PluginManager
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
-import java.lang.reflect.Proxy
+import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.eq
+import org.mockito.Mockito.doAnswer
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import kotlin.reflect.KClass
 
 private val SETTINGS_PLUGIN_ID: String by lazy { loadSettingsPluginId() }
@@ -43,28 +47,32 @@ class PluginRegistrarTest {
         override fun projectPlugins(): Set<KClass<out Plugin<Project>>> = setOf(TestProjectPlugin::class)
     }
 
-    private class SimplePluginRegistry : PluginRegistry {
-        private val projectPlugins = mutableSetOf<KClass<out Plugin<Project>>>()
-        private val settingsPlugins = mutableSetOf<KClass<out Plugin<Settings>>>()
-        private val extensions = mutableSetOf<KClass<out EasyPluginExtension>>()
-
-        override fun registerProjectPlugin(pluginClass: KClass<out Plugin<Project>>) {
-            projectPlugins.add(pluginClass)
+    private fun registry(
+        projectPlugins: Set<KClass<out Plugin<Project>>> = emptySet(),
+        settingsPlugins: Set<KClass<out Plugin<Settings>>> = emptySet(),
+    ): PluginRegistry =
+        mock(PluginRegistry::class.java).apply {
+            `when`(getProjectPlugins()).thenReturn(projectPlugins)
+            `when`(getSettingsPlugins()).thenReturn(settingsPlugins)
+            `when`(getRegisteredExtensions()).thenReturn(emptySet())
         }
 
-        override fun getProjectPlugins(): Set<KClass<out Plugin<Project>>> = projectPlugins.toSet()
-
-        override fun registerSettingsPlugin(pluginClass: KClass<out Plugin<Settings>>) {
-            settingsPlugins.add(pluginClass)
-        }
-
-        override fun getSettingsPlugins(): Set<KClass<out Plugin<Settings>>> = settingsPlugins.toSet()
-
-        override fun registerExtension(extensionClass: KClass<out EasyPluginExtension>) {
-            extensions.add(extensionClass)
-        }
-
-        override fun getRegisteredExtensions(): Set<KClass<out EasyPluginExtension>> = extensions.toSet()
+    private fun settingsWithPluginManager(appliedPlugins: MutableList<Class<*>>): Settings {
+        val pluginManagerMock = mock(PluginManager::class.java)
+        val appliedPlugin = mock(AppliedPlugin::class.java)
+        doAnswer { invocation ->
+            @Suppress("UNCHECKED_CAST")
+            val action = invocation.getArgument<Action<AppliedPlugin>>(1)
+            action.execute(appliedPlugin)
+            null
+        }.`when`(pluginManagerMock)
+            .withPlugin(eq(SETTINGS_PLUGIN_ID), any())
+        doAnswer { appliedPlugins.add(it.getArgument(0)) }
+            .`when`(pluginManagerMock)
+            .apply(any<Class<Plugin<*>>>())
+        val settings = mock(Settings::class.java)
+        `when`(settings.pluginManager).thenReturn(pluginManagerMock)
+        return settings
     }
 
     @Test
@@ -72,10 +80,7 @@ class PluginRegistrarTest {
         val project = ProjectBuilder.builder().build()
         project.plugins.apply(ProjectPlugin::class.java)
 
-        val registry =
-            SimplePluginRegistry().apply {
-                registerProjectPlugin(TestProjectPlugin::class)
-            }
+        val registry = registry(projectPlugins = setOf(TestProjectPlugin::class))
 
         PluginRegistrar.applyPlugins(project, registry)
 
@@ -162,55 +167,9 @@ class PluginRegistrarTest {
     fun `applies registered settings plugins to settings when settings plugin is active`() {
         val appliedPlugins = mutableListOf<Class<*>>()
 
-        val pluginManagerProxy =
-            Proxy.newProxyInstance(
-                PluginManager::class.java.classLoader,
-                arrayOf(PluginManager::class.java),
-            ) { _, method, args ->
-                when (method.name) {
-                    "withPlugin" -> {
-                        val id = args[0] as String
+        val settingsProxy = settingsWithPluginManager(appliedPlugins)
 
-                        @Suppress("UNCHECKED_CAST")
-                        val action = args[1] as Action<AppliedPlugin>
-                        if (id == SETTINGS_PLUGIN_ID) {
-                            val appliedPlugin =
-                                Proxy.newProxyInstance(
-                                    AppliedPlugin::class.java.classLoader,
-                                    arrayOf(AppliedPlugin::class.java),
-                                ) { _, _, _ -> null } as AppliedPlugin
-                            action.execute(appliedPlugin)
-                        }
-                        null
-                    }
-
-                    "apply" -> {
-                        val type = args[0] as Class<*>
-                        appliedPlugins.add(type)
-                        null
-                    }
-
-                    else -> {
-                        null
-                    }
-                }
-            } as PluginManager
-
-        val settingsProxy =
-            Proxy.newProxyInstance(
-                Settings::class.java.classLoader,
-                arrayOf(Settings::class.java),
-            ) { _, method, _ ->
-                when (method.name) {
-                    "getPluginManager" -> pluginManagerProxy
-                    else -> null
-                }
-            } as Settings
-
-        val registry =
-            SimplePluginRegistry().apply {
-                registerSettingsPlugin(TestSettingsPlugin::class)
-            }
+        val registry = registry(settingsPlugins = setOf(TestSettingsPlugin::class))
 
         PluginRegistrar.applyPlugins(settingsProxy, registry)
 
@@ -225,56 +184,9 @@ class PluginRegistrarTest {
         project.plugins.apply(ProjectPlugin::class.java)
 
         val appliedSettingsPlugins = mutableListOf<Class<*>>()
-        val pluginManagerProxy =
-            Proxy.newProxyInstance(
-                PluginManager::class.java.classLoader,
-                arrayOf(PluginManager::class.java),
-            ) { _, method, args ->
-                when (method.name) {
-                    "withPlugin" -> {
-                        val id = args[0] as String
+        val settingsProxy = settingsWithPluginManager(appliedSettingsPlugins)
 
-                        @Suppress("UNCHECKED_CAST")
-                        val action = args[1] as Action<AppliedPlugin>
-                        if (id == SETTINGS_PLUGIN_ID) {
-                            val appliedPlugin =
-                                Proxy.newProxyInstance(
-                                    AppliedPlugin::class.java.classLoader,
-                                    arrayOf(AppliedPlugin::class.java),
-                                ) { _, _, _ -> null } as AppliedPlugin
-                            action.execute(appliedPlugin)
-                        }
-                        null
-                    }
-
-                    "apply" -> {
-                        val type = args[0] as Class<*>
-                        appliedSettingsPlugins.add(type)
-                        null
-                    }
-
-                    else -> {
-                        null
-                    }
-                }
-            } as PluginManager
-
-        val settingsProxy =
-            Proxy.newProxyInstance(
-                Settings::class.java.classLoader,
-                arrayOf(Settings::class.java),
-            ) { _, method, _ ->
-                when (method.name) {
-                    "getPluginManager" -> pluginManagerProxy
-                    else -> null
-                }
-            } as Settings
-
-        val registry =
-            SimplePluginRegistry().apply {
-                registerProjectPlugin(TestProjectPlugin::class)
-                registerSettingsPlugin(TestSettingsPlugin::class)
-            }
+        val registry = registry(projectPlugins = setOf(TestProjectPlugin::class), settingsPlugins = setOf(TestSettingsPlugin::class))
 
         PluginRegistrar.applyPlugins(project, registry)
         PluginRegistrar.applyPlugins(settingsProxy, registry)

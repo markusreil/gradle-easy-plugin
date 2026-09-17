@@ -1,13 +1,12 @@
 package com.mreil.easy
 
 import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.gradle.api.Plugin
-import org.gradle.api.Project
-import org.gradle.api.initialization.Settings
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.provider.Property
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import kotlin.reflect.KClass
 
 class ExtensionRegistrarInjectionTest {
@@ -31,29 +30,10 @@ class ExtensionRegistrarInjectionTest {
         }
     }
 
-    private class SimplePluginRegistry : PluginRegistry {
-        private val projectPlugins = mutableSetOf<KClass<out Plugin<Project>>>()
-        private val settingsPlugins = mutableSetOf<KClass<out Plugin<Settings>>>()
-        private val extensions = mutableSetOf<KClass<out EasyPluginExtension>>()
-
-        override fun registerProjectPlugin(pluginClass: KClass<out Plugin<Project>>) {
-            projectPlugins.add(pluginClass)
+    private fun registry(vararg extensions: KClass<out EasyPluginExtension>): PluginRegistry =
+        mock(PluginRegistry::class.java).apply {
+            `when`(getRegisteredExtensions()).thenReturn(extensions.toSet())
         }
-
-        override fun getProjectPlugins(): Set<KClass<out Plugin<Project>>> = projectPlugins.toSet()
-
-        override fun registerSettingsPlugin(pluginClass: KClass<out Plugin<Settings>>) {
-            settingsPlugins.add(pluginClass)
-        }
-
-        override fun getSettingsPlugins(): Set<KClass<out Plugin<Settings>>> = settingsPlugins.toSet()
-
-        override fun registerExtension(extensionClass: KClass<out EasyPluginExtension>) {
-            extensions.add(extensionClass)
-        }
-
-        override fun getRegisteredExtensions(): Set<KClass<out EasyPluginExtension>> = extensions.toSet()
-    }
 
     @Test
     fun `creates extension on single target only`() {
@@ -64,10 +44,7 @@ class ExtensionRegistrarInjectionTest {
                 .withName("sub")
                 .withParent(root)
                 .build()
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
         ExtensionRegistrar(root, root.providers).createExtension(registry)
 
@@ -91,11 +68,7 @@ class ExtensionRegistrarInjectionTest {
                 .withName("sub2")
                 .withParent(root)
                 .build()
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-                registerExtension(OtherTestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class, OtherTestSubExtension::class)
 
         val rootExt = ExtensionRegistrar(root, root.providers).createExtension(registry)
         injectEasyExtensions(root, registry, rootExt)
@@ -114,10 +87,7 @@ class ExtensionRegistrarInjectionTest {
     @Test
     fun `injects copies with parent values to subprojects`() {
         val parentHolder = ProjectBuilder.builder().build()
-        val parentRegistry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val parentRegistry = registry(TestSubExtension::class)
         val parentExt = ExtensionRegistrar(parentHolder, parentHolder.providers).createExtension(parentRegistry)
         parentExt.extensions
             .getByType(TestSubExtension::class.java)
@@ -131,10 +101,7 @@ class ExtensionRegistrarInjectionTest {
                 .withName("sub")
                 .withParent(root)
                 .build()
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
         val rootExt = ExtensionRegistrar(root, root.providers).createExtension(registry, parentHolder)
         injectEasyExtensions(root, registry, rootExt)
@@ -162,12 +129,9 @@ class ExtensionRegistrarInjectionTest {
                 .withName("sub")
                 .withParent(root)
                 .build()
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
-        val subRegistry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
+        val subRegistry = registry(TestSubExtension::class)
         val existing = ExtensionRegistrar(sub, sub.providers).createExtension(subRegistry)
         existing.extensions
             .getByType(TestSubExtension::class.java)
@@ -193,10 +157,7 @@ class ExtensionRegistrarInjectionTest {
 
     @Test
     fun `does not inject to subprojects when called on non-root Project`() {
-        val registry =
-            SimplePluginRegistry().apply {
-                registerExtension(TestSubExtension::class)
-            }
+        val registry = registry(TestSubExtension::class)
 
         val freshRoot = ProjectBuilder.builder().withName("freshRoot").build()
         val freshSub1 =

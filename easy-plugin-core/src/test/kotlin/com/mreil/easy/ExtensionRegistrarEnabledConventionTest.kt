@@ -1,12 +1,11 @@
 package com.mreil.easy
 
 import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.gradle.api.Plugin
-import org.gradle.api.Project
-import org.gradle.api.initialization.Settings
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import org.junitpioneer.jupiter.SetSystemProperty
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import kotlin.reflect.KClass
 
 class ExtensionRegistrarEnabledConventionTest {
@@ -30,34 +29,15 @@ class ExtensionRegistrarEnabledConventionTest {
         }
     }
 
-    private class SimplePluginRegistry : PluginRegistry {
-        private val projectPlugins = mutableSetOf<KClass<out Plugin<Project>>>()
-        private val settingsPlugins = mutableSetOf<KClass<out Plugin<Settings>>>()
-        private val extensions = mutableSetOf<KClass<out EasyPluginExtension>>()
-
-        override fun registerProjectPlugin(pluginClass: KClass<out Plugin<Project>>) {
-            projectPlugins.add(pluginClass)
+    private fun registry(vararg extensions: KClass<out EasyPluginExtension>): PluginRegistry =
+        mock(PluginRegistry::class.java).apply {
+            `when`(getRegisteredExtensions()).thenReturn(extensions.toSet())
         }
-
-        override fun getProjectPlugins(): Set<KClass<out Plugin<Project>>> = projectPlugins.toSet()
-
-        override fun registerSettingsPlugin(pluginClass: KClass<out Plugin<Settings>>) {
-            settingsPlugins.add(pluginClass)
-        }
-
-        override fun getSettingsPlugins(): Set<KClass<out Plugin<Settings>>> = settingsPlugins.toSet()
-
-        override fun registerExtension(extensionClass: KClass<out EasyPluginExtension>) {
-            extensions.add(extensionClass)
-        }
-
-        override fun getRegisteredExtensions(): Set<KClass<out EasyPluginExtension>> = extensions.toSet()
-    }
 
     @Test
     fun `enabled convention defaults to true without system property`() {
         val project = ProjectBuilder.builder().build()
-        val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
+        val registry = registry(TestSubExtension::class)
 
         val ext = ExtensionRegistrar(project, project.providers).createExtension(registry)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)
@@ -72,7 +52,7 @@ class ExtensionRegistrarEnabledConventionTest {
     @SetSystemProperty(key = "easy.disableAllPlugins", value = "true")
     fun `enabled convention is false when disableAllPlugins is true`() {
         val project = ProjectBuilder.builder().build()
-        val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
+        val registry = registry(TestSubExtension::class)
 
         val ext = ExtensionRegistrar(project, project.providers).createExtension(registry)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)
@@ -87,7 +67,7 @@ class ExtensionRegistrarEnabledConventionTest {
     @SetSystemProperty(key = "easy.disableAllPlugins", value = "true")
     fun `explicit enabled set true overrides convention false`() {
         val project = ProjectBuilder.builder().build()
-        val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
+        val registry = registry(TestSubExtension::class)
 
         val ext = ExtensionRegistrar(project, project.providers).createExtension(registry)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)
@@ -103,7 +83,7 @@ class ExtensionRegistrarEnabledConventionTest {
     @Test
     fun `explicit enabled set false overrides convention true`() {
         val project = ProjectBuilder.builder().build()
-        val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
+        val registry = registry(TestSubExtension::class)
 
         val ext = ExtensionRegistrar(project, project.providers).createExtension(registry)
         val sub = ext.extensions.getByType(TestSubExtension::class.java)
@@ -120,7 +100,7 @@ class ExtensionRegistrarEnabledConventionTest {
         // Child default would be true, but parent with explicit false should be copied
         val parent = ProjectBuilder.builder().build()
         val child = ProjectBuilder.builder().build()
-        val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
+        val registry = registry(TestSubExtension::class)
 
         val parentExt = ExtensionRegistrar(parent, parent.providers).createExtension(registry)
         parentExt.extensions
@@ -141,7 +121,7 @@ class ExtensionRegistrarEnabledConventionTest {
     fun `disableAll convention false is copied to child via parent`() {
         val parent = ProjectBuilder.builder().build()
         val child = ProjectBuilder.builder().build()
-        val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
+        val registry = registry(TestSubExtension::class)
 
         val parentExt = ExtensionRegistrar(parent, parent.providers).createExtension(registry)
         // parent already has convention false due to system prop
@@ -167,7 +147,7 @@ class ExtensionRegistrarEnabledConventionTest {
     fun `late set after copy still wins over copied convention`() {
         val parent = ProjectBuilder.builder().build()
         val child = ProjectBuilder.builder().build()
-        val registry = SimplePluginRegistry().apply { registerExtension(TestSubExtension::class) }
+        val registry = registry(TestSubExtension::class)
 
         val parentExt = ExtensionRegistrar(parent, parent.providers).createExtension(registry)
         parentExt.extensions
@@ -188,7 +168,7 @@ class ExtensionRegistrarEnabledConventionTest {
     @Test
     fun `fails when extension does not provide convention for enabled`() {
         val project = ProjectBuilder.builder().build()
-        val registry = SimplePluginRegistry().apply { registerExtension(TestMissingConventionExtension::class) }
+        val registry = registry(TestMissingConventionExtension::class)
 
         org.assertj.core.api.Assertions
             .assertThatThrownBy {
@@ -202,7 +182,7 @@ class ExtensionRegistrarEnabledConventionTest {
     @SetSystemProperty(key = "easy.disableAllPlugins", value = "true")
     fun `fails even when disableAllPlugins is true if convention missing`() {
         val project = ProjectBuilder.builder().build()
-        val registry = SimplePluginRegistry().apply { registerExtension(TestMissingConventionExtension::class) }
+        val registry = registry(TestMissingConventionExtension::class)
 
         org.assertj.core.api.Assertions
             .assertThatThrownBy {
