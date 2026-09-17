@@ -1,8 +1,5 @@
 package com.mreil.easy.codemeta
 
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -13,12 +10,6 @@ import java.time.LocalDate
 class CodemetaUpdaterTest {
     @TempDir
     lateinit var tempDir: Path
-
-    private val mapper =
-        jacksonObjectMapper().apply {
-            configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true)
-        }
 
     private fun codemetaFile(): File = tempDir.resolve("codemeta.json").toFile()
 
@@ -43,7 +34,7 @@ class CodemetaUpdaterTest {
 
         val result = CodemetaUpdater.updateVersionAndDateModified(file, "2.0.0", "2026-02-02")
 
-        val parsed: Codemeta = mapper.readValue(file)
+        val parsed: Codemeta = CodemetaJson.read(file)
         assertSoftly { softly ->
             softly.assertThat(result).containsExactly(file)
             softly.assertThat(parsed.version).isEqualTo("2.0.0")
@@ -88,7 +79,7 @@ class CodemetaUpdaterTest {
 
         val result = CodemetaUpdater.updateVersionAndDateModified(file, "2.0.0")
 
-        val parsed: Codemeta = mapper.readValue(file)
+        val parsed: Codemeta = CodemetaJson.read(file)
         assertSoftly { softly ->
             softly.assertThat(result).containsExactly(file)
             softly.assertThat(parsed.dateModified).isEqualTo(LocalDate.now().toString())

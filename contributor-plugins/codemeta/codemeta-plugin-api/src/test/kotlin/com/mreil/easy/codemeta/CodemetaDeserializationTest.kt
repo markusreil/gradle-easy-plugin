@@ -1,19 +1,11 @@
 package com.mreil.easy.codemeta
 
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.Test
 
 class CodemetaDeserializationTest {
     @Test
     fun `single author object deserializes as list`() {
-        val mapper =
-            jacksonObjectMapper().apply {
-                configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true)
-            }
         val json =
             """
             {
@@ -26,7 +18,7 @@ class CodemetaDeserializationTest {
             }
             """.trimIndent()
 
-        val codemeta: Codemeta = mapper.readValue(json)
+        val codemeta: Codemeta = CodemetaJson.decode(json)
 
         assertSoftly { softly ->
             softly.assertThat(codemeta.author).hasSize(1)

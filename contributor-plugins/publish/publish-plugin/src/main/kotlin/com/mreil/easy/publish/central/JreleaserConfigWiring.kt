@@ -8,7 +8,7 @@ import org.gradle.api.Project
 import org.gradle.api.publish.PublishingExtension
 
 /**
- * Root-only registration of `generateJreleaserConfig` (JReleaser YAML generation).
+ * Root-only registration of `generateJreleaserConfig` (JReleaser JSON generation).
  *
  * Registered lazily with convention defaults. The wiring runs when any project opts into
  * Maven Central — a root `easy { publish { toMavenCentral() } }` (inherited by every
@@ -36,7 +36,7 @@ internal object JreleaserConfigWiring {
                 task.projectVersion.convention(target.provider { target.version.toString() })
                 task.projectGroupId.convention(target.provider { target.group.toString() })
                 task.outputFile.convention(
-                    target.layout.buildDirectory.file("jreleaser/jreleaser.yml"),
+                    target.layout.buildDirectory.file("jreleaser/jreleaser.json"),
                 )
                 // Per-project staging dirs, resolved eagerly: extension values are final once
                 // afterEnabled runs post-evaluation, and inheritance is live provider linkage

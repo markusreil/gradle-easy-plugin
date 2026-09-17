@@ -1,11 +1,17 @@
 package com.mreil.easy.publish.central
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+
 /**
- * Maven deployers rendered under `deploy.maven` in the generated JReleaser YAML.
+ * Maven deployers rendered under `deploy.maven` in the generated JReleaser JSON.
  *
  * Each deployer knows its section (`mavenCentral`, `nexus3`), its repository
- * name and how to render itself as an ordered map. Shared keys (`stagingRepositories`,
- * `username`, `password`) are built by [commonDeployerMap] so subclasses only declare
+ * name and how to render itself as a [JsonObject]. Shared keys (`stagingRepositories`,
+ * `username`, `password`) are built by [commonDeployerJson] so subclasses only declare
  * their unique keys.
  *
  * Snapshots are deliberately not deployed via JReleaser (single-threaded per-file
@@ -16,7 +22,7 @@ internal sealed interface JreleaserMavenDeployer {
     val section: String
     val name: String
 
-    fun toMap(): Map<String, Any>
+    fun toJson(): JsonObject
 }
 
 internal data class MavenCentralDeployer(
@@ -28,14 +34,15 @@ internal data class MavenCentralDeployer(
     override val section = "mavenCentral"
     override val name = "sonatype"
 
-    override fun toMap(): Map<String, Any> =
-        linkedMapOf<String, Any>(
-            "active" to active,
-            "url" to "https://central.sonatype.com/api/v1/publisher",
+    override fun toJson(): JsonObject =
+        buildJsonObject {
+            put("active", active)
+            put("url", "https://central.sonatype.com/api/v1/publisher")
             // Signing is handled by Gradle's `signing` plugin (SigningWiring); JReleaser must not
             // sign or its validation fails on a `sign: true` deployer with no `signing` block.
-            "sign" to false,
-        ).also { it.putAll(commonDeployerMap(stagingDirs, username, password)) }
+            put("sign", false)
+            commonDeployerJson(stagingDirs, username, password).forEach { (key, value) -> put(key, value) }
+        }
 }
 
 internal data class Nexus3TestDeployer(
@@ -48,36 +55,37 @@ internal data class Nexus3TestDeployer(
     override val section = "nexus3"
     override val name = "local-test"
 
-    override fun toMap(): Map<String, Any> =
-        linkedMapOf<String, Any>(
-            "active" to active,
-            "url" to url,
-            "authorization" to "BASIC",
+    override fun toJson(): JsonObject =
+        buildJsonObject {
+            put("active", active)
+            put("url", url)
+            put("authorization", "BASIC")
             // Signing is handled by Gradle's `signing` plugin (SigningWiring); JReleaser must not
             // sign or its validation fails on a `sign: true` deployer with no `signing` block.
-            "sign" to false,
-        ).also { it.putAll(commonDeployerMap(stagingDirs, username, password)) }
+            put("sign", false)
+            commonDeployerJson(stagingDirs, username, password).forEach { (key, value) -> put(key, value) }
+        }
 }
 
-internal fun commonDeployerMap(
+internal fun commonDeployerJson(
     stagingDirs: List<String>,
     username: String,
     password: String,
-): Map<String, Any> =
-    linkedMapOf(
-        "stagingRepositories" to stagingDirs,
-        "username" to username,
-        "password" to password,
-    )
+): JsonObject =
+    buildJsonObject {
+        putJsonArray("stagingRepositories") { stagingDirs.forEach { add(it) } }
+        put("username", username)
+        put("password", password)
+    }
 
 /**
- * Resolves the deployer list for a [JreleaserYaml.Config].
+ * Resolves the deployer list for a [JreleaserJson.Config].
  *
  * Only releases go through JReleaser (Portal); snapshots publish directly via
  * `maven-publish` (see `toSonatypeSnapshots`). In nexus test mode everything
  * remote is NEVER so smoke runs stay local-only.
  */
-internal fun deployersFor(config: JreleaserYaml.Config): List<JreleaserMavenDeployer> {
+internal fun deployersFor(config: JreleaserJson.Config): List<JreleaserMavenDeployer> {
     val testMode = config.nexusUrl != null
     val deployers =
         mutableListOf<JreleaserMavenDeployer>(

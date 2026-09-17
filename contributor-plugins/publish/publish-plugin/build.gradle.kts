@@ -17,9 +17,7 @@ dependencies {
     implementation(project(":easy-contributor-api"))
     implementation(project(":easy-contributor-support"))
     implementation(project(":gradle-plugin-utils"))
-    implementation(libs.jackson.databind)
-    implementation(libs.jackson.dataformat.yaml)
-    implementation(libs.jackson.module.kotlin)
+    implementation(libs.kotlinx.serialization.json)
     compileOnly(gradleApi())
 }
 

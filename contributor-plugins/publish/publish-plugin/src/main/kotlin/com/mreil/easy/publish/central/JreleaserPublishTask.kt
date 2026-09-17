@@ -18,7 +18,7 @@ import org.gradle.api.tasks.TaskAction
  * Deploys staged Maven artifacts via the JReleaser CLI (`deploy`).
  *
  * Runs `org.jreleaser.cli.Main` from the resolve-only `jreleaser` configuration
- * (no external binary needed) against the generated JReleaser YAML config.
+ * (no external binary needed) against the generated JReleaser JSON config.
  * Registered only on the root project as `publishToMavenCentral` when
  * [com.mreil.easy.publish.EasyPublishExtension.toMavenCentral] is set (see
  * [EasyJreleaserPlugin] for the gating rule). Not cacheable (remote side effects);

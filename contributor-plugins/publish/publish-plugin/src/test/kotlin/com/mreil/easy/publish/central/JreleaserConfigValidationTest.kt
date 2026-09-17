@@ -1,6 +1,6 @@
 package com.mreil.easy.publish.central
 
-import com.mreil.easy.publish.central.JreleaserYaml.Config
+import com.mreil.easy.publish.central.JreleaserJson.Config
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.URIish
@@ -25,13 +25,13 @@ class JreleaserConfigValidationTest {
 
     @Test
     fun `central config passes jreleaser validation`() {
-        validate(JreleaserYaml.buildYaml(centralConfig()))
+        validate(JreleaserJson.buildJson(centralConfig()))
     }
 
     @Test
     fun `nexus config passes jreleaser validation`() {
         validate(
-            JreleaserYaml.buildYaml(
+            JreleaserJson.buildJson(
                 centralConfig().copy(
                     nexusUrl = "http://localhost:8081/service/rest/v1/components?repository=maven-releases",
                     nexusUsername = "admin",
@@ -49,21 +49,21 @@ class JreleaserConfigValidationTest {
     fun `multi-dir staging config passes jreleaser validation`() {
         val rootStaging = File(tempDir, "root-staging").apply { mkdirs() }
         val childStaging = File(tempDir, "child-staging").apply { mkdirs() }
-        val yaml =
-            JreleaserYaml.buildYaml(
+        val json =
+            JreleaserJson.buildJson(
                 centralConfig().copy(stagingDirs = listOf(rootStaging.absolutePath, childStaging.absolutePath)),
             )
 
         assertSoftly { softly ->
-            softly.assertThat(yaml).contains(rootStaging.absolutePath)
-            softly.assertThat(yaml).contains(childStaging.absolutePath)
+            softly.assertThat(json).contains(rootStaging.absolutePath)
+            softly.assertThat(json).contains(childStaging.absolutePath)
         }
-        validate(yaml)
+        validate(json)
     }
 
-    private fun validate(yaml: String) {
+    private fun validate(json: String) {
         initGitRepo()
-        val configFile = File(tempDir, "jreleaser.yml").apply { writeText(yaml) }
+        val configFile = File(tempDir, "jreleaser.json").apply { writeText(json) }
         val settingsFile = File(tempDir, "settings.properties").apply { writeText("") }
         val outDir = File(tempDir, "out").apply { mkdirs() }
 

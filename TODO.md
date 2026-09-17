@@ -8,7 +8,10 @@ This document keeps track of tasks that need to be completed.
 
 ## Architecture changes / fixes
 
-* switch jackson to kotlinx for serialization
+* serialization: factor shared JSON file handling (pretty-print config, read/write) into
+  `gradle-plugin-utils` alongside `GradleProperties` once a third consumer appears; keep
+  domain-specific handling (e.g. `CodemetaJson`'s single-value-as-array normalization) in the
+  owning contributor
 * publish: derive an artifact classifier from the git branch name so every branch
   publishes a distinct snapshot artifact (no overwrites of `latest.integration`),
   while still publishing on every push regardless of branch

@@ -65,8 +65,8 @@ class CodemetaReleaseLifecycleFuncTest {
         assertSoftly { softly ->
             softly.assertThat(result.output).contains("Configuration cache entry stored")
             softly.assertThat(result.output).doesNotContain("problems were found")
-            softly.assertThat(codemetaContent).contains("\"version\" : \"1.0.0\"")
-            softly.assertThat(codemetaContent).contains("\"dateModified\" : \"${LocalDate.now()}\"")
+            softly.assertThat(codemetaContent).contains("\"version\": \"1.0.0\"")
+            softly.assertThat(codemetaContent).contains("\"dateModified\": \"${LocalDate.now()}\"")
             softly.assertThat(committedFiles).contains("codemeta.json", "version.txt")
         }
     }

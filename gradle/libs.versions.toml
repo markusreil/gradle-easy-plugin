@@ -3,8 +3,8 @@
 [versions]
 assertj = "3.27.3"
 detekt = "2.0.0-alpha.6"
-jackson = "2.18.2"
 jreleaser = "1.25.0"
+kotlinx-serialization = "1.10.0"
 junit-jupiter = "5.11.3"
 junit-pioneer = "2.3.0"
 ktlint = "1.8.0"
@@ -18,11 +18,8 @@ commons-configuration = "2.15.1"
 [libraries]
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 commons-configuration2 = { module = "org.apache.commons:commons-configuration2", version.ref = "commons-configuration" }
-jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
-jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
-jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 jreleaser = { module = "org.jreleaser:jreleaser", version.ref = "jreleaser" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
 junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit-jupiter" }
 semver4j = { module = "org.semver4j:semver4j", version.ref = "semver4j" }
@@ -32,6 +29,7 @@ mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 [plugins]
 detekt = { id = "dev.detekt", version.ref = "detekt" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.3.0" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "2.3.0" }
 plugin-publish = { id = "com.gradle.plugin-publish", version.ref = "plugin-publish" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
