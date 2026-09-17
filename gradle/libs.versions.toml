@@ -28,8 +28,8 @@ mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 
 [plugins]
 detekt = { id = "dev.detekt", version.ref = "detekt" }
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.3.0" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "2.3.0" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.4.20" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "2.4.20" }
 plugin-publish = { id = "com.gradle.plugin-publish", version.ref = "plugin-publish" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

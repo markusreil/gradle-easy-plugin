@@ -31,7 +31,7 @@ testing {
     suites {
         // jvm-defaults registers/configures functionalTest (framework, main output, test kit and
         // plugin-under-test metadata); only the repo-specific helper projects are declared here.
-        val functionalTest by registering(JvmTestSuite::class) {
+        register<JvmTestSuite>("functionalTest") {
             dependencies {
                 implementation(project(":gradle-plugin-testutils"))
                 implementation(project(":easy-test-support"))

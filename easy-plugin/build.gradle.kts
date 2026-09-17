@@ -24,10 +24,11 @@ repositories {
     mavenCentral()
 }
 
-val fixtures by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
+val fixtures =
+    configurations.create("fixtures") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
 
 dependencies {
     implementation(project(":easy-plugin-core"))
@@ -50,7 +51,7 @@ testing {
     suites {
         // jvm-defaults registers/configures functionalTest (framework, main output, test kit and
         // plugin-under-test metadata); only the repo-specific helper projects are declared here.
-        val functionalTest by registering(JvmTestSuite::class) {
+        register<JvmTestSuite>("functionalTest") {
             dependencies {
                 implementation(project(":easy-test-support"))
                 implementation(project(":gradle-plugin-testutils"))
@@ -69,7 +70,7 @@ gradlePlugin {
     // declarations to core (markers would lose contributor deps) or classes here
     // (core references ProjectPlugin — dependency cycle).
     // Define the plugin
-    val easyProject by plugins.creating {
+    plugins.create("easyProject") {
         id = providers.gradleProperty("plugin.project").get()
         implementationClass = "com.mreil.easy.ProjectPlugin"
         displayName = "Easy Project Plugin"
@@ -77,7 +78,7 @@ gradlePlugin {
             "A Gradle plugin framework that simplifies plugin development with modular contributors and convention-based configuration"
         tags.set(listOf("kotlin", "conventions", "plugin-development", "modular"))
     }
-    val easySettings by plugins.creating {
+    plugins.create("easySettings") {
         id = providers.gradleProperty("plugin.settings").get()
         implementationClass = "com.mreil.easy.SettingsPlugin"
         displayName = "Easy Settings Plugin"

@@ -27,7 +27,7 @@ tasks.withType<Test>().configureEach {
 
 testing {
     suites {
-        val test by getting(JvmTestSuite::class) {
+        getByName<JvmTestSuite>("test") {
             dependencies {
                 implementation(libs.jreleaser)
                 implementation(project(":easy-plugin-core"))

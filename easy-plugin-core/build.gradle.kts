@@ -23,7 +23,7 @@ tasks.withType<Test>().configureEach {
 
 testing {
     suites {
-        val test by getting(JvmTestSuite::class) {
+        getByName<JvmTestSuite>("test") {
             dependencies {
                 implementation(project(":gradle-plugin-testutils"))
                 implementation(project(":easy-test-support"))

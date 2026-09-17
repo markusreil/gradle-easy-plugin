@@ -15,17 +15,17 @@ repositories {
 
 dependencies {
     subprojects.filter { it.childProjects.isEmpty() }.forEach { subproject ->
-        jacocoAggregation(subproject)
-        testReportAggregation(subproject)
+        jacocoAggregation(project(subproject.path))
+        testReportAggregation(project(subproject.path))
     }
 }
 
 reporting {
     reports {
-        val testCodeCoverageReport by creating(JacocoCoverageReport::class) {
+        create<JacocoCoverageReport>("testCodeCoverageReport") {
             testSuiteName.set("test")
         }
-        val testAggregateTestReport by creating(AggregateTestReport::class) {
+        create<AggregateTestReport>("testAggregateTestReport") {
             testSuiteName.set("test")
         }
     }
