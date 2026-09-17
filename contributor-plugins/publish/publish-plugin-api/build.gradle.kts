@@ -1,6 +1,5 @@
 plugins {
     `java-library`
-    jacoco
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.detekt)
 }
@@ -16,12 +15,4 @@ detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.ym
 
 tasks.named<Task>("check") {
     dependsOn("detekt")
-    dependsOn("jacocoTestReport")
-}
-
-tasks.named<JacocoReport>("jacocoTestReport") {
-    reports {
-        xml.required.set(true)
-        html.required.set(true)
-    }
 }

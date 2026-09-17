@@ -1,6 +1,5 @@
 plugins {
     `java-library`
-    jacoco
     alias(libs.plugins.kotlin.jvm)
 }
 

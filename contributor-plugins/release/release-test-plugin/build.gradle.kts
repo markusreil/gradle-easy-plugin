@@ -1,6 +1,5 @@
 plugins {
     `java-gradle-plugin`
-    jacoco
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.detekt)
 }
@@ -32,24 +31,16 @@ gradlePlugin {
 
 testing {
     suites {
-        val test by getting(JvmTestSuite::class) {
-            useJUnitJupiter()
-        }
+        // jvm-defaults registers/configures functionalTest (framework, main output, test kit and
+        // plugin-under-test metadata); only the repo-specific helper projects are declared here.
         val functionalTest by registering(JvmTestSuite::class) {
-            useJUnitJupiter()
             dependencies {
-                implementation(project())
-                implementation(gradleTestKit())
                 implementation(project(":gradle-plugin-testutils"))
                 implementation(project(":easy-test-support"))
-                implementation(libs.assertj.core)
             }
-            targets { all { testTask.configure { shouldRunAfter(test) } } }
         }
     }
 }
-
-gradlePlugin.testSourceSets.add(sourceSets["functionalTest"])
 
 detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml")) }
 
@@ -58,14 +49,5 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.named<Task>("check") {
-    dependsOn(testing.suites.named("functionalTest"))
     dependsOn("detekt")
-    dependsOn("jacocoTestReport")
-}
-
-tasks.named<JacocoReport>("jacocoTestReport") {
-    reports {
-        xml.required.set(true)
-        html.required.set(true)
-    }
 }
