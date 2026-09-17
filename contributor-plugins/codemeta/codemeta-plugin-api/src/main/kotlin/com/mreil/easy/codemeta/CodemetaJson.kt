@@ -50,7 +50,7 @@ object CodemetaJson {
         file: File,
         codemeta: Codemeta,
     ) {
-        file.writeText(format.encodeToString(codemeta))
+        file.writeText(format.encodeToString(codemeta) + "\n")
     }
 
     private fun normalize(element: JsonElement): JsonElement =

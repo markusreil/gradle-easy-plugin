@@ -2,10 +2,6 @@
 
 This document keeps track of tasks that need to be completed.
 
-## Bugs
-
-* ensure newline at end of file in codemeta.json when creating/updating.
-
 ## Architecture changes / fixes
 
 * serialization: factor shared JSON file handling (pretty-print config, read/write) into
