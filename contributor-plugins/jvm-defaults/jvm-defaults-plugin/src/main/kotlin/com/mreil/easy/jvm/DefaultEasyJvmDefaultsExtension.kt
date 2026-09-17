@@ -1,11 +1,10 @@
 package com.mreil.easy.jvm
 
 import com.mreil.easy.PublicType
+import org.gradle.api.provider.Property
 
 /**
  * Internal implementation of [EasyJvmDefaultsExtension].
- *
- * Empty for now - no additional configuration needed.
  *
  * Abstract for Gradle extension decoration via extensions.create (requires a non-final type).
  */
@@ -14,5 +13,11 @@ import com.mreil.easy.PublicType
 abstract class DefaultEasyJvmDefaultsExtension : EasyJvmDefaultsExtension {
     init {
         enabled.convention(true)
+        configureTestSuites.convention(true)
+        jacocoEnabled.convention(true)
     }
+
+    abstract override val configureTestSuites: Property<Boolean>
+
+    abstract override val jacocoEnabled: Property<Boolean>
 }
