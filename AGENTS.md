@@ -101,6 +101,7 @@ defer extra-plugin application via
 - Early returns / guard clauses over nesting: `val x = ... ?: return`, then `x.y.orNull?.let { ... }` (detekt `ReturnCount` max is 2 — stay within it, don't stack guards to dodge nesting).
 - Idiomatic null handling: `?.let`, `?:`, `takeIf`, `orNull`, `orEmpty` — never compound `x != null && y != null` guards or temp-then-check (`val x = a?.b` followed by `if (a != null && x != null)`).
 - `filter { ... }.forEach { ... }` over `forEach` + `return@forEach`; expression bodies for single-expression functions; `mapNotNull` chains over `return@mapNotNull null` guards.
+- Prefer `Optional` chaining over `orElse(null)` unwraps when consuming `java.util.Optional` (e.g. version-catalog lookups): chain `Optional.ofNullable(...)` + `flatMap`/`map`/`filter` and terminate with `getOrElse { fallback }`/`getOrNull()` (`kotlin.jvm.optionals`) rather than interleaving `?.orElse(null)` — see `gradle-plugin-utils/.../VersionCatalogVersions.kt` for the canonical form.
 - Behavior-preserving: conciseness refactors must not change semantics — verify with `check` (unit + functional + detekt) and `spotlessCheck`.
 
 ## Testing

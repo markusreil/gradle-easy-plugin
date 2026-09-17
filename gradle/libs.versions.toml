@@ -8,6 +8,7 @@ jreleaser = "1.25.0"
 junit-jupiter = "5.11.3"
 junit-pioneer = "2.3.0"
 ktlint = "1.8.0"
+mockito = "5.17.0"
 plugin-publish = "2.1.1"
 semver4j = "5.3.0"
 shadow = "9.6.1"
@@ -26,6 +27,7 @@ junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.re
 junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit-jupiter" }
 semver4j = { module = "org.semver4j:semver4j", version.ref = "semver4j" }
 junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version.ref = "junit-pioneer" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 
 [plugins]
 detekt = { id = "dev.detekt", version.ref = "detekt" }

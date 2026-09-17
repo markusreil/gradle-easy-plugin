@@ -23,4 +23,14 @@ class VersionCatalogVersionsTest {
             softly.assertThat(project.catalogVersionOrDefault("no-such-alias", "9.9.9", "no-such-catalog")).isEqualTo("9.9.9")
         }
     }
+
+    @Test
+    fun `missing catalog yields an absent library provider`() {
+        val project = ProjectBuilder.builder().build()
+
+        assertSoftly { softly ->
+            softly.assertThat(project.catalogLibrary("assertj-core").isPresent).isFalse()
+            softly.assertThat(project.catalogLibrary("assertj-core", "no-such-catalog").isPresent).isFalse()
+        }
+    }
 }

@@ -25,10 +25,9 @@ object MigrationHints {
         manualSnippet: String = what,
     ) {
         if (!isEnabled(target)) return
-        target.logger.lifecycle(
-            "[easy] [{}] '{}' is already configured manually. " +
+        target.easyLifecycle(
+            "'{}' is already configured manually. " +
                 "The Easy plugin handles this automatically - consider removing '{}' from your build file.",
-            target.path,
             what,
             manualSnippet,
         )

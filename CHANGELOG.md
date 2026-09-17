@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `jvm-defaults`: test-suite auto-configuration and JaCoCo coverage, gated by the new
+  `configureTestSuites`/`jacocoEnabled` properties (both default `true`). Functional suites
+  discovered from `src/<name>Test/{java,kotlin}` get a catalog-pinned JUnit Jupiter,
+  catalog-declared test dependencies, the project's `main` output, `check` and
+  `java-gradle-plugin` wiring (incl. plugin-under-test metadata); the built-in `test` suite is
+  configured in place (Mockito unit-only); `<suite>AggregateTestReport` and
+  `<suite>CodeCoverageReport` aggregation are registered at the root.
+- Easy logging helpers (`EasyLogging`) and test-source discovery (`findTestSuites()`,
+  `TestSourceDiscovery`/`TestSuiteType`).
+- `gradle-plugin-utils`: version-catalog helpers (`catalogLibrary`, `catalogVersionOrDefault`).
+- Version catalog: Mockito (`org.mockito:mockito-core`).
+
 ### Changed
+
+- detekt upgraded to 2.x (`Upgrade detekt #19`) with type-aware analysis per source set.
+- Spotless upgraded to 8.10.2 (`Upgrade spotless #18`).
+- Shared code moved to `gradle-plugin-utils`/`gradle-plugin-testutils`
+  (`Move shared code to plugin/test utils #17`).
 
 ### Deprecated
 

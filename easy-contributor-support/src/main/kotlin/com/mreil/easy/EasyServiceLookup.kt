@@ -38,9 +38,9 @@ inline fun <reified S : Any, E> Project.easyService(
  * failures surface lazily at realization.
  *
  * Defensive note: in production the `easy` extension always exists — core registers it before any contributor
- * applies, and contributors are never applied standalone. The `runCatching` guard below covers tests only
- * (e.g. ProjectBuilder projects without core applied), where a missing `easy` extension would otherwise throw
- * at call time; it degrades to absent there.
+ * applies, and contributors are never applied standalone. The null-safe lookup below degrades to absent when it
+ * is missing, which covers tests only (e.g. ProjectBuilder projects without core applied), where a missing `easy`
+ * extension would otherwise throw at call time.
  *
  * @param T the resolved value type.
  * @param E the contributor extension type that gates availability.
@@ -52,11 +52,15 @@ inline fun <reified T : Any, E> Project.gatedBy(
     crossinline whenEnabled: () -> Provider<T>,
 ): Provider<T>
     where E : EasyPluginExtension, E : CanBeEnabled {
-    // Enabled lookup reads the extension's `enabled` property, falling back to false when the
-    // extension or the `easy` extension is absent. Eager call only touches providers, never the
+    // Enabled lookup reads the `easy` extension's `enabled` property, falling back to false when the
+    // extension or the contributor extension is absent. Eager call only touches providers, never the
     // shared service, so it is CC-safe.
     val enabled =
-        runCatching { getEasyExtension().extensions.findByType(extensionClass.java)?.enabled }.getOrNull()
+        extensions
+            .findByType(EasyExtension::class.java)
+            ?.extensions
+            ?.findByType(extensionClass.java)
+            ?.enabled
             ?: objects.property(Boolean::class.java).value(false)
     // Absent placeholder realized when disabled, avoiding any lookup of the shared service registration.
     val empty = objects.property(T::class.java)
