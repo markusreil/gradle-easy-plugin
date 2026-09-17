@@ -4,7 +4,7 @@ This document covers contributors and maintainers of `gradle-easy-plugin`. For *
 
 ## Requirements
 
-* **Java 21+** — Kotlin 2.3.0 / Gradle 9.4.1 toolchain, `org.gradle.jvm.version=21` variant. Run with `JAVA_HOME=/usr/lib/jvm/java-21-openjdk`. The smoke-test `test-projects/simple` uses `java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }`, but plugin classpath still requires the daemon on 21.
+* **Java 21+** — Kotlin 2.3.0 / Gradle 9.4.1 toolchain, `org.gradle.jvm.version=21` variant. Run with `JAVA_HOME=/usr/lib/jvm/java-21-openjdk`; the published plugin variant requires the daemon on 21.
 * Gradle 9.4.1 via `./gradlew` (not system `gradle`).
 
 ## Project Overview
@@ -40,9 +40,6 @@ contributor-plugins/jvm-defaults/jvm-defaults-plugin/ # EasyJvmDefaultsPlugin + 
 contributor-plugins/jvm-defaults/jvm-defaults-test-plugin/ # harness: com.mreil.easy.test.jvm
 contributor-plugins/semver/...                        # semver-plugin-api / semver-plugin / semver-test-plugin
 contributor-plugins/codemeta/...                      # codemeta-plugin-api / codemeta-plugin / codemeta-test-plugin
-test-projects/README.md               # manual snapshot dogfooding docs
-test-projects/simple/                 # standalone single-module smoke-test (NOT included in root build); id("com.mreil.easy.project") version "latest.integration" from mreilComGradlePluginsSnapshots; own wrapper; `cd test-projects/simple && ./gradlew build` (Java 21); gradle/gradle-daemon-jvm.properties toolchainVersion=21 + cacheChangingModulesFor(0)
-test-projects/simple-settings/        # same for settings plugin (id("com.mreil.easy.settings") in settings.gradle.kts)
 ```
 
 ## Core Mechanism
@@ -125,20 +122,13 @@ Run `./gradlew :easy-plugin:check` (or `./gradlew build` for all modules + aggre
 
 New contributor plugins must ship a configuration-cache compatibility test that fails on CC validation problems (e.g. external processes started at configuration time) — the VCS plugin's `git rev-parse ... @{u}` / `git remote get-url origin` calls broke CC and were only found after release.
 
-## Manual Snapshot Testing
+## Manual Release / Snapshot Testing
 
-Standalone projects in `test-projects/` dogfood the latest snapshot from `mreilComGradlePluginsSnapshots` (`https://repo.mreil.com/gradle-plugins-snapshots`). They are **not** included in the root build — run in isolation (see `test-projects/README.md` for full docs):
-
-```bash
-./gradlew :easy-plugin:publish          # deploy snapshot (requires credentials)
-cd test-projects/simple
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew build  # id("com.mreil.easy.project") version "latest.integration"
-```
-
-`test-projects/simple` details (standalone):
-* `settings.gradle.kts` — `pluginManagement { repositories { gradlePluginPortal(); maven("https://repo.mreil.com/gradle-plugins-snapshots"); mavenCentral() } }`
-* `build.gradle.kts` — `plugins { id("com.mreil.easy.project") version "latest.integration" }` + `java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }` + `configurations.all { cacheChangingModulesFor(0, SECONDS); cacheDynamicVersionsFor(0, SECONDS) }` (threshold 0 for snapshots) + own wrapper.
-* Not included in root `settings.gradle.kts`; `test-projects/README.md` explains adding `test-projects/settings/` etc.
+No smoke-test projects are committed — they required constant up-keeping and are now done ad-hoc.
+See AGENTS.md → "Ad-hoc Release / Snapshot Verification" for the throwaway-project recipe (snapshot
+via `latest.integration` from `mreilComGradlePluginsSnapshots`, release pinned from the Plugin
+Portal, plus the local-Nexus JReleaser rehearsal). `./gradlew :easy-plugin:publish` still deploys the
+snapshot those ad-hoc projects consume.
 
 `easy-plugin/build.gradle.kts` adds only `publishing.repositories` for snapshots; marker publications are created by `java-gradle-plugin`.
 
@@ -175,9 +165,10 @@ Notes:
   (`jreleaser.gpg.privateKey` → `JRELEASER_GPG_PRIVATE_KEY`, `jreleaser.gpg.passphrase`
   → `JRELEASER_GPG_PASSPHRASE`), so the workflow remaps the GitHub secret names to
   those exact env var names in the `publish` job's `env` block.
-* The `test-projects/` manual snapshot smoke-tests resolve the `com.mreil.easy.*`
-  plugins from `mreilComGradlePluginsSnapshots`, so CI deploys and manual
-  dogfooding share the same credentials.
+* Manual snapshot smoke-tests (ad-hoc, see AGENTS.md → "Ad-hoc Release / Snapshot
+  Verification") resolve the `com.mreil.easy.*` plugins from
+  `mreilComGradlePluginsSnapshots`, so CI deploys and manual dogfooding share the same
+  credentials.
 
 ## Commands
 
@@ -194,7 +185,6 @@ Notes:
 ./gradlew :contributor-plugins:jvm-defaults:jvm-defaults-test-plugin:check
 ./gradlew :easy-plugin:publishToMavenLocal
 ./gradlew :easy-plugin:publish                 # publish snapshots to mreilComGradlePluginsSnapshots (requires credentials)
-cd test-projects/simple && ./gradlew build     # manual smoke-test (standalone, Java 21, latest.integration)
 ./gradlew spotlessCheck                        # verify Kotlin/Gradle formatting (ktlint)
 ./gradlew spotlessApply                        # auto-format all sources
 ./gradlew testCodeCoverageReport testAggregateTestReport  # aggregated JaCoCo + test reports (root)

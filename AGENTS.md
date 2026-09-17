@@ -42,9 +42,6 @@ contributor-plugins/codemeta/codemeta-test-plugin/         # java-gradle-plugin 
 contributor-plugins/project-defaults/project-defaults-plugin-api/       # java-library: public EasyProjectDefaultsExtension interface (used by consumers)
 contributor-plugins/project-defaults/project-defaults-plugin/           # java-library: EasyProjectDefaultsPlugin (applies `base` in init, fail-fast group/version in afterEnabled) + EasyProjectDefaultsContributor + DefaultEasyProjectDefaultsExtension + META-INF/services; unit tests only
 contributor-plugins/project-defaults/project-defaults-test-plugin/      # java-gradle-plugin harness: com.mreil.easy.test.projectdefaults → ProjectDefaultsTestHarnessPlugin (applies ProjectPlugin) + functionalTest via withPluginClasspath
-test-projects/README.md               # manual snapshot dogfooding docs
-test-projects/simple/                 # standalone smoke-test for project plugin (NOT included in root build); id("com.mreil.easy.project") version "latest.integration" from mreilComGradlePluginsSnapshots; own wrapper + gradle/gradle-daemon-jvm.properties toolchainVersion=21 + cache 0; run via `cd test-projects/simple && ./gradlew build` (Java 21 daemon auto-provisioned)
-test-projects/simple-settings/        # same for settings plugin (id("com.mreil.easy.settings") in settings.gradle.kts)
 ```
 
 ## Commands
@@ -62,7 +59,6 @@ test-projects/simple-settings/        # same for settings plugin (id("com.mreil.
 ./gradlew :easy-plugin:publishToMavenLocal
 ./gradlew :easy-plugin:publish                 # publish snapshots to mreilComGradlePluginsSnapshots (requires credentials)
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./gradlew publishAllPublicationsToMavenStagingRepository  # local publish-set verification: stages the full artifact set (jars, sources, javadoc, poms, module, markers, signatures) into each project's build/stagingRepo — no remote credentials needed, see DEVELOPMENT.md "Publishing"
-cd test-projects/simple && ./gradlew build     # manual snapshot smoke-test (standalone, Java 21, latest.integration)
 ./gradlew spotlessCheck                        # verify Kotlin/Gradle formatting (ktlint)
 ./gradlew spotlessApply                        # auto-format all sources
 ./gradlew testCodeCoverageReport testAggregateTestReport  # aggregated JaCoCo + test reports (root)
@@ -110,6 +106,48 @@ defer extra-plugin application via
 - Isolated functional tests (recommended): use `@DisableAllEasyPlugins` + `@ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)` from `easy-test-support` (`com.mreil.easy.test.support`). The extension sets `easy.disableAllPlugins=true` on both host and TestKit child (via `GradleTestProject.systemProperty`) and clears after. With all `CanBeEnabled` disabled (`ExtensionRegistrar.kt:131`), tests explicitly re-enable needed plugins via `easy { <name> { enabled.set(true) } }` (e.g. `publish` needing `codemeta` must declare extra `project(":contributor-plugins:codemeta:codemeta-plugin")` + enable both). For low-level flag verification see `DisableAllPluginsFuncTest.kt:14` (still uses manual `@SetSystemProperty` + `systemProperty`).
 - Run `./gradlew :easy-plugin:check` (or `./gradlew build` for all modules + aggregated reports) before submitting.
 - New contributor plugins must ship a configuration-cache compatibility test that fails on CC validation problems (e.g. external processes started at configuration time) — the VCS plugin's `git rev-parse ... @{u}` / `git remote get-url origin` calls broke CC and were only found after release.
+
+## Ad-hoc Release / Snapshot Verification
+
+No smoke-test projects are committed — they needed constant up-keeping against every release, so
+do this ad-hoc when a release/snapshot must be verified. Build a throwaway project outside the repo
+(e.g. under `/tmp`):
+
+1. Scaffold a standalone Gradle project with its own wrapper: copy `gradlew`, `gradlew.bat`,
+   `gradle/wrapper/` and `gradle/gradle-daemon-jvm.properties` (`toolchainVersion=21`) from this
+   repo, so the Java-21 plugin variant resolves.
+2. `settings.gradle.kts` (released version resolves from the Plugin Portal; snapshot versions use
+   `latest.integration` from the snapshot repo):
+   ```kotlin
+   pluginManagement {
+       repositories {
+           gradlePluginPortal()
+           mavenCentral()
+           maven { url = uri("https://repo.mreil.com/gradle-plugins-snapshots") }
+       }
+   }
+   plugins { id("com.mreil.easy.settings") version "<version>" }
+   easy {
+       // Contributors default to enabled; switch off what the test does not exercise to stay focused.
+       publish { enabled.set(false) }
+       semver { enabled.set(false) }
+       codemeta { enabled.set(false) }
+       vcs { enabled.set(false) }
+       release { enabled.set(false) }
+   }
+   dependencyResolutionManagement { repositories { mavenCentral() } }
+   ```
+3. Add the modules/sources the feature needs (`java-library`, `java-gradle-plugin`,
+   `src/<name>Test` suites) and a `gradle/libs.versions.toml` with the aliases catalog-aware wiring
+   probes (`assertj-core`, `junit-pioneer`, `junit-jupiter`/`junit-jupiter-params`, `mockito-core`).
+4. Run `./gradlew clean check --configuration-cache`, then `./gradlew check --configuration-cache`
+   again to assert the entry is reused. Inspect the outputs that matter: per-suite
+   `build/test-results`, root `build/reports/tests/<suite>/aggregated-results`,
+   `build/reports/jacoco/<suite>CodeCoverageReport*`, and `:dependencies` for catalog pinning/scoping.
+5. For publish behaviour, rehearse against a local docker Nexus using the test-only
+   `jreleaser.testNexusUrl` property (swaps in a `nexus3/local-test` deployer and demotes
+   `mavenCentral` to `NEVER`, so it can never touch real Central) — see
+   `contributor-plugins/publish/publish-plugin`.
 
 ## Dependencies
 - All dependencies/plugins must be in `gradle/libs.versions.toml` and referenced

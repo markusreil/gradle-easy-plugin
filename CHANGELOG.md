@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Fixed
+
+### Removed
+
+### Security
+
+## [0.0.112] - 2026-09-17
+
+### Added
+
 - `jvm-defaults`: test-suite auto-configuration and JaCoCo coverage, gated by the new
   `configureTestSuites`/`jacocoEnabled` properties (both default `true`). Functional suites
   discovered from `src/<name>Test/{java,kotlin}` get a catalog-pinned JUnit Jupiter,
@@ -27,14 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Spotless upgraded to 8.10.2 (`Upgrade spotless #18`).
 - Shared code moved to `gradle-plugin-utils`/`gradle-plugin-testutils`
   (`Move shared code to plugin/test utils #17`).
-
-### Deprecated
-
-### Fixed
-
-### Removed
-
-### Security
 
 ## [0.0.110] - 2026-09-16
 
