@@ -26,7 +26,7 @@ tasks.withType<Test>().configureEach {
 
 testing {
     suites {
-        val test by getting(JvmTestSuite::class) {
+        getByName<JvmTestSuite>("test") {
             dependencies {
                 implementation(project(":easy-plugin-core"))
                 implementation(project(":contributor-plugins:vcs:vcs-plugin"))

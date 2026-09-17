@@ -139,7 +139,7 @@ object ExtensionCopier {
             }
 
             CopyMode.Mode.NONE -> {
-                Unit
+                return
             }
         }
     }
