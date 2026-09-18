@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `easy-plugin` fat jar now bundles only modules built by this build; third-party runtime
+  dependencies are no longer shaded but declared at `runtime` scope in the published
+  POM/Gradle metadata, so consumers resolve them from Maven Central.
+
 ### Removed
 
 ### Security

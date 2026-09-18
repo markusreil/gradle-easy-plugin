@@ -7,6 +7,9 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.result.ResolvedArtifactResult
+import java.util.zip.ZipFile
 
 plugins {
     // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
@@ -45,6 +48,17 @@ dependencies {
         }.get()
         .forEach { implementation(project(it)) }
     fixtures(project(":easy-test-support"))
+
+    // The fat jar bundles only modules built by this build, so third-party dependencies must stay
+    // ordinary Maven Central dependencies of the published artifact. Declaring them on the Shadow
+    // `shadow` configuration keeps them out of the fat jar while still emitting them at `runtime`
+    // scope in the published POM/Gradle metadata (see `shadowJar.dependencies` below).
+    // Kotlin stdlib is deliberately not declared here: Gradle provides it to plugins, and it is
+    // still pulled transitively by kotlinx-serialization-json. `verifyShadowPackaging` fails the
+    // build if a third-party runtime dependency is not published.
+    shadow(libs.commons.configuration2)
+    shadow(libs.kotlinx.serialization.json)
+    shadow(libs.semver4j)
 }
 
 testing {
@@ -98,8 +112,22 @@ detekt {
     config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml"))
 }
 
+// Every module built by this build shares the project group, making it the single discriminator
+// between "bundled into the fat jar" (this build's modules) and "published as a Maven Central
+// dependency" (third-party artifacts).
+val internalGroup = project.group.toString()
+
 tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier = ""
+
+    // Bundle only modules produced by this build: they are exactly the runtime dependencies whose
+    // module group is this build's group. Third-party dependencies therefore stay out of the jar
+    // and are published from the `shadow` configuration instead (see the `dependencies` block).
+    // Test-only modules (`*-test-plugin` harnesses, `easy-test-support`, `gradle-plugin-testutils`)
+    // are not runtime dependencies and so are never seen here; `verifyShadowPackaging` asserts it.
+    dependencies {
+        include { it.moduleGroup == internalGroup }
+    }
 
     // Shadow 9.x applies duplicatesStrategy before resource transformers, so we must
     // explicitly allow duplicates for the paths the transformers merge.
@@ -112,7 +140,67 @@ tasks.named<ShadowJar>("shadowJar") {
     mergeServiceFiles()
 }
 
+// Guards the packaging contract: the fat jar must contain only classes built by this build (never
+// test-only modules or third-party classes), and every third-party module on the runtime classpath
+// must be published via the `shadow` configuration so consumers can resolve it from Maven Central.
+val verifyShadowPackaging =
+    tasks.register("verifyShadowPackaging") {
+        group = "verification"
+        description =
+            "Verifies the easy-plugin fat jar bundles only in-build modules and publishes " +
+            "all third-party runtime dependencies."
+
+        val runtimeArtifacts =
+            configurations.named("runtimeClasspath").flatMap { it.incoming.artifacts.resolvedArtifacts }
+        val publishedArtifacts =
+            configurations.named("shadow").flatMap { it.incoming.artifacts.resolvedArtifacts }
+        val shadowJarFile = tasks.named<ShadowJar>("shadowJar").flatMap { it.archiveFile }
+
+        inputs.file(shadowJarFile).withPropertyName("shadowJar")
+        inputs.files(configurations.named("runtimeClasspath")).withPropertyName("runtimeClasspath")
+        inputs.files(configurations.named("shadow")).withPropertyName("publishedDependencies")
+
+        doLast {
+            fun moduleId(artifact: ResolvedArtifactResult): String? =
+                (artifact.id.componentIdentifier as? ModuleComponentIdentifier)
+                    ?.let { "${it.group}:${it.module}" }
+
+            val runtimeModules = runtimeArtifacts.get().mapNotNull(::moduleId).toSet()
+            val publishedModules = publishedArtifacts.get().mapNotNull(::moduleId).toSet()
+            check((runtimeModules - publishedModules).isEmpty()) {
+                "Third-party runtime dependencies are missing from the published artifact " +
+                    "(declare them on the `shadow` configuration): ${runtimeModules - publishedModules}"
+            }
+
+            val testOnlyPrefixes =
+                listOf(
+                    "com/mreil/gradletest/",
+                    "com/mreil/easy/fixtures/",
+                    "com/mreil/easy/test/support/",
+                )
+            val offending =
+                ZipFile(shadowJarFile.get().asFile).use { zip ->
+                    zip
+                        .entries()
+                        .asSequence()
+                        .map { it.name }
+                        .filter { name ->
+                            name.endsWith(".class") &&
+                                (
+                                    !name.startsWith("com/mreil/") ||
+                                        testOnlyPrefixes.any { name.startsWith(it) } ||
+                                        name.contains("TestHarnessPlugin")
+                                )
+                        }.toList()
+                }
+            check(offending.isEmpty()) {
+                "The easy-plugin fat jar must bundle only modules built by this build: $offending"
+            }
+        }
+    }
+
 tasks.named<Task>("check") {
     // functionalTest is wired into check by jvm-defaults; only detekt stays repo-specific here.
     dependsOn("detekt")
+    dependsOn(verifyShadowPackaging)
 }
