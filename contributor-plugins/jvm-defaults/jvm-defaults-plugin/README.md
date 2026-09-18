@@ -11,7 +11,10 @@ by default (`enabled` defaults to `true` in `DefaultEasyJvmDefaultsExtension`); 
 `easy { jvmDefaults { enabled.set(false) } }`. The public extension API
 (`EasyJvmDefaultsExtension`) lives in `jvm-defaults-plugin-api`; the implementation
 (`DefaultEasyJvmDefaultsExtension`, annotated `@PublicType`) and wiring
-(`EasyJvmDefaultsPlugin`, `TestSuiteWiring`) live here.
+(`EasyJvmDefaultsPlugin`, `TestSuiteWiring`) live here. Java-specific wiring lives under the
+`com.mreil.easy.jvm.java` package (`ToolchainWiring`, `TargetCompatibilityWiring`); Kotlin-specific
+wiring and its gated plugin live under `com.mreil.easy.jvm.kotlin` (`KotlinTargetWiring`,
+`EasyJvmDefaultsKotlinPlugin`).
 
 All behaviour is registered only when the `java` plugin is present, from the plugin's
 `afterEnabled` hook (which the shared lifecycle invokes after evaluation, so `easy { }`
@@ -46,6 +49,120 @@ order), using any common naming convention. Equivalent forms:
 ./gradlew build -Pjava.toolchainVersion=17
 JAVA_TOOLCHAIN_VERSION=17 ./gradlew build
 ```
+
+### Java target compatibility
+
+* If the `java.targetVersion` property is set, the `java` extension's `sourceCompatibility` and
+  `targetCompatibility` are pinned to that version and every `JavaCompile` task gets
+  `options.release` set to the corresponding major version (`--release`).
+* When the Kotlin JVM plugin is applied, the version is also pinned on the Kotlin side via
+  `jvmTarget` and `-Xjdk-release`, so Kotlin's bytecode target cannot drift from the declared
+  target.
+* The declared target must not exceed the toolchain pinned via `java.toolchainVersion`; a higher
+  target fails fast with a clear error instead of a compiler error.
+* If the property is absent, nothing is changed and an `INFO` log explains that the default
+  source/target compatibility is left in place.
+
+The value is resolved from the environment, a system property or a Gradle property (in that
+order), using any common naming convention. Equivalent forms:
+
+| Source | Key |
+| ------ | --- |
+| Environment variable | `JAVA_TARGET_VERSION` |
+| System property | `java.target.version` / `java.targetVersion` |
+| Gradle property | `java.target.version` / `java.targetVersion` |
+
+```kotlin
+// Compile with a Java 21 toolchain but emit Java 17 bytecode/API.
+java {
+    toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
+}
+```
+
+```bash
+./gradlew build -Pjava.toolchainVersion=21 -Pjava.targetVersion=17
+JAVA_TARGET_VERSION=17 ./gradlew build
+```
+
+### Dokka Javadoc
+
+When the Kotlin JVM plugin is applied, this dynamically applies Dokka's Javadoc plugin
+(`org.jetbrains.dokka-javadoc`) and rewires `javadocJar` to include Dokka's publication Javadoc
+output, so Kotlin sources get real Javadoc HTML instead of the empty stock `javadoc` output.
+
+It works without declaring Dokka anywhere: a settings-scope plugin registers a `beforeProject`
+hook that adds the Dokka **marker dependency** to the root project's buildscript classpath (only
+the root gets the classpath entry; subprojects inherit its buildscript classloader, like a root
+`plugins { id(...) apply false }`) and applies the plugin, per project, only once the Kotlin JVM
+plugin is present. This relies on Gradle's buildscript classloader inheritance.
+
+The rewire only touches a `javadocJar` that the plugin itself created: a `javadocJar` declared
+manually in the build script is left untouched (the usual migration hint is logged instead).
+
+The marker is resolved from the build's **existing buildscript repositories** — the build must
+declare them, e.g.:
+
+```kotlin
+// build.gradle.kts (root)
+buildscript {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+```
+
+Providing sensible default repositories (or reusing the build's `pluginManagement` repositories)
+is a follow-up (`TODO` in `DokkaJavadocWiring`); the plugin does not add or force any repositories.
+
+Opt in with the settings-scope `easy.jvmDefaults.dokkaJavadoc(version)` function:
+
+```kotlin
+// settings.gradle.kts
+easy {
+    jvmDefaults {
+        dokkaJavadoc()          // default Dokka 2.2.0
+        // dokkaJavadoc("2.3.0") // or pin a version explicitly
+    }
+}
+```
+
+The function only enables adding the Dokka marker to the root project's buildscript classpath; if
+Dokka is present by other means, `javadocJar` is still backed by Dokka output. It is opt-in
+(not calling it means no classpath inclusion), settings-only, and the configured version is copied
+read-only to projects (calling `dokkaJavadoc(...)` on a project-scope copy throws). The default
+version is `2.2.0`; there is no Gradle-property override.
+
+The wiring is coupled to Dokka's plugin id and its internal `dokkaGeneratePublicationJavadoc` task,
+and to Dokka's compatible Kotlin (KGP) version range matching the build's KGP. Passing a version
+via `dokkaJavadoc("<version>")` (or declaring Dokka in the build already) is the escape hatch when
+a different Dokka/KGP pairing is needed.
+
+Configuration cache: the configuration-time wiring (settings plugin, `beforeProject` registration,
+marker injection) is configuration-cache compatible; the committed
+`DokkaJavadocFuncTest.is configuration cache compatible` test guards the non-Kotlin path
+automatically. The Kotlin+Dokka path cannot be automated under TestKit because KGP itself fails any
+configuration-cache store there (an unrelated `__buildFusService__` build-service serialization
+bug). It was verified manually per `AGENTS.md` → "Ad-hoc Release / Snapshot Verification": a
+throwaway project outside the repo (Kotlin + Dokka wired as above) run twice with
+`--configuration-cache` stored the entry on the first run and reused it on the second, with no
+problems reported.
+
+Caveats:
+
+* **Unresolvable Dokka**: the marker is resolved from the build's existing buildscript
+  repositories; if Dokka cannot be resolved there, the build fails with Gradle's normal
+  dependency-resolution error — no repositories are added and no custom error is provided.
+  Sensible default repositories (or reuse of the `pluginManagement` repositories) are an explicit
+  follow-up (`TODO` in `DokkaJavadocWiring`).
+* **Scope**: reacts only to the `org.jetbrains.kotlin.jvm` plugin; Kotlin Multiplatform and
+  Android Kotlin projects are out of scope for this plugin in general and are not covered.
+* **Mixed sources**: only Kotlin-only projects are supported. The rewired `javadocJar` uses
+  `DuplicatesStrategy.EXCLUDE`, so for mixed Java+Kotlin sources the stock `javadoc` output wins on
+  collisions and the layout stays deterministic; mixed-source javadoc jars are still not supported.
+* The root's buildscript classloader must be inherited by subprojects for Dokka to resolve there
+  (Gradle's default; the equivalent of a root `plugins { id(...) apply false }`), and the whole
+  feature is disabled by `easy { jvmDefaults { enabled.set(false) } }` as well.
 
 ### Test-suite auto-configuration
 

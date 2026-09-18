@@ -2,9 +2,11 @@
 
 ## Project Overview
 Multi-project Gradle plugin build (Kotlin + `java-gradle-plugin`, Gradle 9.4.1). Root
-`build.gradle.kts` applies `kotlin-jvm`/`detekt`/`spotless` with `apply false` to avoid
-Kotlin multi-load warning and configures aggregated reporting (`jacoco-report-aggregation`,
-`test-report-aggregation`) + centralized Spotless. Plugins:
+`build.gradle.kts` declares `kotlin-jvm`/`detekt`/`spotless` with `apply false` (puts them on
+the classpath and avoids the Kotlin multi-load warning) and, in its leaf `subprojects { }`
+block, centrally applies all three plus the shared detekt config and `check.dependsOn("detekt")`.
+It also configures aggregated reporting (`jacoco-report-aggregation`, `test-report-aggregation`).
+Plugins:
 - `com.mreil.easy.project` → `com.mreil.easy.ProjectPlugin` (Project, in `easy-plugin-core`, published via `easy-plugin`)
 - `com.mreil.easy.settings` → `com.mreil.easy.SettingsPlugin` (Settings, in `easy-plugin-core`, published via `easy-plugin`)
 - Contributor plugins (internal, via SPI — not applied by ID): `contributor-plugins/publish/publish-plugin-api` (public `EasyPublishExtension` interface + `MavenRepoSpec`) + `contributor-plugins/publish/publish-plugin` → `com.mreil.easy.publish.EasyPublishContributor` / `EasyPublishPlugin` / `DefaultEasyPublishExtension` (`@PublicType(EasyPublishExtension::class)`), `contributor-plugins/jvm-defaults/jvm-defaults-plugin-api` (public `EasyJvmDefaultsExtension` interface) + `contributor-plugins/jvm-defaults/jvm-defaults-plugin` → `com.mreil.easy.jvm.EasyJvmDefaultsContributor` / `EasyJvmDefaultsPlugin` / `DefaultEasyJvmDefaultsExtension` (@EnabledBy EasyJvmDefaultsExtension, @PublicType) (+ `publish-test-plugin` / `jvm-defaults-test-plugin` harnesses `com.mreil.easy.test.publish` / `com.mreil.easy.test.jvm` that apply `ProjectPlugin` for `withPluginClasspath` functional tests)
@@ -16,11 +18,11 @@ Shared discovery via `PluginRegistry`/`PluginRegistryService` (BuildService) +
 ## Structure
 ```
 settings.gradle.kts          # includes :easy-plugin, :easy-plugin-core, :easy-contributor-api, :easy-contributor-support, :easy-test-support, :gradle-plugin-testutils, :gradle-plugin-utils, :contributor-plugins:publish:publish-plugin-api, :contributor-plugins:publish:publish-plugin, :contributor-plugins:publish:publish-test-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-plugin-api, :contributor-plugins:jvm-defaults:jvm-defaults-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-test-plugin, :contributor-plugins:semver:semver-plugin-api, :contributor-plugins:semver:semver-plugin, :contributor-plugins:semver:semver-test-plugin, :contributor-plugins:codemeta:codemeta-plugin-api, :contributor-plugins:codemeta:codemeta-plugin, :contributor-plugins:codemeta:codemeta-test-plugin, :contributor-plugins:project-defaults:project-defaults-plugin-api, :contributor-plugins:project-defaults:project-defaults-plugin, :contributor-plugins:project-defaults:project-defaults-test-plugin
-build.gradle.kts             # root: lifecycle-base/jacoco-report-aggregation/test-report-aggregation + kotlin-jvm/detekt/spotless apply false; centralized Spotless (ktlint) for leaf projects; aggregated testCodeCoverageReport/testAggregateTestReport
+build.gradle.kts             # root: lifecycle-base/jacoco-report-aggregation/test-report-aggregation + kotlin-jvm/detekt/spotless apply false; leaf subprojects{} centrally applies Kotlin JVM + detekt (shared config + check wiring) + Spotless (ktlint); aggregated testCodeCoverageReport/testAggregateTestReport
 gradle.properties            # CC/parallel/caching/warning.mode=all + plugin.project/settings IDs (single source; runtime mirror in PluginIds.kt)
 gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 2.0.0-alpha.6, spotless 8.10.2)
 config/detekt/detekt.yml     # detekt 2.x config (maxLineLength 140, EmptyFunctionBlock off; AbstractClassCanBeConcreteClass excludes test paths)
-easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella: registers com.mreil.easy.project/settings via providers.gradleProperty, aggregates easy-plugin-core + all :contributor-plugins:*:*-plugin (dynamic, APIs transitively); test suites + pluginUnderTestMetadata + detekt; publishing.repositories for mreilComGradlePluginsSnapshots (marker publications via java-gradle-plugin)
+easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella: registers com.mreil.easy.project/settings via providers.gradleProperty, aggregates easy-plugin-core + all :contributor-plugins:*:*-plugin (dynamic, APIs transitively); test suites + pluginUnderTestMetadata + verifyShadowPackaging; publishing.repositories for mreilComGradlePluginsSnapshots (marker publications via java-gradle-plugin)
 easy-plugin-core/build.gradle.kts      # java-library: ProjectPlugin, SettingsPlugin, PluginRegistryService, PluginRegistrar, ExtensionRegistrar, EasyExtension
 easy-contributor-api/src/main/kotlin/com/mreil/easy/ # PluginIds, PluginRegistry, EasyPluginContributor, ApplyToSubprojects, EnabledBy, Named, EasyPluginExtension, CanBeEnabled, PublicType
 easy-contributor-support/build.gradle.kts   # plain Kotlin lib (no plugin): AbstractEasyProjectPlugin, AbstractEasySettingsPlugin, PluginLifecycle
@@ -69,7 +71,7 @@ Use `./gradlew` (wrapper, Gradle 9.4.1) — not system `gradle`.
 ## Conventions
 - Use imports instead of fully qualified names everywhere (e.g., `import kotlin.reflect.KClass` + `KClass` rather than `kotlin.reflect.KClass`). This applies to Kotlin sources and KDoc links where possible; prefer imported simple names for readability.
 - Kotlin DSL (`build.gradle.kts`, `settings.gradle.kts`). Root
-`build.gradle.kts` must keep `kotlin-jvm`/`detekt`/`spotless` `apply false`; leaf `subprojects { }` block centrally applies Spotless — keep.
+`build.gradle.kts` must keep `kotlin-jvm`/`detekt`/`spotless` `apply false`; its leaf `subprojects { }` block centrally applies Kotlin JVM + detekt + Spotless and wires the shared detekt config + `check.dependsOn("detekt")` — keep module build files free of those declarations.
 - Plugin IDs are the single source in `gradle.properties`
 (`plugin.project`/`plugin.settings`), read via
 `providers.gradleProperty(...).get()` in `easy-plugin/build.gradle.kts`; runtime
@@ -82,7 +84,8 @@ implementationClass } }`. The repo dogfoods the released `com.mreil.easy.setting
 discovered `*Test` suites (catalog-pinned JUnit Jupiter, catalog test deps, `main` output,
 `gradleTestKit()`/plugin-under-test metadata/`testSourceSets`, `check` + `shouldRunAfter`) and
 applies `jacoco` — so module build files declare only repo-specific test-helper deps (e.g.
-`:easy-test-support`, `:gradle-plugin-testutils`) plus `jvmArgs`, never
+`:easy-test-support`, `:gradle-plugin-testutils`) plus `jvmArgs`, never the
+`kotlin.jvm`/`detekt` plugin aliases, the detekt config or `check.dependsOn("detekt")`,
 `useJUnitJupiter`/AssertJ/Pioneer/JUnit params/Mockito, `jacoco`, `testSourceSets` or
 `check.dependsOn(functionalTest)`. JaCoCo report formats are centralized in the root
 `subprojects` block.

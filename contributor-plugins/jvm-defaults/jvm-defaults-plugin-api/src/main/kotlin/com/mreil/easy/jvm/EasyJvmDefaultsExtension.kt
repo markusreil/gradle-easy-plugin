@@ -45,7 +45,22 @@ interface EasyJvmDefaultsExtension :
      */
     val jacocoEnabled: Property<Boolean>
 
+    /**
+     * Settings-scope opt-in: adds the Dokka Javadoc plugin marker to every project's buildscript
+     * classpath so it can be applied to Kotlin projects and back their `javadocJar` with Dokka
+     * output.
+     *
+     * [version] pins the Dokka plugin version and defaults to [DEFAULT_DOKKA_VERSION]. Not calling
+     * this function means no classpath inclusion. It is intentionally settings-only and copied read-only to
+     * projects (call it in `settings.gradle(.kts)`). If Dokka is present by other means, the
+     * `javadocJar` is still backed by Dokka output.
+     */
+    fun dokkaJavadoc(version: String? = null)
+
     companion object : Named {
+        /** Dokka plugin version used when [dokkaJavadoc] is called without an explicit version. */
+        const val DEFAULT_DOKKA_VERSION: String = "2.2.0"
+
         override val name: String = "jvmDefaults"
     }
 }

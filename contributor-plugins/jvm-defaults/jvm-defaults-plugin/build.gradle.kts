@@ -1,7 +1,5 @@
 plugins {
     `java-library`
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.detekt)
 }
 
 easy {
@@ -16,6 +14,7 @@ dependencies {
     implementation(project(":easy-contributor-support"))
     implementation(project(":gradle-plugin-utils"))
     compileOnly(gradleApi())
+    compileOnly(libs.kotlin.gradle.plugin.api)
 }
 
 tasks.withType<Test>().configureEach {
@@ -32,10 +31,4 @@ testing {
             }
         }
     }
-}
-
-detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml")) }
-
-tasks.named<Task>("check") {
-    dependsOn("detekt")
 }

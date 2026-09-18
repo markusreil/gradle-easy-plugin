@@ -1,4 +1,5 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
+import dev.detekt.gradle.extensions.DetektExtension
 
 plugins {
     `lifecycle-base`
@@ -49,9 +50,13 @@ tasks.named("check") {
 // itself is unaffected — only the compile/test toolchain is pinned to 17 (auto-provisioned if absent).
 // Version is single-sourced from gradle.properties (java.toolchainVersion).
 subprojects {
-    // Leaf-project block: Spotless config, detekt task wiring.
+    // Leaf-project block: Kotlin/detekt/Spotless are applied centrally so module build files only
+    // declare what makes them distinct. Root declares all three with `apply false` for the
+    // classpath and to keep the Kotlin plugin single-classloader (avoids the multi-load warning).
     if (childProjects.isNotEmpty()) return@subprojects
     apply(plugin = "com.diffplug.spotless")
+    apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "dev.detekt")
     configure<SpotlessExtension> {
         kotlin {
             target("src/**/*.kt")
@@ -67,6 +72,12 @@ subprojects {
             endWithNewline()
         }
     }
+    // Shared detekt config (previously repeated in every module build file); the `check` wiring
+    // below also applies to every leaf project.
+    configure<DetektExtension> {
+        config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml"))
+    }
+    tasks.named("check") { dependsOn("detekt") }
     // detekt 2.x analyses with type resolution, one task per source set (detektMain, detektTest,
     // detektFunctionalTest, ...). Route the conventional `detekt` task — and therefore `check` —
     // through those type-aware tasks, and disable the plain task's own non-type-aware run so no

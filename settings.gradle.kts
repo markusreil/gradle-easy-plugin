@@ -7,7 +7,7 @@ pluginManagement {
     }
 }
 
-plugins { id("com.mreil.easy.settings") version "0.0.112" }
+plugins { id("com.mreil.easy.settings") version "0.0.114" }
 
 easy {
     publish {

@@ -1,5 +1,6 @@
 package com.mreil.easy.jvm
 
+import com.mreil.easy.CopyMode
 import com.mreil.easy.PublicType
 import org.gradle.api.provider.Property
 
@@ -23,4 +24,16 @@ abstract class DefaultEasyJvmDefaultsExtension : EasyJvmDefaultsExtension {
     abstract override val aggregateReports: Property<Boolean>
 
     abstract override val jacocoEnabled: Property<Boolean>
+
+    /**
+     * Backing state for [dokkaJavadoc]; absent until the function is called. Not part of the public
+     * interface (the function is the public surface) and read-only when copied to projects.
+     */
+    @get:CopyMode(CopyMode.Mode.READ_ONLY)
+    abstract val dokkaJavadocVersion: Property<String>
+
+    override fun dokkaJavadoc(version: String?) {
+        require(version == null || version.isNotBlank()) { "Dokka version must not be blank." }
+        dokkaJavadocVersion.set(version ?: EasyJvmDefaultsExtension.DEFAULT_DOKKA_VERSION)
+    }
 }

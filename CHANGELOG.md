@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `jvm-defaults`: opt-in `java.targetVersion` property pins Java source/target compatibility and
+  `--release`, plus Kotlin `jvmTarget`/`-Xjdk-release` when the Kotlin JVM plugin is applied, so a
+  newer toolchain can produce bytecode/API compatible with an older JDK.
+- `jvm-defaults`: when the Kotlin JVM plugin is applied, Dokka's Javadoc
+  plugin is dynamically applied and `javadocJar` is rewired to Dokka output. Opt-in via the
+  settings-scope `easy { jvmDefaults { dokkaJavadoc() } }` function (`dokkaJavadoc("2.3.0")` pins
+  the version, default `2.2.0`); it guards only buildscript-classpath inclusion, is copied
+  read-only to projects, and adds no Dokka dependency to any module.
+
 ### Changed
 
 ### Deprecated

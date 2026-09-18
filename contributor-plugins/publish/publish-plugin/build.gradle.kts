@@ -1,7 +1,5 @@
 plugins {
     `java-library`
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.detekt)
 }
 
 easy {
@@ -42,10 +40,4 @@ testing {
             }
         }
     }
-}
-
-detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml")) }
-
-tasks.named<Task>("check") {
-    dependsOn("detekt")
 }

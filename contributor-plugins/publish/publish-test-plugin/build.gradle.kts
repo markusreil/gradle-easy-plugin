@@ -1,7 +1,5 @@
 plugins {
     `java-gradle-plugin`
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.detekt)
 }
 
 easy {
@@ -44,12 +42,6 @@ testing {
     }
 }
 
-detekt { config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml")) }
-
 tasks.withType<Test>().configureEach {
     jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
-}
-
-tasks.named<Task>("check") {
-    dependsOn("detekt")
 }
