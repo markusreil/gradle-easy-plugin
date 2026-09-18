@@ -4,6 +4,7 @@
 assertj = "3.27.3"
 detekt = "2.0.0-alpha.6"
 jreleaser = "1.25.0"
+kotlin = "2.4.20"
 kotlinx-serialization = "1.10.0"
 junit-jupiter = "5.11.3"
 junit-pioneer = "2.3.0"
@@ -28,8 +29,8 @@ mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 
 [plugins]
 detekt = { id = "dev.detekt", version.ref = "detekt" }
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.4.20" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "2.4.20" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 plugin-publish = { id = "com.gradle.plugin-publish", version.ref = "plugin-publish" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
