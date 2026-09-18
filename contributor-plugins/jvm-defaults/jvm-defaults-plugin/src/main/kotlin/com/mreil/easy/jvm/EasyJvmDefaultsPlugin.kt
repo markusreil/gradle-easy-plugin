@@ -3,6 +3,8 @@ package com.mreil.easy.jvm
 import com.mreil.easy.AbstractEasyProjectPlugin
 import com.mreil.easy.ApplyToSubprojects
 import com.mreil.easy.EnabledBy
+import com.mreil.easy.jvm.java.TargetCompatibilityWiring
+import com.mreil.easy.jvm.java.ToolchainWiring
 import com.mreil.easy.notifyRedundantConfig
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPluginExtension
@@ -17,6 +19,7 @@ class EasyJvmDefaultsPlugin : AbstractEasyProjectPlugin() {
             ensureJarTask(target, "sourcesJar", "withSourcesJar()", JavaPluginExtension::withSourcesJar)
             ensureJarTask(target, "javadocJar", "withJavadocJar()", JavaPluginExtension::withJavadocJar)
             ToolchainWiring.configure(target)
+            TargetCompatibilityWiring.configure(target)
             TestSuiteWiring.configure(target)
             JacocoWiring.configure(target)
         }

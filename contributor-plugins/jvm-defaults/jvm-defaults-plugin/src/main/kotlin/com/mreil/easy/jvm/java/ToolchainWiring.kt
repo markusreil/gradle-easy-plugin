@@ -1,4 +1,4 @@
-package com.mreil.easy.jvm
+package com.mreil.easy.jvm.java
 
 import com.mreil.easy.easyInfo
 import com.mreil.utils.PropertyResolver

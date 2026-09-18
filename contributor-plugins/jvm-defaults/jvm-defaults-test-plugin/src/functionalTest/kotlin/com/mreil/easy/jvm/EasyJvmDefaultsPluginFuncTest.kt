@@ -95,6 +95,69 @@ class EasyJvmDefaultsPluginFuncTest {
     }
 
     @Test
+    fun `aligns java and kotlin targets with java target version`() {
+        val targetProbe =
+            probeTask("verifyTargets") {
+                prelude(TARGET_PROBE_PRELUDE)
+                expect("JAVA_TARGET_COMPATIBILITY", "javaExtension.targetCompatibility.toString()", "11")
+                expect("JAVA_RELEASE", "compileJava.options.release.orNull", "11")
+                expect("KOTLIN_JVM_TARGET", "compileKotlin.compilerOptions.jvmTarget.get().target", "11")
+                expect(
+                    "KOTLIN_JDK_RELEASE",
+                    "compileKotlin.compilerOptions.freeCompilerArgs.get().single { it.startsWith(\"-Xjdk-release=\") }",
+                    "-Xjdk-release=11",
+                )
+            }
+        project.systemProperty("java.targetVersion", "11")
+        project.configure {
+            buildGradle(targetBuild(targetProbe.script()))
+        }
+
+        val result = project.build("verifyTargets")
+
+        assertSoftly { softly ->
+            targetProbe.assertOutput(softly, result.output)
+        }
+    }
+
+    @Test
+    fun `leaves kotlin and java targets untouched without target version`() {
+        val targetProbe =
+            probeTask("verifyTargets") {
+                prelude(TARGET_PROBE_PRELUDE)
+                expect("JAVA_RELEASE_ABSENT", "compileJava.options.release.orNull == null", "true")
+                expect(
+                    "KOTLIN_JDK_RELEASE_ABSENT",
+                    "compileKotlin.compilerOptions.freeCompilerArgs.get().none { it.startsWith(\"-Xjdk-release=\") }",
+                    "true",
+                )
+            }
+        project.configure {
+            buildGradle(targetBuild(targetProbe.script()))
+        }
+
+        val result = project.build("verifyTargets")
+
+        assertSoftly { softly ->
+            targetProbe.assertOutput(softly, result.output)
+        }
+    }
+
+    private fun targetBuild(probeScript: String): String =
+        """
+        plugins {
+            `java-library`
+            id("org.jetbrains.kotlin.jvm")
+            id("com.mreil.easy.test.jvm")
+        }
+        repositories { mavenCentral() }
+        easy {
+            jvmDefaults { enabled.set(true) }
+        }
+        $probeScript
+        """.trimIndent()
+
+    @Test
     fun `aggregates auto-configured functional suites at the root`() {
         project.configure {
             settings("include(\"child\")")
@@ -326,6 +389,11 @@ class EasyJvmDefaultsPluginFuncTest {
         }
     }
 }
+
+private const val TARGET_PROBE_PRELUDE =
+    "val javaExtension = project.extensions.getByType(org.gradle.api.plugins.JavaPluginExtension::class.java)\n" +
+        "val compileJava = project.tasks.named(\"compileJava\", org.gradle.api.tasks.compile.JavaCompile::class.java).get()\n" +
+        "val compileKotlin = project.tasks.named(\"compileKotlin\", org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).get()"
 
 private const val CATALOG_DEPENDENCY_QUERIES =
     "val cfg = project.configurations.getByName(\"functionalTestImplementation\")\n" +

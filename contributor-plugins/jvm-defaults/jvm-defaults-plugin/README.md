@@ -11,7 +11,10 @@ by default (`enabled` defaults to `true` in `DefaultEasyJvmDefaultsExtension`); 
 `easy { jvmDefaults { enabled.set(false) } }`. The public extension API
 (`EasyJvmDefaultsExtension`) lives in `jvm-defaults-plugin-api`; the implementation
 (`DefaultEasyJvmDefaultsExtension`, annotated `@PublicType`) and wiring
-(`EasyJvmDefaultsPlugin`, `TestSuiteWiring`) live here.
+(`EasyJvmDefaultsPlugin`, `TestSuiteWiring`) live here. Java-specific wiring lives under the
+`com.mreil.easy.jvm.java` package (`ToolchainWiring`, `TargetCompatibilityWiring`); Kotlin-specific
+wiring and its gated plugin live under `com.mreil.easy.jvm.kotlin` (`KotlinTargetWiring`,
+`EasyJvmDefaultsKotlinPlugin`).
 
 All behaviour is registered only when the `java` plugin is present, from the plugin's
 `afterEnabled` hook (which the shared lifecycle invokes after evaluation, so `easy { }`
@@ -45,6 +48,40 @@ order), using any common naming convention. Equivalent forms:
 ```bash
 ./gradlew build -Pjava.toolchainVersion=17
 JAVA_TOOLCHAIN_VERSION=17 ./gradlew build
+```
+
+### Java target compatibility
+
+* If the `java.targetVersion` property is set, the `java` extension's `sourceCompatibility` and
+  `targetCompatibility` are pinned to that version and every `JavaCompile` task gets
+  `options.release` set to the corresponding major version (`--release`).
+* When the Kotlin JVM plugin is applied, the version is also pinned on the Kotlin side via
+  `jvmTarget` and `-Xjdk-release`, so Kotlin's bytecode target cannot drift from the declared
+  target.
+* The declared target must not exceed the toolchain pinned via `java.toolchainVersion`; a higher
+  target fails fast with a clear error instead of a compiler error.
+* If the property is absent, nothing is changed and an `INFO` log explains that the default
+  source/target compatibility is left in place.
+
+The value is resolved from the environment, a system property or a Gradle property (in that
+order), using any common naming convention. Equivalent forms:
+
+| Source | Key |
+| ------ | --- |
+| Environment variable | `JAVA_TARGET_VERSION` |
+| System property | `java.target.version` / `java.targetVersion` |
+| Gradle property | `java.target.version` / `java.targetVersion` |
+
+```kotlin
+// Compile with a Java 21 toolchain but emit Java 17 bytecode/API.
+java {
+    toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
+}
+```
+
+```bash
+./gradlew build -Pjava.toolchainVersion=21 -Pjava.targetVersion=17
+JAVA_TARGET_VERSION=17 ./gradlew build
 ```
 
 ### Test-suite auto-configuration

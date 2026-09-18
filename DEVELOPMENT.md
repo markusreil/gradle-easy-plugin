@@ -22,11 +22,11 @@ Discovery via `PluginRegistry`/`PluginRegistryService` (BuildService) + `EasyPlu
 
 ```
 settings.gradle.kts          # includes :easy-plugin, :easy-plugin-core, :easy-contributor-api, :easy-contributor-support, :easy-test-support, :gradle-plugin-testutils, :gradle-plugin-utils, :contributor-plugins:publish:..., :contributor-plugins:jvm-defaults:..., :contributor-plugins:semver:..., :contributor-plugins:codemeta:...
-build.gradle.kts             # root: lifecycle-base/jacoco-report-aggregation/test-report-aggregation + kotlin-jvm/detekt/spotless apply false; centralized Spotless; aggregated reports
+build.gradle.kts             # root: lifecycle-base/jacoco-report-aggregation/test-report-aggregation + kotlin-jvm/detekt/spotless apply false; leaf subprojects{} centrally applies Kotlin JVM + detekt (shared config/check) + Spotless; aggregated reports
 gradle.properties            # CC/parallel/caching/warning.mode=all + plugin.project/settings IDs (single source; runtime mirror in PluginIds.kt)
 gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 2.0.0-alpha.6, spotless 8.10.2)
 config/detekt/detekt.yml     # detekt 2.x config (maxLineLength 140, EmptyFunctionBlock off)
-easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella: registers com.mreil.easy.project/settings via providers.gradleProperty, aggregates easy-plugin-core + contributor libs via dynamic :contributor-plugins:*:*-plugin; test suites + pluginUnderTestMetadata + detekt; publishing.repositories for mreilComGradlePluginsSnapshots (marker publications via java-gradle-plugin)
+easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella: registers com.mreil.easy.project/settings via providers.gradleProperty, aggregates easy-plugin-core + contributor libs via dynamic :contributor-plugins:*:*-plugin; test suites + pluginUnderTestMetadata + verifyShadowPackaging; publishing.repositories for mreilComGradlePluginsSnapshots (marker publications via java-gradle-plugin)
 easy-plugin-core/build.gradle.kts      # java-library: ProjectPlugin, SettingsPlugin, PluginRegistryService, PluginRegistrar, ExtensionRegistrar, EasyExtension
 easy-contributor-api/src/main/kotlin/com/mreil/easy/ # PluginIds, PluginRegistry, EasyPluginContributor, ApplyToSubprojects, EnabledBy, Named, EasyPluginExtension, CanBeEnabled, PublicType
 easy-contributor-support/build.gradle.kts   # plain Kotlin lib: AbstractEasyProjectPlugin, AbstractEasySettingsPlugin, PluginLifecycle
@@ -204,7 +204,7 @@ Use `./gradlew` (wrapper, Gradle 9.4.1) — not system `gradle`.
 ## Conventions
 
 * Use imports instead of fully qualified names everywhere (e.g., `import kotlin.reflect.KClass` + `KClass`).
-* Kotlin DSL (`build.gradle.kts`, `settings.gradle.kts`). Root `build.gradle.kts` must keep `kotlin-jvm`/`detekt`/`spotless` `apply false`; leaf `subprojects { }` centrally applies Spotless — keep.
+* Kotlin DSL (`build.gradle.kts`, `settings.gradle.kts`). Root `build.gradle.kts` must keep `kotlin-jvm`/`detekt`/`spotless` `apply false`; its leaf `subprojects { }` centrally applies Kotlin JVM + detekt + Spotless and wires the shared detekt config + `check.dependsOn("detekt")` — keep module build files free of those declarations.
 * Plugin IDs are the single source in `gradle.properties` (`plugin.project`/`plugin.settings`), read via `providers.gradleProperty(...).get()` in `easy-plugin/build.gradle.kts`; runtime mirror is `easy-contributor-api/.../PluginIds.kt` — keep in sync.
 * Plugin registration via `gradlePlugin { plugins.creating { id, implementationClass } }`. The build dogfoods the released `com.mreil.easy.settings`, whose `jvm-defaults` contributor auto-configures test suites (framework + catalog test deps + `java-gradle-plugin` classpath/`testSourceSets` + `check` wiring) and applies `jacoco`; module build files therefore only declare repo-specific test-helper deps and `jvmArgs`, and JaCoCo report formats are centralized in the root `subprojects` block.
 * CC/parallel/caching/warning.mode=all are on — tasks must be CC-compatible (providers/properties, no `project` at execution).

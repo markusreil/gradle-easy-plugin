@@ -1,7 +1,5 @@
 plugins {
     `java-library`
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.detekt)
 }
 
 repositories {
@@ -13,12 +11,4 @@ dependencies {
     api(project(":easy-contributor-api"))
     api(project(":gradle-plugin-testutils"))
     implementation(libs.junit.jupiter.api)
-}
-
-detekt {
-    config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml"))
-}
-
-tasks.named<Task>("check") {
-    dependsOn("detekt")
 }

@@ -2,8 +2,12 @@ package com.mreil.easy.jvm
 
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.jvm.java.TargetCompatibilityWiring
+import com.mreil.easy.jvm.java.ToolchainWiring
+import com.mreil.easy.jvm.kotlin.EasyJvmDefaultsKotlinPlugin
 import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
+import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
@@ -21,6 +25,7 @@ import org.gradle.api.plugins.jvm.JvmTestSuite
 import org.gradle.api.provider.Provider
 import org.gradle.api.reporting.ReportingExtension
 import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.AggregateTestReport
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.plugin.devel.GradlePluginDevelopmentExtension
@@ -40,6 +45,7 @@ import java.io.File
 import java.nio.file.Files
 import java.util.Optional
 
+@Suppress("LargeClass")
 class EasyJvmDefaultsPluginTest {
     @Test
     fun `registers jvmDefaults extension enabled by default`() {
@@ -133,6 +139,63 @@ class EasyJvmDefaultsPluginTest {
 
         assertSoftly { softly ->
             softly.assertThat(languageVersion).isNull()
+        }
+    }
+
+    @Test
+    fun `pins java target compatibility and release from declared target version`() {
+        System.setProperty(TargetCompatibilityWiring.PROPERTY_NAME, "11")
+        try {
+            val project = ProjectBuilder.builder().build()
+            project.pluginManager.apply("java")
+            project.pluginManager.apply(ProjectPlugin::class.java)
+            project.evaluate()
+
+            val javaExtension = project.extensions.getByType(JavaPluginExtension::class.java)
+            val release =
+                project.tasks
+                    .named("compileJava", JavaCompile::class.java)
+                    .get()
+                    .options
+                    .release
+                    .orNull
+
+            assertSoftly { softly ->
+                softly.assertThat(javaExtension.sourceCompatibility).isEqualTo(JavaVersion.VERSION_11)
+                softly.assertThat(javaExtension.targetCompatibility).isEqualTo(JavaVersion.VERSION_11)
+                softly.assertThat(release).isEqualTo(11)
+            }
+        } finally {
+            System.clearProperty(TargetCompatibilityWiring.PROPERTY_NAME)
+        }
+    }
+
+    @Test
+    fun `does not configure java target compatibility when property absent`() {
+        val project = ProjectBuilder.builder().build()
+        project.pluginManager.apply("java")
+        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.evaluate()
+
+        val release =
+            project.tasks
+                .named("compileJava", JavaCompile::class.java)
+                .get()
+                .options
+                .release
+                .orNull
+
+        assertSoftly { softly ->
+            softly.assertThat(release).isNull()
+        }
+    }
+
+    @Test
+    fun `contributes the kotlin defaults plugin`() {
+        assertSoftly { softly ->
+            softly
+                .assertThat(EasyJvmDefaultsContributor().projectPlugins())
+                .contains(EasyJvmDefaultsPlugin::class, EasyJvmDefaultsKotlinPlugin::class)
         }
     }
 

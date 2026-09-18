@@ -16,8 +16,6 @@ plugins {
     `java-gradle-plugin`
 
     // Apply the Kotlin JVM plugin to add support for Kotlin.
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.detekt)
     alias(libs.plugins.shadow)
     alias(libs.plugins.plugin.publish)
 }
@@ -108,10 +106,6 @@ tasks.named<PluginUnderTestMetadata>("pluginUnderTestMetadata") {
     pluginClasspath.from(fixtures)
 }
 
-detekt {
-    config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml"))
-}
-
 // Every module built by this build shares the project group, making it the single discriminator
 // between "bundled into the fat jar" (this build's modules) and "published as a Maven Central
 // dependency" (third-party artifacts).
@@ -200,7 +194,6 @@ val verifyShadowPackaging =
     }
 
 tasks.named<Task>("check") {
-    // functionalTest is wired into check by jvm-defaults; only detekt stays repo-specific here.
-    dependsOn("detekt")
+    // functionalTest is wired into check by jvm-defaults; only shadow-packaging verification stays repo-specific here.
     dependsOn(verifyShadowPackaging)
 }
