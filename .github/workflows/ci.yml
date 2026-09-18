@@ -18,6 +18,14 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          # Publish a public Build Scan (scans.gradle.com) for the build/check job
+          # so CI failures and CC/cache/parallel behaviour are diagnosable via a
+          # link. Deliberately NOT set on the publish job, which handles signing
+          # and Plugin Portal credentials — scans capture console output.
+          build-scan-publish: true
+          build-scan-terms-of-use-url: 'https://gradle.com/terms-of-service'
+          build-scan-terms-of-use-agree: 'yes'
       - name: Build
         if: github.event_name != 'pull_request'
         run: ./gradlew build --build-cache

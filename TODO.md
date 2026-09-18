@@ -20,8 +20,3 @@ This document keeps track of tasks that need to be completed.
 * tests: GitAssertions
 * test-utils: Helper classes for ProjectBuilder?
 * revisit func tests: required or just blowing up build time?
-
-## Bugs
-
-* push to branch results in 2 actions if PR is active, "push" and "pull_request". We only want the latter unless it's a push to "main" or "master".
-  Make sure the push including a release tag on main stays the same.
