@@ -14,7 +14,6 @@ dependencies {
     implementation(project(":easy-contributor-support"))
     implementation(project(":gradle-plugin-utils"))
     compileOnly(gradleApi())
-    compileOnly(libs.kotlin.gradle.plugin.api)
 }
 
 tasks.withType<Test>().configureEach {

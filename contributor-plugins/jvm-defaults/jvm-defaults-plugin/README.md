@@ -57,7 +57,10 @@ JAVA_TOOLCHAIN_VERSION=17 ./gradlew build
   `options.release` set to the corresponding major version (`--release`).
 * When the Kotlin JVM plugin is applied, the version is also pinned on the Kotlin side via
   `jvmTarget` and `-Xjdk-release`, so Kotlin's bytecode target cannot drift from the declared
-  target.
+  target. KGP is accessed reflectively through the `kotlin` extension's own classloader — the
+  plugin ships **no** KGP API dependency (the settings↔project classloader split means a hard
+  link would fail with `NoClassDefFoundError` in consumers). KGP >= 1.8 is supported; a different
+  shape fails fast with a clear error instead of silently skipping.
 * The declared target must not exceed the toolchain pinned via `java.toolchainVersion`; a higher
   target fails fast with a clear error instead of a compiler error.
 * If the property is absent, nothing is changed and an `INFO` log explains that the default

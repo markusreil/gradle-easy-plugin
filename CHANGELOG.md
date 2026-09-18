@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `jvm-defaults`: fixed a consumer-classloader failure (`NoClassDefFoundError:
+  org.jetbrains.kotlin.gradle.dsl.KotlinJvmExtension`) when `java.targetVersion` was set with the
+  Kotlin JVM plugin applied. Kotlin is now configured reflectively through the `kotlin` extension's
+  own classloader, so no `kotlin-gradle-plugin-api` dependency is shipped; KGP `>= 1.8` is required
+  and a clear error is raised otherwise.
 - `easy-plugin` fat jar now bundles only modules built by this build; third-party runtime
   dependencies are no longer shaded but declared at `runtime` scope in the published
   POM/Gradle metadata, so consumers resolve them from Maven Central.
