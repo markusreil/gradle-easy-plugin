@@ -5,6 +5,7 @@ import com.mreil.easy.ApplyToSubprojects
 import com.mreil.easy.EnabledBy
 import com.mreil.easy.jvm.java.TargetCompatibilityWiring
 import com.mreil.easy.jvm.java.ToolchainWiring
+import com.mreil.easy.jvm.kotlin.DokkaJavadocWiring
 import com.mreil.easy.notifyRedundantConfig
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPluginExtension
@@ -17,7 +18,15 @@ class EasyJvmDefaultsPlugin : AbstractEasyProjectPlugin() {
         ReportAggregationWiring.configureRootAggregation(target)
         target.pluginManager.withPlugin("java") {
             ensureJarTask(target, "sourcesJar", "withSourcesJar()", JavaPluginExtension::withSourcesJar)
-            ensureJarTask(target, "javadocJar", "withJavadocJar()", JavaPluginExtension::withJavadocJar)
+            val javadocJarCreated =
+                ensureJarTask(target, "javadocJar", "withJavadocJar()", JavaPluginExtension::withJavadocJar)
+            if (javadocJarCreated) {
+                // Only rewire a javadocJar the plugin created; a manually configured one is left
+                // untouched (see ensureJarTask's migration hint).
+                target.pluginManager.withPlugin(DokkaJavadocWiring.PLUGIN_ID) {
+                    DokkaJavadocWiring.configureJavadocJar(target)
+                }
+            }
             ToolchainWiring.configure(target)
             TargetCompatibilityWiring.configure(target)
             TestSuiteWiring.configure(target)
@@ -30,11 +39,12 @@ class EasyJvmDefaultsPlugin : AbstractEasyProjectPlugin() {
         taskName: String,
         configSnippet: String,
         enable: JavaPluginExtension.() -> Unit,
-    ) {
+    ): Boolean {
         if (target.tasks.findByName(taskName) == null) {
             target.extensions.getByType(JavaPluginExtension::class.java).enable()
-        } else {
-            target.notifyRedundantConfig(taskName, configSnippet)
+            return true
         }
+        target.notifyRedundantConfig(taskName, configSnippet)
+        return false
     }
 }

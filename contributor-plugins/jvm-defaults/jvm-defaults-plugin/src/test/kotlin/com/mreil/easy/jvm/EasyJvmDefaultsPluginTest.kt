@@ -1,11 +1,15 @@
 package com.mreil.easy.jvm
 
 import com.mreil.easy.EasyExtension
+import com.mreil.easy.ExtensionCopier
 import com.mreil.easy.ProjectPlugin
 import com.mreil.easy.jvm.java.TargetCompatibilityWiring
 import com.mreil.easy.jvm.java.ToolchainWiring
+import com.mreil.easy.jvm.kotlin.DokkaJavadocSettingsPlugin
+import com.mreil.easy.jvm.kotlin.DokkaJavadocWiring
 import com.mreil.easy.jvm.kotlin.EasyJvmDefaultsKotlinPlugin
 import com.mreil.gradletest.project.evaluate
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
@@ -200,6 +204,17 @@ class EasyJvmDefaultsPluginTest {
     }
 
     @Test
+    fun `contributes the dokka javadoc settings plugin`() {
+        assertSoftly { softly ->
+            softly
+                .assertThat(EasyJvmDefaultsContributor().settingsPlugins())
+                .contains(DokkaJavadocSettingsPlugin::class)
+            softly.assertThat(EasyJvmDefaultsExtension.DEFAULT_DOKKA_VERSION).isEqualTo("2.2.0")
+            softly.assertThat(DokkaJavadocWiring.PLUGIN_ID).isEqualTo("org.jetbrains.dokka-javadoc")
+        }
+    }
+
+    @Test
     fun `configureTestSuites enabled by default`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply(ProjectPlugin::class.java)
@@ -215,6 +230,56 @@ class EasyJvmDefaultsPluginTest {
             softly.assertThat(extension.jacocoEnabled.get()).isTrue()
         }
     }
+
+    @Test
+    fun `dokkaJavadoc opts in with the default version and stays absent otherwise`() {
+        val notOptedIn = createJvmDefaultsExtension()
+        val defaulted = createJvmDefaultsExtension()
+        defaulted.dokkaJavadoc()
+
+        assertSoftly { softly ->
+            softly.assertThat(notOptedIn.dokkaJavadocVersion.orNull).isNull()
+            softly.assertThat(defaulted.dokkaJavadocVersion.get()).isEqualTo(EasyJvmDefaultsExtension.DEFAULT_DOKKA_VERSION)
+        }
+    }
+
+    @Test
+    fun `dokkaJavadoc rejects blank versions`() {
+        val extension = createJvmDefaultsExtension()
+
+        assertThatThrownBy { extension.dokkaJavadoc("") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("must not be blank")
+        assertThatThrownBy { extension.dokkaJavadoc("   ") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("must not be blank")
+    }
+
+    @Test
+    fun `dokkaJavadoc version is copied read-only to project copies`() {
+        val settingsExtension = createJvmDefaultsExtension()
+        settingsExtension.dokkaJavadoc("9.9.9")
+        val projectExtension = createJvmDefaultsExtension()
+
+        ExtensionCopier.copy(settingsExtension, projectExtension)
+
+        assertSoftly { softly ->
+            softly.assertThat(projectExtension.dokkaJavadocVersion.get()).isEqualTo("9.9.9")
+        }
+        assertThatThrownBy { projectExtension.dokkaJavadoc("1.2.3") }
+            .isInstanceOf(IllegalStateException::class.java)
+    }
+
+    private fun createJvmDefaultsExtension(): DefaultEasyJvmDefaultsExtension =
+        ProjectBuilder
+            .builder()
+            .build()
+            .extensions
+            .create(
+                EasyJvmDefaultsExtension::class.java,
+                "jvmDefaults",
+                DefaultEasyJvmDefaultsExtension::class.java,
+            ) as DefaultEasyJvmDefaultsExtension
 
     @Test
     fun `applies jacoco and wires functional suite execution data into the report`() {
