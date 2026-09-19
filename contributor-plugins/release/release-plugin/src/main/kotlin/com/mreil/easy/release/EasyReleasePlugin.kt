@@ -20,25 +20,30 @@ abstract class EasyReleasePlugin : AbstractEasyProjectPlugin() {
     abstract val listenerRegistry: BuildEventsListenerRegistry
 
     /**
-     * Registers [ReleaseStateService] and the global task-completion listener eagerly at apply time.
+     * Registers [ReleaseLifecycleService] eagerly at apply time, honouring the cross-contributor
+     * contract: [EasyRelease.of] may resolve it regardless of contributor apply order. Its value is
+     * a lazy [Provider], so semver is not parsed here.
      *
-     * Mirrors the lifecycle contract documented in AGENTS.md: shared state consumed across
-     * contributors (here: any future reader of the `"release"` service) must be available
-     * at configuration time regardless of evaluation order. Task registration stays deferred
-     * to [afterEnabled] behind the `easy { release { enabled = ... } }` flag.
+     * Release's own [ReleaseStateService] is registered in [afterEnabled] behind the
+     * `easy { release { enabled = ... } }` flag. It is internal to release (only its tasks reference
+     * it) and derives providers from [EasySemver]; realizing those providers while release is
+     * disabled would parse an arbitrary project version at configuration-cache store time.
      */
     override fun init(target: Project) {
         if (!target.isRoot()) return
-        val release = target.findEasyChild<EasyReleaseExtension, DefaultEasyReleaseExtension>() ?: return
+        if (target.findEasyChild<EasyReleaseExtension, DefaultEasyReleaseExtension>() == null) return
         val semver = EasySemver.of(target)
         val semverRelease = semver.map { it.withClearedPreRelease().toString() }
         registerLifecycleService(target, semverRelease)
-        registerService(target, release, semverRelease)
     }
 
     override fun afterEnabled(target: Project) {
         if (!target.isRoot()) return
         val release = target.findEasyChild<EasyReleaseExtension, DefaultEasyReleaseExtension>() ?: return
+        val semver = EasySemver.of(target)
+        val semverRelease = semver.map { it.withClearedPreRelease().toString() }
+        // Release's own state service: registered before the release tasks that reference it.
+        registerService(target, release, semverRelease)
         val vcs = EasyVcs.of(target)
         val defaultVersionFile = release.versionFile.orElse(target.layout.projectDirectory.file("gradle.properties"))
         val check =

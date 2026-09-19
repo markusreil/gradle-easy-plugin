@@ -105,6 +105,15 @@ val verifyShadowPackaging =
                     "(declare them on the `shadow` configuration): ${runtimeModules - publishedModules}"
             }
 
+            // D3/D4: the settings marker must not drag project-only third-party dependencies.
+            val projectOnlyDependencies = listOf("kotlinx-serialization", "semver4j")
+            val leakedDependencies =
+                publishedModules.filter { module -> projectOnlyDependencies.any { module.contains(it) } }
+            check(leakedDependencies.isEmpty()) {
+                "The easy-plugin-settings published dependencies must not include project-only " +
+                    "third-party modules ($projectOnlyDependencies): $leakedDependencies"
+            }
+
             val entries =
                 ZipFile(shadowJarFile.get().asFile).use { zip ->
                     zip

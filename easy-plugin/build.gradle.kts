@@ -169,6 +169,14 @@ val verifyShadowPackaging =
                     "(declare them on the `shadow` configuration): ${runtimeModules - publishedModules}"
             }
 
+            // D3/D4: the project marker must keep the project-only third-party dependencies.
+            val requiredProjectDependencies = listOf("kotlinx-serialization-json", "semver4j")
+            val missingDependencies =
+                requiredProjectDependencies.filterNot { required -> publishedModules.any { it.contains(required) } }
+            check(missingDependencies.isEmpty()) {
+                "The easy-plugin published dependencies are missing project-only third-party modules: $missingDependencies"
+            }
+
             val testOnlyPrefixes =
                 listOf(
                     "com/mreil/gradletest/",
