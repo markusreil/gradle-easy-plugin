@@ -9,32 +9,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `jvm-defaults`: opt-in `java.targetVersion` property pins Java source/target compatibility and
-  `--release`, plus Kotlin `jvmTarget`/`-Xjdk-release` when the Kotlin JVM plugin is applied, so a
-  newer toolchain can produce bytecode/API compatible with an older JDK.
-- `jvm-defaults`: when the Kotlin JVM plugin is applied, Dokka's Javadoc
-  plugin is dynamically applied and `javadocJar` is rewired to Dokka output. Opt-in via the
-  settings-scope `easy { jvmDefaults { dokkaJavadoc() } }` function (`dokkaJavadoc("2.3.0")` pins
-  the version, default `2.2.0`); it guards only buildscript-classpath inclusion, is never copied
-  to projects, and adds no Dokka dependency to any module.
-
 ### Changed
-
-- `jvm-defaults`: the Dokka Javadoc opt-in moved off the project-scope `EasyJvmDefaultsExtension`
-  onto the new settings-scope `EasyJvmDefaultsSettingsExtension` (public API change; the
-  `easy { jvmDefaults { dokkaJavadoc() } }` DSL shape is unchanged).
 
 ### Deprecated
 
 ### Fixed
 
-- `easy-plugin` fat jar now bundles only modules built by this build; third-party runtime
-  dependencies are no longer shaded but declared at `runtime` scope in the published
-  POM/Gradle metadata, so consumers resolve them from Maven Central.
-
 ### Removed
 
 ### Security
+
+## [0.0.116] - 2026-09-19
+
+### Added
+
+- `easy-plugin-settings`: new settings-scope marker module publishing `com.mreil.easy.settings` (the
+  project scope stays on `easy-plugin` / `com.mreil.easy.project`). Each marker Shadow-bundles only
+  its own scope plus shared core, and per-jar `verifyShadowPackaging` asserts third-party
+  publication and cross-scope class disjointness.
+- Core entry-point bases `ProjectPluginEntryPoint` / `SettingsPluginEntryPoint` (the concrete
+  `ProjectPlugin` / `SettingsPlugin` live in their marker modules), plus `EasySettingsExtension` and
+  a settings-scope registry.
+- `jvm-defaults-settings-plugin`: settings-scope slice hosting the Dokka Javadoc opt-in; shared
+  Dokka/Kotlin constants moved to `jvm-defaults-plugin-api`.
+- `:e2e-published`: published-consumer end-to-end guard resolving both marker artifacts from a local
+  Maven repo, applying them in their own scopes with the Kotlin JVM plugin and
+  `java.targetVersion=11`.
+
+### Changed
+
+- The plugin suite now ships as **two artifacts**, one per scope. Apply each ID where its scope is
+  evaluated and versioned: `com.mreil.easy.settings` in `settings.gradle.kts`,
+  `com.mreil.easy.project` in the root build. Project-scope `easy { }` configuration (publish,
+  semver, codemeta, vcs, release, jvm-defaults) lives in the root build; the settings scope only owns
+  settings extensions. The old `apply false` / versionless workaround is unsupported.
+- `jvm-defaults`: the Dokka Javadoc opt-in moved off the project-scope `EasyJvmDefaultsExtension`
+  onto the settings-scope `EasyJvmDefaultsSettingsExtension` (public API change; the
+  `easy { jvmDefaults { dokkaJavadoc() } }` DSL shape is unchanged).
+
+### Fixed
+
+- Consumer classloader failure (`NoClassDefFoundError:
+  org.jetbrains.kotlin.gradle.dsl.KotlinJvmExtension`) when `java.targetVersion` was set with the
+  Kotlin JVM plugin applied: the project plugin is now loaded by the project buildscript
+  classloader, which can see KGP.
+
+## [0.0.115] - 2026-09-18
+
+### Added
+
+- `jvm-defaults`: opt-in `java.targetVersion` property pins Java source/target compatibility and
+  `--release`, plus Kotlin `jvmTarget`/`-Xjdk-release` when the Kotlin JVM plugin is applied, so a
+  newer toolchain can produce bytecode/API compatible with an older JDK.
+- `jvm-defaults`: when the Kotlin JVM plugin is applied, Dokka's Javadoc plugin is dynamically
+  applied and `javadocJar` is rewired to Dokka output. Opt-in via the settings-scope
+  `easy { jvmDefaults { dokkaJavadoc() } }` function (`dokkaJavadoc("2.3.0")` pins the version,
+  default `2.2.0`); it guards only buildscript-classpath inclusion and adds no Dokka dependency to
+  any module.
+
+### Fixed
+
+- CI triggers fixed and build scans enabled (`Fix CI triggers and add build scan #27`).
+
+## [0.0.114] - 2026-09-18
+
+### Fixed
+
+- `easy-plugin` fat jar now bundles only modules built by this build; third-party runtime
+  dependencies are no longer shaded but declared at `runtime` scope in the published POM/Gradle
+  metadata, so consumers resolve them from Maven Central. `verifyShadowPackaging` enforces the
+  packaging constraints.
 
 ## [0.0.113] - 2026-09-18
 

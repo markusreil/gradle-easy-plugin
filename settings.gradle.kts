@@ -7,20 +7,7 @@ pluginManagement {
     }
 }
 
-plugins { id("com.mreil.easy.settings") version "0.0.114" }
-
-easy {
-    publish {
-        toMavenStaging()
-        toSonatypeSnapshots()
-        toPluginPortal()
-        mavenRepo(
-            "mreilComGradlePluginsSnapshots",
-            "https://repo.mreil.com/gradle-plugins-snapshots",
-            true
-        )
-    }
-}
+plugins { id("com.mreil.easy.settings") version "0.0.116" }
 
 rootProject.name = "gradle-easy-plugin"
 include("easy-plugin")
