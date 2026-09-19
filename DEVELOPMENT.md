@@ -48,6 +48,89 @@ contributor-plugins/semver/...                        # semver-plugin-api / semv
 contributor-plugins/codemeta/...                      # codemeta-plugin-api / codemeta-plugin / codemeta-test-plugin
 ```
 
+### Subproject graph
+
+Arrows point from a project to its dependencies (`A --> B` means A depends on B). `gradle-plugin-utils`
+and `gradle-plugin-testutils` are generic (no `easy` dependencies) and are extraction candidates.
+
+Runtime — the two published artifacts and the shared core both bundle:
+
+```
+  +----------------------+        +----------------------+
+  | gradle-plugin-utils  |        | easy-contributor-api |
+  | (generic helpers)    |        | (SPI + public types) |
+  +----------+-----------+        +----------+-----------+
+             |                               |
+             +---------------+---------------+
+                             |
+                +------------v-------------+
+                | easy-contributor-support |
+                | (AbstractEasy*Plugin,    |
+                |  PluginLifecycle,        |
+                |  EasyServiceLookup)      |
+                +------------+-------------+
+                             |
+                +------------v-------------+
+                | easy-plugin-core         |
+                | (entry-point bases,      |
+                |  PluginRegistrar,        |
+                |  ExtensionRegistrar,     |
+                |  EasyExtension /         |
+                |  EasySettingsExtension,  |
+                |  PluginRegistryService)  |
+                +------+-------------+-----+
+                       |             |
+        +--------------v--+   +------v-------------------+
+        | easy-plugin     |   | easy-plugin-settings     |
+        | PROJECT marker  |   | SETTINGS marker          |
+        | id ...project   |   | id ...settings           |
+        +-----------------+   +--------------------------+
+               | bundles                 | bundles
+               v                         v
+   +-------------------------+  +--------------------------+
+   | publish, jvm-defaults,  |  | jvm-defaults-settings-   |
+   | semver, codemeta,       |  | plugin                   |
+   | project-defaults, vcs,  |  +--------------------------+
+   | release                 |
+   +-------------------------+
+```
+
+Both markers also bundle the shared `easy-plugin-core` + `easy-contributor-api`/`-support` +
+`gradle-plugin-utils`; per-jar `verifyShadowPackaging` enforces that each carries only its own scope
+plus that shared core (see `TWO_JAR_SPLIT.md`).
+
+Every contributor is a triplet — a public API module, an implementation module (bundled into a
+marker, never published on its own), and a test harness:
+
+```
+  contributor-plugins/<name>/<name>-plugin-api   # public API (published)
+                              <name>-plugin     # impl + EasyPluginContributor (bundled)
+                              <name>-test-plugin # java-gradle-plugin harness (not published)
+```
+
+| Contributor | API module | Impl module | Bundled into | Harness |
+|---|---|---|---|---|
+| publish | `publish-plugin-api` | `publish-plugin` | `easy-plugin` | `publish-test-plugin` |
+| jvm-defaults (project) | `jvm-defaults-plugin-api` | `jvm-defaults-plugin` | `easy-plugin` | `jvm-defaults-test-plugin` |
+| jvm-defaults (settings) | `jvm-defaults-plugin-api` | `jvm-defaults-settings-plugin` | `easy-plugin-settings` | — (covered by `easy-plugin` functionalTest) |
+| semver | `semver-plugin-api` | `semver-plugin` | `easy-plugin` | `semver-test-plugin` |
+| codemeta | `codemeta-plugin-api` | `codemeta-plugin` | `easy-plugin` | `codemeta-test-plugin` |
+| project-defaults | `project-defaults-plugin-api` | `project-defaults-plugin` | `easy-plugin` | `project-defaults-test-plugin` |
+| vcs | `vcs-plugin-api` | `vcs-plugin` | `easy-plugin` | `vcs-test-plugin` |
+| release | `release-plugin-api` | `release-plugin` | `easy-plugin` | `release-test-plugin` |
+
+Test-only wiring:
+
+```
+  gradle-plugin-testutils ---> easy-test-support ---> harnesses + easy-plugin-core tests
+  easy-contributor-api    ---> easy-test-support
+  harnesses ---------------- > easy-plugin-core (+ easy-test-support, gradle-plugin-testutils)
+  easy-plugin --------------> easy-plugin-settings   # test-only crossScopePlugins metadata
+  e2e-published ------------ > :easy-plugin:publishAllPublicationsToMavenStagingRepository
+                              :easy-plugin-settings:publishAllPublicationsToMavenStagingRepository
+       # then runs a real consumer build resolving both markers from the local staging repos
+```
+
 ## Core Mechanism
 
 * `EasyPluginContributor` SPI (`easy-contributor-api/src/main/kotlin/com/mreil/easy/EasyPluginContributor.kt`) — `META-INF/services/com.mreil.easy.EasyPluginContributor`. Contributors declare `projectPlugins()`, `settingsPlugins()`, `pluginExtensions()` (`EasyPluginExtension`).
