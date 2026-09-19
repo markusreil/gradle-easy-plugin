@@ -8,10 +8,27 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.spotless) apply false
+    id("com.mreil.easy.project") version "0.0.116"
 }
 
 repositories {
     mavenCentral()
+}
+
+// Project-scope contributors (publish, semver, codemeta, vcs, release, jvm-defaults) are configured
+// here on the root project and fan out to subprojects. The settings-scope plugin in
+// `settings.gradle.kts` only owns settings-scope extensions (e.g. `jvmDefaults.dokkaJavadoc()`).
+easy {
+    publish {
+        toMavenStaging()
+        toSonatypeSnapshots()
+        toPluginPortal()
+        mavenRepo(
+            "mreilComGradlePluginsSnapshots",
+            "https://repo.mreil.com/gradle-plugins-snapshots",
+            true
+        )
+    }
 }
 
 dependencies {
