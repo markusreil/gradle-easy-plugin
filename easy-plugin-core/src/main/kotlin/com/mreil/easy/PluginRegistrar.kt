@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
  *
  * It manages:
  * - Applying registered plugins to [Settings] instances when [PluginIds.SETTINGS] is applied.
- * - Applying registered plugins to [Project] instances when [ProjectPlugin] is applied.
+ * - Applying registered plugins to [Project] instances when [ProjectPluginEntryPoint] is applied.
  * - Resolving target projects for plugin application (e.g. root only vs. subprojects when annotated with [ApplyToSubprojects]).
  *
  * Note: Plugins are applied eagerly. Plugins annotated with [EnabledBy] must guard their
@@ -50,7 +50,7 @@ object PluginRegistrar {
         project: Project,
         registry: PluginRegistry,
     ) {
-        project.plugins.withType(ProjectPlugin::class.java) {
+        project.plugins.withType(ProjectPluginEntryPoint::class.java) {
             applyRegisteredPlugins(project, registry)
         }
     }

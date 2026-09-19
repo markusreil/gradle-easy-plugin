@@ -6,24 +6,32 @@ Umbrella Gradle plugin that provides a single `easy { }` DSL and discovers featu
 
 ## Requirements
 
-* **Java 21+** — the plugin is compiled/published for JVM 21 (`org.gradle.jvm.version=21`). Consumers must run Gradle with Java 21 (`JAVA_HOME=/usr/lib/jvm/java-21-openjdk`).
+* **Java 17+** — the plugin is compiled/published for JVM 17 (`org.gradle.jvm.version=17`).
 
 ## Installation
 
-`settings.gradle.kts`:
+The plugin suite ships as two artifacts, one per scope:
+
+| Artifact | Plugin ID | Scope |
+|---|---|---|
+| `easy-plugin` | `com.mreil.easy.project` | project root (`EasyExtension`), subproject injection, project contributors (incl. Kotlin/KGP wiring) |
+| `easy-plugin-settings` | `com.mreil.easy.settings` | settings-only root (`EasySettingsExtension`), settings contributors |
+
+Apply each ID **where its scope is evaluated**, as a normal versioned request — the settings plugin
+in `settings.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("com.mreil.easy.settings")
+    id("com.mreil.easy.settings") version "<version>"
 }
 ```
 
-`build.gradle.kts` (root or single-project):
+`build.gradle.kts` (root project — enables the `easy { }` DSL):
 
 ```kotlin
 plugins {
     `java-library`
-    id("com.mreil.easy.project")
+    id("com.mreil.easy.project") version "<version>"
 }
 
 group = "com.example"
@@ -31,11 +39,24 @@ version = "1.2.3"
 description = "Example library"
 ```
 
+Because the two IDs are separate artifacts, no `apply false` / versionless workaround is needed.
+Declaring `com.mreil.easy.project` in `settings.gradle.kts` (even with `apply false`) is
+**unsupported**: it puts the project artifact — including its Kotlin Gradle plugin wiring — on the
+settings classpath, where KGP is not visible and it fails with `NoClassDefFoundError`.
+
+Any project-scope `easy { ... }` configuration (and every project contributor extension) belongs in
+the **root project**, after applying `id("com.mreil.easy.project")`. Settings-scope extensions are
+configured in `settings.gradle.kts` after applying `id("com.mreil.easy.settings")`. The two scopes
+use separate root extensions (`EasyExtension` vs `EasySettingsExtension`) and separate registries,
+so a settings-only build gets no project extension and no project contributors.
+
 Plugin IDs are the single source in `gradle.properties` (`plugin.project`/`plugin.settings`).
 
 ## Configuration
 
-All features are configured via `easy { }`. `publish` is **enabled by default** (disable it with `enabled.set(false)`); `semver`/`codemeta` are enabled when their block is present.
+All features are configured via `easy { }` in the root project's `build.gradle.kts`. `publish` is
+**enabled by default** (disable it with `enabled.set(false)`); `semver`/`codemeta` are enabled when
+their block is present.
 
 ```kotlin
 easy {

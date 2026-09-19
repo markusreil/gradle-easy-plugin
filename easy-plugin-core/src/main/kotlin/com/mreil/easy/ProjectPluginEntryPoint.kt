@@ -5,22 +5,33 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 
 /**
- * Project plugin that discovers and applies contributed plugins.
+ * Project-scope entry-point logic for the `easy` project plugin.
  *
- * Root-first contract: apply to the root project (directly, or via [SettingsPlugin] which
- * creates the root extension from the settings `easy` block first). The root extension is then
- * injected into every subproject ([injectEasyExtensions]), so a missing `easy` extension on a
- * non-root project means the root setup was bypassed — applying the plugin to a bare subproject
- * without root setup is unsupported and fails fast (see below).
+ * Declared in core so [PluginRegistrar] can trigger on it without core depending on the concrete
+ * marker plugin (which would create a dependency cycle). The concrete `ProjectPlugin` lives in the
+ * marker module so that [apply]'s `javaClass.classLoader` resolves to the project buildscript
+ * classloader, which can see project-only plugins such as KGP. Moving this `apply` body into a
+ * top-level function/object in core would silently resolve the wrong classloader and break that.
+ *
+ * Root-first contract: apply to the root project. It creates [EasyExtension] there, injects copied
+ * `easy` extensions into every subproject ([injectEasyExtensions]) and applies the project-scope
+ * contributors, so a missing `easy` extension on a non-root project means the root setup was
+ * bypassed — applying the plugin to a bare subproject is unsupported and fails fast (see below).
+ *
+ * Settings scope is set up separately by `com.mreil.easy.settings`; that plugin creates
+ * [EasySettingsExtension] and never pushes configuration into projects.
+ *
+ * Open (not abstract) so tests and pre-split harnesses can apply the entry point directly; only the
+ * concrete marker class is registered under a plugin ID.
  */
-class ProjectPlugin : Plugin<Project> {
-    override fun apply(project: Project) {
+open class ProjectPluginEntryPoint : Plugin<Project> {
+    final override fun apply(project: Project) {
         val registry = project.getPluginRegistry()
         registry.loadFromServiceLoader(javaClass.classLoader)
         if (!project.hasEasyExtension()) {
             check(project.isRoot()) {
                 "ProjectPlugin applied to non-root project '${project.path}' without an 'easy' extension. " +
-                    "Apply the plugin to the root project (or via the settings plugin) so 'easy' is injected to subprojects."
+                    "Apply the plugin to the root project so 'easy' is injected to subprojects."
             }
             ExtensionRegistrar(project, project.providers).createExtension(registry)
         }
@@ -43,7 +54,7 @@ class ProjectPlugin : Plugin<Project> {
  *
  * Snapshot semantics: only projects present at root-apply time are covered — projects added
  * later receive neither the extension (here) nor contributed plugins (see [PluginRegistrar]),
- * and hand-applying [ProjectPlugin] to them fails via the root-first contract above.
+ * and hand-applying [ProjectPluginEntryPoint] to them fails via the root-first contract above.
  */
 internal fun injectEasyExtensions(
     root: Project,

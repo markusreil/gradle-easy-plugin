@@ -1,15 +1,11 @@
 package com.mreil.easy.jvm
 
 import com.mreil.easy.EasyExtension
-import com.mreil.easy.ExtensionCopier
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.easy.jvm.java.TargetCompatibilityWiring
 import com.mreil.easy.jvm.java.ToolchainWiring
-import com.mreil.easy.jvm.kotlin.DokkaJavadocSettingsPlugin
-import com.mreil.easy.jvm.kotlin.DokkaJavadocWiring
 import com.mreil.easy.jvm.kotlin.EasyJvmDefaultsKotlinPlugin
 import com.mreil.gradletest.project.evaluate
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
@@ -54,7 +50,7 @@ class EasyJvmDefaultsPluginTest {
     @Test
     fun `registers jvmDefaults extension enabled by default`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         val extension =
             (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
@@ -70,7 +66,7 @@ class EasyJvmDefaultsPluginTest {
     fun `configures sources and javadoc jars when java plugin active`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply("java")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         assertSoftly { softly ->
@@ -87,7 +83,7 @@ class EasyJvmDefaultsPluginTest {
         javaExtension.withSourcesJar()
         javaExtension.withJavadocJar()
 
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         assertSoftly { softly ->
@@ -99,7 +95,7 @@ class EasyJvmDefaultsPluginTest {
     @Test
     fun `does not configure when java plugin absent`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         assertSoftly { softly ->
@@ -113,7 +109,7 @@ class EasyJvmDefaultsPluginTest {
         try {
             val project = ProjectBuilder.builder().build()
             project.pluginManager.apply("java")
-            project.pluginManager.apply(ProjectPlugin::class.java)
+            project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
             project.evaluate()
 
             val languageVersion =
@@ -133,7 +129,7 @@ class EasyJvmDefaultsPluginTest {
     fun `does not pin toolchain when property absent`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply("java")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val languageVersion =
@@ -152,7 +148,7 @@ class EasyJvmDefaultsPluginTest {
         try {
             val project = ProjectBuilder.builder().build()
             project.pluginManager.apply("java")
-            project.pluginManager.apply(ProjectPlugin::class.java)
+            project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
             project.evaluate()
 
             val javaExtension = project.extensions.getByType(JavaPluginExtension::class.java)
@@ -178,7 +174,7 @@ class EasyJvmDefaultsPluginTest {
     fun `does not configure java target compatibility when property absent`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply("java")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val release =
@@ -204,20 +200,9 @@ class EasyJvmDefaultsPluginTest {
     }
 
     @Test
-    fun `contributes the dokka javadoc settings plugin`() {
-        assertSoftly { softly ->
-            softly
-                .assertThat(EasyJvmDefaultsContributor().settingsPlugins())
-                .contains(DokkaJavadocSettingsPlugin::class)
-            softly.assertThat(EasyJvmDefaultsExtension.DEFAULT_DOKKA_VERSION).isEqualTo("2.2.0")
-            softly.assertThat(DokkaJavadocWiring.PLUGIN_ID).isEqualTo("org.jetbrains.dokka-javadoc")
-        }
-    }
-
-    @Test
     fun `configureTestSuites enabled by default`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         val extension =
             (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
@@ -232,61 +217,11 @@ class EasyJvmDefaultsPluginTest {
     }
 
     @Test
-    fun `dokkaJavadoc opts in with the default version and stays absent otherwise`() {
-        val notOptedIn = createJvmDefaultsExtension()
-        val defaulted = createJvmDefaultsExtension()
-        defaulted.dokkaJavadoc()
-
-        assertSoftly { softly ->
-            softly.assertThat(notOptedIn.dokkaJavadocVersion.orNull).isNull()
-            softly.assertThat(defaulted.dokkaJavadocVersion.get()).isEqualTo(EasyJvmDefaultsExtension.DEFAULT_DOKKA_VERSION)
-        }
-    }
-
-    @Test
-    fun `dokkaJavadoc rejects blank versions`() {
-        val extension = createJvmDefaultsExtension()
-
-        assertThatThrownBy { extension.dokkaJavadoc("") }
-            .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("must not be blank")
-        assertThatThrownBy { extension.dokkaJavadoc("   ") }
-            .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("must not be blank")
-    }
-
-    @Test
-    fun `dokkaJavadoc version is copied read-only to project copies`() {
-        val settingsExtension = createJvmDefaultsExtension()
-        settingsExtension.dokkaJavadoc("9.9.9")
-        val projectExtension = createJvmDefaultsExtension()
-
-        ExtensionCopier.copy(settingsExtension, projectExtension)
-
-        assertSoftly { softly ->
-            softly.assertThat(projectExtension.dokkaJavadocVersion.get()).isEqualTo("9.9.9")
-        }
-        assertThatThrownBy { projectExtension.dokkaJavadoc("1.2.3") }
-            .isInstanceOf(IllegalStateException::class.java)
-    }
-
-    private fun createJvmDefaultsExtension(): DefaultEasyJvmDefaultsExtension =
-        ProjectBuilder
-            .builder()
-            .build()
-            .extensions
-            .create(
-                EasyJvmDefaultsExtension::class.java,
-                "jvmDefaults",
-                DefaultEasyJvmDefaultsExtension::class.java,
-            ) as DefaultEasyJvmDefaultsExtension
-
-    @Test
     fun `applies jacoco and wires functional suite execution data into the report`() {
         val project = ProjectBuilder.builder().build()
         project.file("src/functionalTest/kotlin").mkdirs()
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val functionalTest = project.tasks.named("functionalTest").get()
@@ -305,7 +240,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.file("src/functionalTest/kotlin").mkdirs()
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val mainOutput =
@@ -332,7 +267,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.file("src/functionalTest/kotlin").mkdirs()
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         jvmDefaultsExtension(project).jacocoEnabled.set(false)
         project.evaluate()
 
@@ -379,7 +314,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.file("src/functionalTest/kotlin").mkdirs()
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val suites = project.extensions.getByType(TestingExtension::class.java).suites
@@ -394,7 +329,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.file("src/test/kotlin").mkdirs()
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val suites = project.extensions.getByType(TestingExtension::class.java).suites
@@ -410,7 +345,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.file("src/functionalTest/kotlin").mkdirs()
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val check = project.tasks.named("check").get()
@@ -426,7 +361,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.file("src/functionalTest/kotlin").mkdirs()
         project.pluginManager.apply("java-gradle-plugin")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val configurations = project.configurations
@@ -477,7 +412,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.file("src/functionalTest/kotlin").mkdirs()
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         val extension =
             (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
                 .extensions
@@ -632,7 +567,7 @@ class EasyJvmDefaultsPluginTest {
         // No src/functionalTest -> only the built-in `test` suite exists.
         unit.pluginManager.apply("java-library")
 
-        root.pluginManager.apply(ProjectPlugin::class.java)
+        root.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         root.evaluate()
         unit.evaluate()
 
@@ -659,7 +594,7 @@ class EasyJvmDefaultsPluginTest {
     fun `does not apply jacoco aggregation when disabled on the root`() {
         val project = ProjectBuilder.builder().build()
         project.pluginManager.apply("base")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         jvmDefaultsExtension(project).jacocoEnabled.set(false)
         project.evaluate()
 
@@ -735,7 +670,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.file("src/functionalTest/kotlin").mkdirs()
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val functionalDeps =
@@ -774,7 +709,7 @@ class EasyJvmDefaultsPluginTest {
         functional.file("src/functionalTest/kotlin").mkdirs()
         functional.pluginManager.apply("java-library")
 
-        root.pluginManager.apply(ProjectPlugin::class.java)
+        root.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         if (!aggregateReports) {
             jvmDefaultsExtension(root).aggregateReports.set(false)
             jvmDefaultsExtension(functional).aggregateReports.set(false)
@@ -856,7 +791,7 @@ class EasyJvmDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.file("src/functionalTest/kotlin").mkdirs()
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
 
         val task = project.tasks.named("functionalTest").get()

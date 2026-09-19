@@ -76,9 +76,9 @@ class PluginRegistrarTest {
     }
 
     @Test
-    fun `applies registered project plugins to project when ProjectPlugin is active`() {
+    fun `applies registered project plugins to project when ProjectPluginEntryPoint is active`() {
         val project = ProjectBuilder.builder().build()
-        project.plugins.apply(ProjectPlugin::class.java)
+        project.plugins.apply(ProjectPluginEntryPoint::class.java)
 
         val registry = registry(projectPlugins = setOf(TestProjectPlugin::class))
 
@@ -105,7 +105,7 @@ class PluginRegistrarTest {
                 .withName("sub2")
                 .withParent(root)
                 .build()
-        root.plugins.apply(ProjectPlugin::class.java)
+        root.plugins.apply(ProjectPluginEntryPoint::class.java)
 
         val service =
             root.gradle.sharedServices
@@ -139,7 +139,7 @@ class PluginRegistrarTest {
                 .withName("sub")
                 .withParent(root)
                 .build()
-        root.plugins.apply(ProjectPlugin::class.java)
+        root.plugins.apply(ProjectPluginEntryPoint::class.java)
 
         val service =
             root.gradle.sharedServices
@@ -181,7 +181,7 @@ class PluginRegistrarTest {
     @Test
     fun `applies only project plugins to project and only settings plugins to settings when both are registered`() {
         val project = ProjectBuilder.builder().build()
-        project.plugins.apply(ProjectPlugin::class.java)
+        project.plugins.apply(ProjectPluginEntryPoint::class.java)
 
         val appliedSettingsPlugins = mutableListOf<Class<*>>()
         val settingsProxy = settingsWithPluginManager(appliedSettingsPlugins)

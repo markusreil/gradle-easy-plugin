@@ -17,7 +17,7 @@ class ProjectPluginTest {
                 .build()
 
         assertThatThrownBy {
-            sub.plugins.apply(ProjectPlugin::class.java)
+            sub.plugins.apply(ProjectPluginEntryPoint::class.java)
         }.hasRootCauseInstanceOf(IllegalStateException::class.java)
             .hasStackTraceContaining("non-root project ':sub'")
             .hasStackTraceContaining("root project")
@@ -27,7 +27,7 @@ class ProjectPluginTest {
     fun `creates extension when applied to root`() {
         val root = ProjectBuilder.builder().withName("root").build()
 
-        root.plugins.apply(ProjectPlugin::class.java)
+        root.plugins.apply(ProjectPluginEntryPoint::class.java)
 
         assertSoftly { softly ->
             softly.assertThat(root.extensions.findByName(EasyExtension.name)).isNotNull()

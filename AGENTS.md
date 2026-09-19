@@ -7,43 +7,51 @@ the classpath and avoids the Kotlin multi-load warning) and, in its leaf `subpro
 block, centrally applies all three plus the shared detekt config and `check.dependsOn("detekt")`.
 It also configures aggregated reporting (`jacoco-report-aggregation`, `test-report-aggregation`).
 Plugins:
-- `com.mreil.easy.project` → `com.mreil.easy.ProjectPlugin` (Project, in `easy-plugin-core`, published via `easy-plugin`)
-- `com.mreil.easy.settings` → `com.mreil.easy.SettingsPlugin` (Settings, in `easy-plugin-core`, published via `easy-plugin`)
-- Contributor plugins (internal, via SPI — not applied by ID): `contributor-plugins/publish/publish-plugin-api` (public `EasyPublishExtension` interface + `MavenRepoSpec`) + `contributor-plugins/publish/publish-plugin` → `com.mreil.easy.publish.EasyPublishContributor` / `EasyPublishPlugin` / `DefaultEasyPublishExtension` (`@PublicType(EasyPublishExtension::class)`), `contributor-plugins/jvm-defaults/jvm-defaults-plugin-api` (public `EasyJvmDefaultsExtension` interface) + `contributor-plugins/jvm-defaults/jvm-defaults-plugin` → `com.mreil.easy.jvm.EasyJvmDefaultsContributor` / `EasyJvmDefaultsPlugin` / `DefaultEasyJvmDefaultsExtension` (@EnabledBy EasyJvmDefaultsExtension, @PublicType) (+ `publish-test-plugin` / `jvm-defaults-test-plugin` harnesses `com.mreil.easy.test.publish` / `com.mreil.easy.test.jvm` that apply `ProjectPlugin` for `withPluginClasspath` functional tests)
+- `com.mreil.easy.project` → `com.mreil.easy.ProjectPlugin` (Project, in `easy-plugin`, published as `easy-plugin`)
+- `com.mreil.easy.settings` → `com.mreil.easy.SettingsPlugin` (Settings, in `easy-plugin-settings`, published as `easy-plugin-settings`)
+- The two marker modules are disjoint: each registers one ID and Shadow-bundles only its own scope plus shared core (`easy-plugin-core`/api/support/utils), so the settings artifact carries no KGP-linked project classes. Per-jar `verifyShadowPackaging` enforces it (see `TWO_JAR_SPLIT.md`).
+- Contributor plugins (internal, via SPI — not applied by ID): `contributor-plugins/publish/publish-plugin-api` (public `EasyPublishExtension` interface + `MavenRepoSpec`) + `contributor-plugins/publish/publish-plugin` → `com.mreil.easy.publish.EasyPublishContributor` / `EasyPublishPlugin` / `DefaultEasyPublishExtension` (`@PublicType(EasyPublishExtension::class)`), `contributor-plugins/jvm-defaults/jvm-defaults-plugin-api` (public `EasyJvmDefaultsExtension` interface) + `contributor-plugins/jvm-defaults/jvm-defaults-plugin` → `com.mreil.easy.jvm.EasyJvmDefaultsContributor` / `EasyJvmDefaultsPlugin` / `DefaultEasyJvmDefaultsExtension` (@EnabledBy EasyJvmDefaultsExtension, @PublicType), `contributor-plugins/jvm-defaults/jvm-defaults-settings-plugin` → `com.mreil.easy.jvm.EasyJvmDefaultsSettingsContributor` / `com.mreil.easy.jvm.kotlin.DokkaJavadocSettingsPlugin` / `DefaultEasyJvmDefaultsSettingsExtension` (settings scope) (+ `*-test-plugin` harnesses `com.mreil.easy.test.publish` / `com.mreil.easy.test.jvm` etc. that depend on `:easy-plugin-core` and apply the core `ProjectPluginEntryPoint` for `withPluginClasspath` functional tests)
 
-Shared discovery via `PluginRegistry`/`PluginRegistryService` (BuildService) +
-`EasyPluginContributor` SPI (ServiceLoader,
+The two scopes are independent: `com.mreil.easy.settings` creates a settings-only root
+`EasySettingsExtension` (currently empty) and applies settings contributors, while
+`com.mreil.easy.project` creates the project root `EasyExtension`, injects copied extensions into
+subprojects and applies project contributors. Each scope owns a separate `PluginRegistryService`
+instance (`PluginRegistry.NAME` vs `PluginRegistry.SETTINGS_NAME`) because settings/project plugins
+may be loaded by different classloaders. Shared discovery via `EasyPluginContributor` SPI
+(ServiceLoader,
 `META-INF/services/com.mreil.easy.EasyPluginContributor`). `EasyExtension` (`easy { }`) aggregates per-contributor extensions (`EasyPublishExtension`, `EasyJvmDefaultsExtension`, ...). Extensions can expose a public API via `@PublicType` on the implementation — `ExtensionRegistrar.createExtensionAs` registers the extension under the public type (its `Named` companion) and instantiates the implementation (resolved via `resolvePublicType()`).
 
 ## Structure
 ```
-settings.gradle.kts          # includes :easy-plugin, :easy-plugin-core, :easy-contributor-api, :easy-contributor-support, :easy-test-support, :gradle-plugin-testutils, :gradle-plugin-utils, :contributor-plugins:publish:publish-plugin-api, :contributor-plugins:publish:publish-plugin, :contributor-plugins:publish:publish-test-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-plugin-api, :contributor-plugins:jvm-defaults:jvm-defaults-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-test-plugin, :contributor-plugins:semver:semver-plugin-api, :contributor-plugins:semver:semver-plugin, :contributor-plugins:semver:semver-test-plugin, :contributor-plugins:codemeta:codemeta-plugin-api, :contributor-plugins:codemeta:codemeta-plugin, :contributor-plugins:codemeta:codemeta-test-plugin, :contributor-plugins:project-defaults:project-defaults-plugin-api, :contributor-plugins:project-defaults:project-defaults-plugin, :contributor-plugins:project-defaults:project-defaults-test-plugin
+settings.gradle.kts          # includes :easy-plugin, :easy-plugin-settings, :easy-plugin-core, :easy-contributor-api, :easy-contributor-support, :easy-test-support, :gradle-plugin-testutils, :gradle-plugin-utils, :contributor-plugins:publish:publish-plugin-api, :contributor-plugins:publish:publish-plugin, :contributor-plugins:publish:publish-test-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-plugin-api, :contributor-plugins:jvm-defaults:jvm-defaults-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-settings-plugin, :contributor-plugins:jvm-defaults:jvm-defaults-test-plugin, :contributor-plugins:semver:semver-plugin-api, :contributor-plugins:semver:semver-plugin, :contributor-plugins:semver:semver-test-plugin, :contributor-plugins:codemeta:codemeta-plugin-api, :contributor-plugins:codemeta:codemeta-plugin, :contributor-plugins:codemeta:codemeta-test-plugin, :contributor-plugins:project-defaults:project-defaults-plugin-api, :contributor-plugins:project-defaults:project-defaults-plugin, :contributor-plugins:project-defaults:project-defaults-test-plugin
 build.gradle.kts             # root: lifecycle-base/jacoco-report-aggregation/test-report-aggregation + kotlin-jvm/detekt/spotless apply false; leaf subprojects{} centrally applies Kotlin JVM + detekt (shared config + check wiring) + Spotless (ktlint); aggregated testCodeCoverageReport/testAggregateTestReport
 gradle.properties            # CC/parallel/caching/warning.mode=all + plugin.project/settings IDs (single source; runtime mirror in PluginIds.kt)
 gradle/libs.versions.toml    # version catalog (kotlin-jvm 2.3.0, junit-jupiter 5.11.3, assertj 3.27.3, detekt 2.0.0-alpha.6, spotless 8.10.2)
 config/detekt/detekt.yml     # detekt 2.x config (maxLineLength 140, EmptyFunctionBlock off; AbstractClassCanBeConcreteClass excludes test paths)
-easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella: registers com.mreil.easy.project/settings via providers.gradleProperty, aggregates easy-plugin-core + all :contributor-plugins:*:*-plugin (dynamic, APIs transitively); test suites + pluginUnderTestMetadata + verifyShadowPackaging; publishing.repositories for mreilComGradlePluginsSnapshots (marker publications via java-gradle-plugin)
-easy-plugin-core/build.gradle.kts      # java-library: ProjectPlugin, SettingsPlugin, PluginRegistryService, PluginRegistrar, ExtensionRegistrar, EasyExtension
-easy-contributor-api/src/main/kotlin/com/mreil/easy/ # PluginIds, PluginRegistry, EasyPluginContributor, ApplyToSubprojects, EnabledBy, Named, EasyPluginExtension, CanBeEnabled, PublicType
+easy-plugin/build.gradle.kts           # java-gradle-plugin umbrella (PROJECT scope): registers com.mreil.easy.project, aggregates easy-plugin-core + all :contributor-plugins:*:*-plugin (excludes -settings-plugin); test suites + pluginUnderTestMetadata (both markers for cross-scope tests) + verifyShadowPackaging
+easy-plugin-settings/build.gradle.kts  # java-gradle-plugin umbrella (SETTINGS scope): registers com.mreil.easy.settings, aggregates easy-plugin-core + :contributor-plugins:jvm-defaults:jvm-defaults-settings-plugin; own verifyShadowPackaging
+easy-plugin-core/build.gradle.kts      # java-library: ProjectPluginEntryPoint/SettingsPluginEntryPoint bases, ProjectPlugin/SettingsPlugin live in their marker modules; PluginRegistryService, PluginRegistrar, ExtensionRegistrar, EasyExtension, EasySettingsExtension
+easy-contributor-api/src/main/kotlin/com/mreil/easy/ # PluginIds, PluginRegistry, EasyPluginContributor, ApplyToSubprojects, EnabledBy, Named, EasyPluginExtension, EasySettingsExtension, CanBeEnabled, PublicType
 easy-contributor-support/build.gradle.kts   # plain Kotlin lib (no plugin): AbstractEasyProjectPlugin, AbstractEasySettingsPlugin, PluginLifecycle
 easy-test-support/build.gradle.kts         # fixtures + easy-specific test helpers (Dummy*Plugin via ServiceLoader, PluginTestUtils); package com.mreil.easy.fixtures / com.mreil.easy.test.support – NOT generic, for functional tests
 gradle-plugin-testutils/src/main/kotlin/com/mreil/gradletest/project/ # generic TestKit helpers: GradleTestProject, ProbeTask, templates, assertj; package com.mreil.gradletest (no easy deps) – generic
 gradle-plugin-utils/src/main/kotlin/com/mreil/utils/ # generic PropertyResolver – to be extracted to separate repo
 contributor-plugins/publish/publish-plugin-api/       # java-library: public EasyPublishExtension interface + MavenRepoSpec (used by consumers, no publish logic)
 contributor-plugins/publish/publish-plugin/           # java-library: EasyPublishPlugin + EasyPublishContributor + DefaultEasyPublishExtension (@PublicType) + META-INF/services; unit tests only
-contributor-plugins/publish/publish-test-plugin/      # java-gradle-plugin harness: com.mreil.easy.test.publish → PublishTestHarnessPlugin (applies ProjectPlugin) + functionalTest via withPluginClasspath
-contributor-plugins/jvm-defaults/jvm-defaults-plugin-api/ # java-library: public EasyJvmDefaultsExtension interface (used by consumers)
-contributor-plugins/jvm-defaults/jvm-defaults-plugin/ # java-library: EasyJvmDefaultsPlugin (@EnabledBy EasyJvmDefaultsExtension) + EasyJvmDefaultsContributor + DefaultEasyJvmDefaultsExtension + META-INF/services; unit tests only
-contributor-plugins/jvm-defaults/jvm-defaults-test-plugin/ # java-gradle-plugin harness: com.mreil.easy.test.jvm → JvmDefaultsTestHarnessPlugin (applies ProjectPlugin) + functionalTest via withPluginClasspath
+contributor-plugins/publish/publish-test-plugin/      # java-gradle-plugin harness: com.mreil.easy.test.publish → PublishTestHarnessPlugin (applies ProjectPluginEntryPoint) + functionalTest via withPluginClasspath
+contributor-plugins/jvm-defaults/jvm-defaults-plugin-api/ # java-library: public EasyJvmDefaultsExtension + EasyJvmDefaultsSettingsExtension interfaces + shared DokkaJavadoc/JvmDefaultsPlugins constants (used by both scopes)
+contributor-plugins/jvm-defaults/jvm-defaults-plugin/ # project scope (java-library): EasyJvmDefaultsPlugin + EasyJvmDefaultsKotlinPlugin (@EnabledBy EasyJvmDefaultsExtension) + EasyJvmDefaultsContributor + DefaultEasyJvmDefaultsExtension + META-INF/services; unit tests only
+contributor-plugins/jvm-defaults/jvm-defaults-settings-plugin/ # settings scope (java-library): DokkaJavadocSettingsPlugin (@EnabledBy EasyJvmDefaultsSettingsExtension) + EasyJvmDefaultsSettingsContributor + DefaultEasyJvmDefaultsSettingsExtension + META-INF/services; unit tests only
+contributor-plugins/jvm-defaults/jvm-defaults-test-plugin/ # java-gradle-plugin harness: com.mreil.easy.test.jvm → JvmDefaultsTestHarnessPlugin (applies ProjectPluginEntryPoint) + functionalTest via withPluginClasspath
 contributor-plugins/semver/semver-plugin-api/              # java-library: public EasySemverExtension interface + EasySemver lookup (used by consumers)
 contributor-plugins/semver/semver-plugin/                  # java-library: EasySemverPlugin + EasySemverContributor + DefaultEasySemverExtension + META-INF/services; unit tests only
-contributor-plugins/semver/semver-test-plugin/             # java-gradle-plugin harness: com.mreil.easy.test.semver → SemverTestHarnessPlugin (applies ProjectPlugin) + functionalTest via withPluginClasspath
+contributor-plugins/semver/semver-test-plugin/             # java-gradle-plugin harness: com.mreil.easy.test.semver → SemverTestHarnessPlugin (applies ProjectPluginEntryPoint) + functionalTest via withPluginClasspath
 contributor-plugins/codemeta/codemeta-plugin-api/          # java-library: public EasyCodemetaExtension interface + Codemeta/CodemetaLicense/EasyCodemeta + CodemetaService (used by consumers)
 contributor-plugins/codemeta/codemeta-plugin/              # java-library: EasyCodemetaPlugin + EasyCodemetaContributor + DefaultEasyCodemetaExtension + GenerateCodemetaTask + META-INF/services; unit tests only
-contributor-plugins/codemeta/codemeta-test-plugin/         # java-gradle-plugin harness: com.mreil.easy.test.codemeta → CodemetaTestHarnessPlugin (applies ProjectPlugin) + functionalTest via withPluginClasspath
+contributor-plugins/codemeta/codemeta-test-plugin/         # java-gradle-plugin harness: com.mreil.easy.test.codemeta → CodemetaTestHarnessPlugin (applies ProjectPluginEntryPoint) + functionalTest via withPluginClasspath
 contributor-plugins/project-defaults/project-defaults-plugin-api/       # java-library: public EasyProjectDefaultsExtension interface (used by consumers)
 contributor-plugins/project-defaults/project-defaults-plugin/           # java-library: EasyProjectDefaultsPlugin (applies `base` in init, fail-fast group/version in afterEnabled) + EasyProjectDefaultsContributor + DefaultEasyProjectDefaultsExtension + META-INF/services; unit tests only
-contributor-plugins/project-defaults/project-defaults-test-plugin/      # java-gradle-plugin harness: com.mreil.easy.test.projectdefaults → ProjectDefaultsTestHarnessPlugin (applies ProjectPlugin) + functionalTest via withPluginClasspath
+contributor-plugins/project-defaults/project-defaults-test-plugin/      # java-gradle-plugin harness: com.mreil.easy.test.projectdefaults → ProjectDefaultsTestHarnessPlugin (applies ProjectPluginEntryPoint) + functionalTest via withPluginClasspath
 ```
 
 ## Commands
@@ -74,8 +82,9 @@ Use `./gradlew` (wrapper, Gradle 9.4.1) — not system `gradle`.
 `build.gradle.kts` must keep `kotlin-jvm`/`detekt`/`spotless` `apply false`; its leaf `subprojects { }` block centrally applies Kotlin JVM + detekt + Spotless and wires the shared detekt config + `check.dependsOn("detekt")` — keep module build files free of those declarations.
 - Plugin IDs are the single source in `gradle.properties`
 (`plugin.project`/`plugin.settings`), read via
-`providers.gradleProperty(...).get()` in `easy-plugin/build.gradle.kts`; runtime
-mirror is `easy-contributor-api/.../PluginIds.kt` — keep in sync.
+`providers.gradleProperty(...).get()` in the marker module build files (`easy-plugin/build.gradle.kts`
+/ `easy-plugin-settings/build.gradle.kts`); runtime mirror is `easy-contributor-api/.../PluginIds.kt`
+— keep in sync.
 Contributor `publish-plugin`/`jvm-defaults` IDs are internal (contribute via SPI, not applied by ID externally).
 - Published artifact set is documented in `DEVELOPMENT.md` → "Publishing (deployed artifact set)" and is the source of truth for everything any `mavenRepo()`-declared repository receives. Whenever publish behaviour changes (new module, new publication, marker changes, harness publishing), update that section and the local-verification note (`publishAllPublicationsToMavenStagingRepository`) — keep both docs in sync.
 - Plugin registration via `gradlePlugin { plugins.creating { id,
@@ -91,15 +100,28 @@ applies `jacoco` — so module build files declare only repo-specific test-helpe
 `subprojects` block.
 - CC/parallel/caching/warning.mode=all are on — tasks must be CC-compatible
 (providers/properties, no `project` at execution).
+- **External plugin integration (standard practice):** never link or depend on an external Gradle
+plugin's types. Integrate by id and react with `project.pluginManager.withPlugin(id) { ... }`
+(`withId`/`withType` where appropriate), no-oping when it is absent — so the same wiring works
+whether the consumer applies the external plugin directly or a settings-scope opt-in only adds its
+marker to the root buildscript classpath. Settings scope adds marker/classpath only; project scope
+applies and rewires. Reference: Dokka (`DokkaJavadocSettingsWiring.inject` +
+`DokkaJavadocWiring.configureJavadocJar`), covered by both `DokkaJavadocFuncTest` scenarios
+(settings opt-in; consumer-applied `dokka-javadoc`).
 - ServiceLoader SPI: contributors implement `EasyPluginContributor` in
 `easy-contributor-api`, declare
 `META-INF/services/com.mreil.easy.EasyPluginContributor`.
-`ProjectPlugin`/`SettingsPlugin`/`PluginRegistrar` call `registry.loadFromServiceLoader()` then
+`ProjectPluginEntryPoint`/`SettingsPluginEntryPoint`/`PluginRegistrar` call
+`registry.loadFromServiceLoader(javaClass.classLoader)` (the caller's loader, which is why the
+concrete marker classes — not the core bases — are registered under the plugin IDs) then
 defer extra-plugin application via
-`project.plugins.withType(ProjectPlugin::class.java) { apply }` /
+`project.plugins.withType(ProjectPluginEntryPoint::class.java) { apply }` /
 `settings.pluginManager.withPlugin(PluginIds.SETTINGS) { apply }` +
 `pluginManager.apply(kclass.java)` (no manual instantiation, never
-`newInstance().apply()`). Ordering is `orderedAllProjects` (root + subprojects sorted by path); `@ApplyToSubprojects` on the contributor controls fan-out, `@EnabledBy(Extension::class)` + `AbstractEasyProjectPlugin`/`afterEvaluate` + `CanBeEnabled` controls lazy enabling via `easy { ... }`. Extensions can expose a public API via `@PublicType` on the implementation — `ExtensionRegistrar.createExtensionAs` registers the extension under the public type (its `Named` companion) and instantiates the implementation (resolved via `resolvePublicType()`).
+`newInstance().apply()`). Settings and project scopes resolve distinct `PluginRegistryService`
+instances via `PluginRegistry.SETTINGS_NAME`/`PluginRegistry.NAME` (`InternalProjectUtils.getRegistry(name)`);
+`SettingsPluginEntryPoint` neither applies the project entry point nor copies its extension into projects.
+Ordering is `orderedAllProjects` (root + subprojects sorted by path); `@ApplyToSubprojects` on the contributor controls fan-out, `@EnabledBy(Extension::class)` + `AbstractEasyProjectPlugin`/`afterEvaluate` + `CanBeEnabled` controls lazy enabling via `easy { ... }`. Extensions can expose a public API via `@PublicType` on the implementation — `ExtensionRegistrar.createExtensionAs` registers the extension under the public type (its `Named` companion) and instantiates the implementation (resolved via `resolvePublicType()`).
 - Lifecycle contract (`AbstractEasyProjectPlugin.apply` = eager `init()` + deferred `afterEnabled()`): shared state consumed across contributors (e.g. `BuildService`s like `CodemetaService`) must be registered in `init()` (apply time), never in `afterEnabled()`. `afterEnabled()` is for enabled-gated behavior only (tasks, wiring). `withType`/`withId` order plugin *application*, not deferred `afterEvaluate` actions — so cross-contributor reads during configuration may only depend on eagerly-available state (extensions, apply-time services), never on another contributor's `afterEvaluate` having run.
 - `afterEvaluate` is a last resort, never routine: prefer lazy Gradle APIs (providers, `withType`/`withId`/`configureEach`, `named`) plus the `init()`/`afterEnabled()` lifecycle, which compose regardless of evaluation order. Extra `afterEvaluate` blocks (nested ones, `state.executed` branches) create ordering puzzles — e.g. the `PomCheckWiring` incident where a `matching().all()` hook silently never fired for lazily-registered tasks.
 
@@ -112,7 +134,7 @@ defer extra-plugin application via
 
 ## Testing
 - Unit: `easy-plugin/src/test`, `easy-plugin-core/src/test`, `easy-contributor-support/src/test`, `gradle-plugin-utils/src/test`, `contributor-plugins/*/src/test` — JUnit Jupiter 5.11.3 + AssertJ SoftAssertions, `ProjectBuilder` for `PluginRegistryService`/`ExtensionRegistrar`/`PluginRegistrar` (fast). Shared fixtures in `easy-test-support` (`com.mreil.easy.fixtures` + `com.mreil.easy.test.support.PluginTestUtils`) — also `easy-plugin` `fixtures` configuration for TestKit classpath; generic helpers are `com.mreil.gradletest.project.GradleTestProject`/`ProbeTask` in `gradle-plugin-testutils` (package `com.mreil.gradletest`), `com.mreil.utils.PropertyResolver` in `gradle-plugin-utils` (generic, to be extracted).
-- Functional: `easy-plugin/src/functionalTest` — `GradleRunner` with `withPluginClasspath()` (real classes from `easy-test-support`/`easy-plugin-core`, not inline `build.gradle.kts`). `contributor-plugins/publish/publish-test-plugin` & `jvm-defaults/jvm-defaults-test-plugin` — `GradleRunner` with `withPluginClasspath()` + `id("com.mreil.easy.test.publish")` / `id("com.mreil.easy.test.jvm")` harness plugins that apply `ProjectPlugin`.
+- Functional: `easy-plugin/src/functionalTest` — `GradleRunner` with `withPluginClasspath()`; its `pluginUnderTestMetadata` carries both marker modules so cross-scope tests can apply both IDs (TestKit flattens the classpath; the real two-jar topology is guarded by the published-consumer E2E in `TWO_JAR_SPLIT.md` step 5). `contributor-plugins/*/*-test-plugin` — `GradleRunner` with `withPluginClasspath()` + `id("com.mreil.easy.test.publish")` / `id("com.mreil.easy.test.jvm")` etc. harness plugins that apply the core `ProjectPluginEntryPoint`.
 - Isolated functional tests (recommended): use `@DisableAllEasyPlugins` + `@ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)` from `easy-test-support` (`com.mreil.easy.test.support`). The extension sets `easy.disableAllPlugins=true` on both host and TestKit child (via `GradleTestProject.systemProperty`) and clears after. With all `CanBeEnabled` disabled (`ExtensionRegistrar.kt:131`), tests explicitly re-enable needed plugins via `easy { <name> { enabled.set(true) } }` (e.g. `publish` needing `codemeta` must declare extra `project(":contributor-plugins:codemeta:codemeta-plugin")` + enable both). For low-level flag verification see `DisableAllPluginsFuncTest.kt:14` (still uses manual `@SetSystemProperty` + `systemProperty`).
 - Run `./gradlew :easy-plugin:check` (or `./gradlew build` for all modules + aggregated reports) before submitting.
 - New contributor plugins must ship a configuration-cache compatibility test that fails on CC validation problems (e.g. external processes started at configuration time) — the VCS plugin's `git rev-parse ... @{u}` / `git remote get-url origin` calls broke CC and were only found after release.
@@ -123,11 +145,11 @@ No smoke-test projects are committed — they needed constant up-keeping against
 do this ad-hoc when a release/snapshot must be verified. Build a throwaway project outside the repo
 (e.g. under `/tmp`):
 
-1. Scaffold a standalone Gradle project with its own wrapper: copy `gradlew`, `gradlew.bat`,
-   `gradle/wrapper/` and `gradle/gradle-daemon-jvm.properties` (`toolchainVersion=21`) from this
-   repo, so the Java-21 plugin variant resolves.
-2. `settings.gradle.kts` (released version resolves from the Plugin Portal; snapshot versions use
-   `latest.integration` from the snapshot repo):
+1. Scaffold a standalone Gradle project with its own wrapper: copy `gradlew`, `gradlew.bat` and
+   `gradle/wrapper/` from this repo, and run with Java 17+ (the published plugin is a Java-17
+   variant, `org.gradle.jvm.version=17`).
+2. Apply both plugin IDs (released version resolves from the Plugin Portal; snapshot versions use
+   `latest.integration` from the snapshot repo). `settings.gradle.kts` (settings scope):
    ```kotlin
    pluginManagement {
        repositories {
@@ -136,7 +158,17 @@ do this ad-hoc when a release/snapshot must be verified. Build a throwaway proje
            maven { url = uri("https://repo.mreil.com/gradle-plugins-snapshots") }
        }
    }
-   plugins { id("com.mreil.easy.settings") version "<version>" }
+   plugins {
+       id("com.mreil.easy.settings") version "<version>"
+       // Do NOT declare com.mreil.easy.project here (not even with `apply false`): that would put
+       // the project artifact, including its KGP wiring, on the settings classpath where KGP is
+       // not visible. Each ID is a separate artifact and is versioned where it is applied.
+   }
+   dependencyResolutionManagement { repositories { mavenCentral() } }
+   ```
+   Root `build.gradle.kts` (project scope — the `easy { }` DSL and all contributors live here):
+   ```kotlin
+   plugins { id("com.mreil.easy.project") version "<version>" }
    easy {
        // Contributors default to enabled; switch off what the test does not exercise to stay focused.
        publish { enabled.set(false) }
@@ -145,7 +177,6 @@ do this ad-hoc when a release/snapshot must be verified. Build a throwaway proje
        vcs { enabled.set(false) }
        release { enabled.set(false) }
    }
-   dependencyResolutionManagement { repositories { mavenCentral() } }
    ```
 3. Add the modules/sources the feature needs (`java-library`, `java-gradle-plugin`,
    `src/<name>Test` suites) and a `gradle/libs.versions.toml` with the aliases catalog-aware wiring

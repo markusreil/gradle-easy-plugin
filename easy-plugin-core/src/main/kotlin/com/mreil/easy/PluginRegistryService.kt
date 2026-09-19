@@ -25,6 +25,8 @@ abstract class PluginRegistryService :
         java.util.Collections.synchronizedMap(mutableMapOf<KClass<out Plugin<*>>, EasyPluginContributor>())
     private val extensions =
         java.util.Collections.synchronizedSet(mutableSetOf<KClass<out EasyPluginExtension>>())
+    private val settingsExtensions =
+        java.util.Collections.synchronizedSet(mutableSetOf<KClass<out EasyPluginExtension>>())
     private val extensionToContributor =
         java.util.Collections.synchronizedMap(mutableMapOf<KClass<out EasyPluginExtension>, EasyPluginContributor>())
     private val loaded = AtomicBoolean(false)
@@ -46,6 +48,13 @@ abstract class PluginRegistryService :
     }
 
     override fun getRegisteredExtensions(): Set<KClass<out EasyPluginExtension>> = synchronized(extensions) { extensions.toSet() }
+
+    override fun registerSettingsExtension(extensionClass: KClass<out EasyPluginExtension>) {
+        settingsExtensions.add(extensionClass)
+    }
+
+    override fun getSettingsExtensions(): Set<KClass<out EasyPluginExtension>> =
+        synchronized(settingsExtensions) { settingsExtensions.toSet() }
 
     /** Returns the contributor that provided [pluginClass], or null if unknown. */
     fun getContributorFor(pluginClass: KClass<out Plugin<*>>): EasyPluginContributor? = pluginToContributor[pluginClass]
@@ -69,6 +78,9 @@ abstract class PluginRegistryService :
                         contributor.pluginExtensions().forEach {
                             registerExtension(it)
                             extensionToContributor[it] = contributor
+                        }
+                        contributor.settingsExtensions().forEach {
+                            registerSettingsExtension(it)
                         }
                     }
             } catch (e: ServiceConfigurationError) {

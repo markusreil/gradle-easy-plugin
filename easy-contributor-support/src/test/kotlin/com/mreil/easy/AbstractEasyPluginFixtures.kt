@@ -22,6 +22,12 @@ abstract class SimpleEasyExtension : EasyExtension {
     }
 }
 
+abstract class SimpleEasySettingsExtension : EasySettingsExtension {
+    companion object : Named {
+        override val name: String = EasySettingsExtension.name
+    }
+}
+
 abstract class TestEnabledExtension :
     EasyPluginExtension,
     CanBeEnabled {
@@ -147,7 +153,23 @@ internal fun createEasy(
     vararg extClasses: KClass<out EasyPluginExtension>,
 ): ExtensionAware {
     holder.extensions.create(EasyExtension::class.java, EasyExtension.name, SimpleEasyExtension::class.java)
-    val easy = holder.extensions.getByName(EasyExtension.name) as ExtensionAware
+    return holder.extensions.getByName(EasyExtension.name).attachChildren(extClasses)
+}
+
+internal fun createEasySettings(
+    holder: Project,
+    vararg extClasses: KClass<out EasyPluginExtension>,
+): ExtensionAware {
+    holder.extensions.create(
+        EasySettingsExtension::class.java,
+        EasySettingsExtension.name,
+        SimpleEasySettingsExtension::class.java,
+    )
+    return holder.extensions.getByName(EasySettingsExtension.name).attachChildren(extClasses)
+}
+
+private fun Any.attachChildren(extClasses: Array<out KClass<out EasyPluginExtension>>): ExtensionAware {
+    val easy = this as ExtensionAware
     for (kClass in extClasses) {
         val created = easy.extensions.create(Named.extensionName(kClass), kClass.java)
         (created as? CanBeEnabled)?.enabled?.convention(true)

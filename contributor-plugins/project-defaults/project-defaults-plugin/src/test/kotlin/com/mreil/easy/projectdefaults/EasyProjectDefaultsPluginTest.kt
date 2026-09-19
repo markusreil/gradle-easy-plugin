@@ -1,7 +1,7 @@
 package com.mreil.easy.projectdefaults
 
 import com.mreil.easy.EasyExtension
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.ProjectConfigurationException
@@ -16,7 +16,7 @@ class EasyProjectDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0"
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         project.evaluate()
 
@@ -32,7 +32,7 @@ class EasyProjectDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.group = ""
         project.version = "1.0.0"
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         val ex = assertThrows<ProjectConfigurationException> { project.evaluate() }
 
@@ -46,7 +46,7 @@ class EasyProjectDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "unspecified"
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         val ex = assertThrows<ProjectConfigurationException> { project.evaluate() }
 
@@ -60,7 +60,7 @@ class EasyProjectDefaultsPluginTest {
         val project = ProjectBuilder.builder().build()
         project.group = ""
         project.version = "unspecified"
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
         easy.extensions
             .getByType(EasyProjectDefaultsExtension::class.java)

@@ -24,6 +24,8 @@ easy {
 
 rootProject.name = "gradle-easy-plugin"
 include("easy-plugin")
+include("easy-plugin-settings")
+include("e2e-published")
 include("easy-plugin-core")
 include("easy-contributor-api")
 include("easy-contributor-support")
@@ -35,6 +37,7 @@ include("contributor-plugins:publish:publish-plugin")
 include("contributor-plugins:publish:publish-test-plugin")
 include("contributor-plugins:jvm-defaults:jvm-defaults-plugin-api")
 include("contributor-plugins:jvm-defaults:jvm-defaults-plugin")
+include("contributor-plugins:jvm-defaults:jvm-defaults-settings-plugin")
 include("contributor-plugins:jvm-defaults:jvm-defaults-test-plugin")
 include("contributor-plugins:semver:semver-plugin-api")
 include("contributor-plugins:semver:semver-plugin")

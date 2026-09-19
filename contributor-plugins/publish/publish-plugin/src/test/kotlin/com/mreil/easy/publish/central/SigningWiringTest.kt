@@ -1,6 +1,6 @@
 package com.mreil.easy.publish.central
 
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
 import com.mreil.easy.publish.publishExtension
 import com.mreil.gradletest.project.evaluate
@@ -105,9 +105,9 @@ class SigningWiringTest {
         project.version = "1.0.0"
         project.pluginManager.apply("java-library")
         project.pluginManager.apply("maven-publish")
-        // ProjectPlugin registers the publish extension via SPI - apply it before
+        // ProjectPluginEntryPoint registers the publish extension via SPI - apply it before
         // accessing publishExtension() (which would otherwise throw UnknownDomainObjectException).
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         val publishExt = project.publishExtension()!!
         publishExt.enabled.set(true)

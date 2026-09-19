@@ -45,18 +45,21 @@ Extra plugins (e.g., `publish-plugin:EasyPublishPlugin`) and custom extensions (
 
 3. **Depend on the contributor** — `easy-plugin/build.gradle.kts` has `implementation(project(":publish-plugin"))` (or consumer runtime classpath), so the service file is on the runtime classpath.
 
-4. **Discovery at apply time** — `ProjectPlugin`/`SettingsPlugin` register the shared build service:
+4. **Discovery at apply time** — each scope registers its own build service (settings and project
+   plugins may be loaded by different classloaders, so the registry must not be shared):
    ```kotlin
-   val registry = gradle.sharedServices.registerIfAbsent(PluginRegistry.NAME, PluginRegistryService::class.java).get()
+   // ProjectPlugin → PluginRegistry.NAME ("easyPluginRegistry")
+   // SettingsPlugin → PluginRegistry.SETTINGS_NAME ("easyPluginRegistrySettings")
+   val registry = gradle.sharedServices.registerIfAbsent(name, PluginRegistryService::class.java).get()
    registry.loadFromServiceLoader(javaClass.classLoader) // ServiceLoader.load(EasyPluginContributor::class.java)
    ```
-   `PluginRegistryService` (`easy-plugin-core/.../PluginRegistryService.kt`) implements `PluginRegistry` (single build-service, `NAME = "easyPluginRegistry"`).
+   `PluginRegistryService` (`easy-plugin-core/.../PluginRegistryService.kt`) implements `PluginRegistry`; `InternalProjectUtils.getRegistry(name)` selects the per-scope service name.
 
 5. **Extension Registration & Configuration Copying**:
-   - `ExtensionRegistrar` creates the top-level `EasyExtension` (`"easy"`) on `Settings` and `Project` and attaches all contributed `EasyPluginExtension` classes to `easy.extensions`. For each `implClass` from `PluginRegistry` it resolves `implClass.resolvePublicType()` (reads `@PublicType` if present, else the class itself) and calls `createExtensionAs(publicType, implClass)` – `extensions.create(publicType.java, publicType.extensionName(), implType.java)` – so `-api` interfaces are the lookup type (`easy.extensions.findByType(Public::class)`) while the implementation is instantiated.
-   - In `SettingsPlugin`, conventions set in `settings.gradle.kts` (e.g., `easy { extensions.configure<MyExtension> { ... } }`) are automatically copied to the root `Project` via `ExtensionCopier`.
+   - `ExtensionRegistrar` creates the top-level `EasyExtension` (`"easy"`) on `Project` and attaches all contributed `EasyPluginExtension` classes to `easy.extensions`. The settings scope has its own root instead: `ExtensionRegistrar.createSettingsExtension()` registers `EasySettingsExtension` and currently attaches no contributed children. For each `implClass` from `PluginRegistry` it resolves `implClass.resolvePublicType()` (reads `@PublicType` if present, else the class itself) and calls `createExtensionAs(publicType, implClass)` – `extensions.create(publicType.java, publicType.extensionName(), implType.java)` – so `-api` interfaces are the lookup type (`easy.extensions.findByType(Public::class)`) while the implementation is instantiated.
+   - Settings scope no longer copies its extension into projects: `SettingsPlugin` creates the settings root only and never applies `ProjectPlugin`. Configure `easy { }` in the root project's `build.gradle.kts` after applying `com.mreil.easy.project`.
    - `ExtensionCopier` handles deep copying of Gradle `Property<*>`, `DomainObjectCollection<*>`, nested `CanBeCopied` objects, `ExtensionAware` child extensions, and mutable properties, respecting `@CopyMode` (`DEEP`, `READ_ONLY`, `NONE`).
-   - **Subproject Extension Injection**: `ExtensionRegistrar.createExtension(project: Project, registry, parent)` (used by `ProjectPlugin`) mirrors `PluginRegistrar`'s `@ApplyToSubprojects` handling — when called on the root `Project`, it also creates `EasyExtension` copies in all subprojects (`orderedAllProjects` = `root` + `subprojects.sortedBy { path }`) via `ExtensionCopier` from the parent `easy` (typically `Settings` or root). The `ExtensionAware` overload (`createExtension(target: ExtensionAware, ...)`) does **not** inject; only the `Project` overload does. Currently the injection is **unguarded** (all registered extensions are injected) so a plugin applied to subprojects via `@ApplyToSubprojects` always finds its `easy.*` extension in the target — per-extension guarding can be added later alongside the `EnabledBy` lifecycle.
+   - **Subproject Extension Injection**: `ProjectPlugin.injectEasyExtensions` creates `EasyExtension` copies in all subprojects (`orderedAllProjects` = `root` + `subprojects.sortedBy { path }`) via `ExtensionRegistrar.createExtension(project, registry, parent)` + `ExtensionCopier`, so a plugin applied to subprojects via `@ApplyToSubprojects` always finds its `easy.*` extension. Injection is **unguarded** (all registered extensions are injected); per-extension guarding can be added later alongside the `EnabledBy` lifecycle.
 
 6. **Plugin Application via PluginRegistrar** — encapsulates deferred application and subproject targeting:
    - Project: `PluginRegistrar.applyPlugins(project, registry)` (delegates to `project.plugins.withType(ProjectPlugin::class.java)` and applies to subprojects if annotated with `@ApplyToSubprojects`).

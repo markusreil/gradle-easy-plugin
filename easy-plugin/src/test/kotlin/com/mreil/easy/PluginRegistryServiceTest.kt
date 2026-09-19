@@ -14,6 +14,10 @@ class PluginRegistryServiceTest {
 
     private interface OtherDummyExtension : EasyPluginExtension
 
+    private interface DummySettingsExtension : EasyPluginExtension
+
+    private interface OtherDummySettingsExtension : EasyPluginExtension
+
     private class DummySettingsPlugin : Plugin<Settings> {
         override fun apply(target: Settings) {}
     }
@@ -178,6 +182,67 @@ class PluginRegistryServiceTest {
         assertSoftly { softly ->
             softly.assertThat(first).contains(DummyExtension::class)
             softly.assertThat(service.getRegisteredExtensions()).contains(DummyExtension::class)
+        }
+    }
+
+    @Test
+    fun `registerSettingsExtension and getSettingsExtensions via shared service`() {
+        val project = ProjectBuilder.builder().build()
+        project.plugins.apply("com.mreil.easy.project")
+
+        val service =
+            project.gradle.sharedServices.registrations
+                .getByName(PluginRegistry.NAME)
+                .service
+                .get() as PluginRegistry
+
+        assertSoftly { softly ->
+            service.registerSettingsExtension(DummySettingsExtension::class)
+            softly.assertThat(service.getSettingsExtensions()).contains(DummySettingsExtension::class)
+            // settings-scope registrations stay independent of the project-scope set
+            softly.assertThat(service.getRegisteredExtensions()).doesNotContain(DummySettingsExtension::class)
+            service.registerSettingsExtension(OtherDummySettingsExtension::class)
+            softly
+                .assertThat(service.getSettingsExtensions())
+                .contains(DummySettingsExtension::class, OtherDummySettingsExtension::class)
+        }
+    }
+
+    @Test
+    fun `registerSettingsExtension deduplicates same KClass`() {
+        val project = ProjectBuilder.builder().build()
+        project.plugins.apply("com.mreil.easy.project")
+
+        val service =
+            project.gradle.sharedServices.registrations
+                .getByName(PluginRegistry.NAME)
+                .service
+                .get() as PluginRegistry
+
+        service.registerSettingsExtension(DummySettingsExtension::class)
+        service.registerSettingsExtension(DummySettingsExtension::class)
+
+        assertSoftly { softly ->
+            softly.assertThat(service.getSettingsExtensions()).contains(DummySettingsExtension::class)
+        }
+    }
+
+    @Test
+    fun `getSettingsExtensions returns defensive copy`() {
+        val project = ProjectBuilder.builder().build()
+        project.plugins.apply("com.mreil.easy.project")
+
+        val service =
+            project.gradle.sharedServices.registrations
+                .getByName(PluginRegistry.NAME)
+                .service
+                .get() as PluginRegistry
+        service.registerSettingsExtension(DummySettingsExtension::class)
+
+        val first = service.getSettingsExtensions()
+        assertSoftly { softly ->
+            softly.assertThat(first).contains(DummySettingsExtension::class)
+            softly.assertThat(service.getSettingsExtensions()).contains(DummySettingsExtension::class)
         }
     }
 }

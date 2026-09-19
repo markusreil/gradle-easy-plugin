@@ -1,7 +1,7 @@
 package com.mreil.easy.publish
 
 import com.mreil.easy.EasyExtension
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
@@ -27,8 +27,8 @@ class EasyPublishStagingTest {
             it.version = "1.0.0"
             it.pluginManager.apply("java-library")
         }
-        root.pluginManager.apply(ProjectPlugin::class.java)
-        child.pluginManager.apply(ProjectPlugin::class.java)
+        root.pluginManager.apply(ProjectPluginEntryPoint::class.java)
+        child.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         val rootPublish =
             (root.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
@@ -82,8 +82,8 @@ class EasyPublishStagingTest {
             it.version = "1.0.0"
             it.pluginManager.apply("java-library")
         }
-        root.pluginManager.apply(ProjectPlugin::class.java)
-        child.pluginManager.apply(ProjectPlugin::class.java)
+        root.pluginManager.apply(ProjectPluginEntryPoint::class.java)
+        child.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         val rootPublish =
             (root.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
@@ -130,8 +130,8 @@ class EasyPublishStagingTest {
             it.version = "1.0.0"
             it.pluginManager.apply("java-library")
         }
-        root.pluginManager.apply(ProjectPlugin::class.java)
-        child.pluginManager.apply(ProjectPlugin::class.java)
+        root.pluginManager.apply(ProjectPluginEntryPoint::class.java)
+        child.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         val rootPublish =
             (root.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
@@ -162,7 +162,7 @@ class EasyPublishStagingTest {
         project.group = "com.example"
         project.version = "1.0.0"
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         val publish =
             (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
                 .extensions
@@ -193,7 +193,7 @@ class EasyPublishStagingTest {
         project.group = "com.example"
         project.version = "1.0.0"
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         val publish =
             (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
                 .extensions
