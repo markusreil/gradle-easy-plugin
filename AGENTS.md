@@ -211,4 +211,10 @@ comments unless requested).
 - Do not disable CC/parallel/caching/warning.mode without justification.
 
 ## Future Improvements
-- None currently — contributor harnesses use `withPluginClasspath`; add new contributors under `contributor-plugins/<name>/<name>-plugin` + `<name>-test-plugin` with `Easy<Name>Plugin`/`Easy<Name>Extension` naming.
+- Reconcile the other unmerged branches: `fix-KGP-classloader-issues`, `split-settings-and-project-plugin`, `central-kgp-application`, `fix-double-action`, `add-central-publishing`.
+- Publish a shared `easy-plugin-core` Maven dependency instead of bundling it into both marker jars.
+- Drop the redundant `-api` publishes (they are bundled *and* published today).
+- Extract `PropertyResolver` (and the `com.mreil.utils` helpers) so the settings marker no longer declares an unused `commons-configuration2` dependency.
+- Rename `easy-plugin` → `easy-plugin-project` for symmetry with `easy-plugin-settings`.
+- Contributor harnesses use `withPluginClasspath`; add new contributors under `contributor-plugins/<name>/<name>-plugin` + `<name>-test-plugin` with `Easy<Name>Plugin`/`Easy<Name>Extension` naming.
+- Design/risk record for the settings/project artifact split: `TWO_JAR_SPLIT.md`.
