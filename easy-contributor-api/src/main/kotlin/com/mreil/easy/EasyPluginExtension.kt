@@ -5,7 +5,8 @@ package com.mreil.easy
  * (discovered via [EasyPluginContributor.pluginExtensions]).
  *
  * Contributed extensions implementing this interface are automatically registered onto [EasyExtension.extensions]
- * on both `Settings` and `Project` scopes, and are copied across project boundaries using [CanBeCopied] semantics.
+ * on the project root and copied into subprojects using [CanBeCopied] semantics. The settings root
+ * ([EasySettingsExtension]) currently hosts no contributed child extensions.
  *
  * ### Differences from [EasyExtension]:
  * - **Scope**: [EasyPluginExtension] represents modular, child feature extensions attached under [EasyExtension.extensions]

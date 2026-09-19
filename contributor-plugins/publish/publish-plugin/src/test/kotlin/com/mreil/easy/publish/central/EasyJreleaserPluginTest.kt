@@ -3,7 +3,7 @@ package com.mreil.easy.publish.central
 import com.mreil.easy.ApplyToSubprojects
 import com.mreil.easy.EasyExtension
 import com.mreil.easy.EnabledBy
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.easy.codemeta.EasyCodemetaExtension
 import com.mreil.easy.publish.EasyPublishContributor
 import com.mreil.easy.publish.EasyPublishExtension
@@ -192,7 +192,7 @@ class EasyJreleaserPluginTest {
         project.group = "com.example"
         project.version = "1.0.0"
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         return project
     }
 

@@ -23,7 +23,7 @@ class EasyJvmDefaultsPlugin : AbstractEasyProjectPlugin() {
             if (javadocJarCreated) {
                 // Only rewire a javadocJar the plugin created; a manually configured one is left
                 // untouched (see ensureJarTask's migration hint).
-                target.pluginManager.withPlugin(DokkaJavadocWiring.PLUGIN_ID) {
+                target.pluginManager.withPlugin(DokkaJavadoc.PLUGIN_ID) {
                     DokkaJavadocWiring.configureJavadocJar(target)
                 }
             }

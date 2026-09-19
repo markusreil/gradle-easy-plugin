@@ -31,6 +31,14 @@ val fixtures =
         isCanBeResolved = true
     }
 
+// Cross-scope functional tests apply both plugin IDs; the settings marker is test-only and must
+// never become a runtime/published dependency of the project jar.
+val crossScopePlugins =
+    configurations.create("crossScopePlugins") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+
 dependencies {
     implementation(project(":easy-plugin-core"))
     implementation(project(":easy-contributor-api"))
@@ -42,10 +50,12 @@ dependencies {
                 .filter { it.startsWith(":contributor-plugins:") }
                 .filter { it.endsWith("-plugin") }
                 .filterNot { it.endsWith("-test-plugin") }
+                .filterNot { it.endsWith("-settings-plugin") }
                 .sorted()
         }.get()
         .forEach { implementation(project(it)) }
     fixtures(project(":easy-test-support"))
+    crossScopePlugins(project(":easy-plugin-settings"))
 
     // The fat jar bundles only modules built by this build, so third-party dependencies must stay
     // ordinary Maven Central dependencies of the published artifact. Declaring them on the Shadow
@@ -76,24 +86,16 @@ gradlePlugin {
     website.set("https://github.com/markusreil/gradle-easy-plugin")
     vcsUrl.set("https://github.com/markusreil/gradle-easy-plugin")
 
-    // NOTE: impl classes live in :easy-plugin-core, so :easy-plugin:jar warns
-    // "implementation class ... was not found in the jar". Expected and benign: the
-    // classes resolve from :easy-plugin-core on the runtime classpath. Do not move
-    // declarations to core (markers would lose contributor deps) or classes here
-    // (core references ProjectPlugin — dependency cycle).
+    // NOTE: the project entry point lives in this module, extending the shared base class in
+    // :easy-plugin-core; the settings entry point lives in :easy-plugin-settings. Neither may move
+    // back to core: core is bundled into both artifacts, and a core copy would shadow the marker
+    // module's class on the parent-first classloader, so the entry point would resolve against a
+    // loader that cannot see its scope's contributors (and, for the project scope, KGP).
     // Define the plugin
     plugins.create("easyProject") {
         id = providers.gradleProperty("plugin.project").get()
         implementationClass = "com.mreil.easy.ProjectPlugin"
         displayName = "Easy Project Plugin"
-        description =
-            "A Gradle plugin framework that simplifies plugin development with modular contributors and convention-based configuration"
-        tags.set(listOf("kotlin", "conventions", "plugin-development", "modular"))
-    }
-    plugins.create("easySettings") {
-        id = providers.gradleProperty("plugin.settings").get()
-        implementationClass = "com.mreil.easy.SettingsPlugin"
-        displayName = "Easy Settings Plugin"
         description =
             "A Gradle plugin framework that simplifies plugin development with modular contributors and convention-based configuration"
         tags.set(listOf("kotlin", "conventions", "plugin-development", "modular"))
@@ -104,6 +106,7 @@ gradlePlugin {
 // metadata; the runtimeOnly wiring itself is added by jvm-defaults.
 tasks.named<PluginUnderTestMetadata>("pluginUnderTestMetadata") {
     pluginClasspath.from(fixtures)
+    pluginClasspath.from(crossScopePlugins)
 }
 
 // Every module built by this build shares the project group, making it the single discriminator
@@ -172,23 +175,39 @@ val verifyShadowPackaging =
                     "com/mreil/easy/fixtures/",
                     "com/mreil/easy/test/support/",
                 )
-            val offending =
+            val entries =
                 ZipFile(shadowJarFile.get().asFile).use { zip ->
                     zip
                         .entries()
                         .asSequence()
                         .map { it.name }
-                        .filter { name ->
-                            name.endsWith(".class") &&
-                                (
-                                    !name.startsWith("com/mreil/") ||
-                                        testOnlyPrefixes.any { name.startsWith(it) } ||
-                                        name.contains("TestHarnessPlugin")
-                                )
-                        }.toList()
+                        .toList()
+                }
+            val offending =
+                entries.filter { name ->
+                    name.endsWith(".class") &&
+                        (
+                            !name.startsWith("com/mreil/") ||
+                                testOnlyPrefixes.any { name.startsWith(it) } ||
+                                name.contains("TestHarnessPlugin")
+                        )
                 }
             check(offending.isEmpty()) {
                 "The easy-plugin fat jar must bundle only modules built by this build: $offending"
+            }
+
+            // D3/D4: the project jar must carry no settings-scope plugin/wiring classes.
+            val settingsOnly =
+                listOf(
+                    "com/mreil/easy/SettingsPlugin.class",
+                    "com/mreil/easy/jvm/DefaultEasyJvmDefaultsSettingsExtension.class",
+                    "com/mreil/easy/jvm/EasyJvmDefaultsSettingsContributor.class",
+                    "com/mreil/easy/jvm/kotlin/DokkaJavadocSettingsPlugin.class",
+                    "com/mreil/easy/jvm/kotlin/DokkaJavadocSettingsWiring.class",
+                )
+            val leakedSettings = entries.filter { it in settingsOnly }
+            check(leakedSettings.isEmpty()) {
+                "The easy-plugin fat jar must not contain settings-scope classes: $leakedSettings"
             }
         }
     }

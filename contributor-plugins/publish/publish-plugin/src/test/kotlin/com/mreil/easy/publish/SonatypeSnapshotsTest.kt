@@ -1,7 +1,7 @@
 package com.mreil.easy.publish
 
 import com.mreil.easy.EasyExtension
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.easy.semver.EasySemverExtension
 import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
@@ -178,7 +178,7 @@ class SonatypeSnapshotsTest {
         project.group = "com.example"
         project.version = version
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         return project
     }
 

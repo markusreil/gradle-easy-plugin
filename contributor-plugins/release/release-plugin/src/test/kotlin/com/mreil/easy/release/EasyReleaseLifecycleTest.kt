@@ -1,6 +1,6 @@
 package com.mreil.easy.release
 
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.easy.vcs.VcsService
 import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.Assertions.assertThat
@@ -15,7 +15,7 @@ class EasyReleaseLifecycleTest {
     @Test
     fun `releaseLifecycle service is registered with semver derived release version`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.2.3-SNAPSHOT"
         project.evaluate()
@@ -30,7 +30,7 @@ class EasyReleaseLifecycleTest {
         System.setProperty(EasyReleasePlugin.RELEASE_VERSION_PROPERTY, "9.9.9")
         try {
             val project = ProjectBuilder.builder().build()
-            project.pluginManager.apply(ProjectPlugin::class.java)
+            project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
             project.group = "com.example"
             project.version = "1.2.3-SNAPSHOT"
             project.evaluate()
@@ -46,7 +46,7 @@ class EasyReleaseLifecycleTest {
     @Test
     fun `beforePreReleaseCommit attaches a doFirst action with the resolved release version`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.evaluate()
@@ -68,7 +68,7 @@ class EasyReleaseLifecycleTest {
     @Test
     fun `beforePreReleaseCommit collects listener files into additionalFiles`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.evaluate()
@@ -84,7 +84,7 @@ class EasyReleaseLifecycleTest {
     @Test
     fun `preReleaseCommit commits version file and contributed extra files`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         registerVcsService(project)
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"

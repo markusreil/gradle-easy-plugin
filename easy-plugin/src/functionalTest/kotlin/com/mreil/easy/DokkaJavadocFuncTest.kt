@@ -169,6 +169,31 @@ class DokkaJavadocFuncTest {
         }
     }
 
+    @Test
+    fun `rewires javadocJar when the consumer applies dokka directly`() {
+        val dokkaProbe =
+            probeTask("verifyConsumerDokka") {
+                prelude("val javadocJar = project.tasks.named(\"javadocJar\").get()")
+                expect("HAS_DOKKA_PLUGIN", "project.pluginManager.hasPlugin(\"org.jetbrains.dokka-javadoc\")", "true")
+                expect(
+                    "JAVADOC_JAR_DEPENDS_ON_DOKKA",
+                    "javadocJar.taskDependencies.getDependencies(javadocJar).any " +
+                        "{ it.name == \"dokkaGeneratePublicationJavadoc\" }",
+                    "true",
+                )
+            }
+        project.configure { stageConsumerDokkaProject(dokkaProbe.script()) }
+
+        val result = project.build("verifyConsumerDokka", "javadocJar")
+
+        val dokkaOutput = javadocJarContainsDokkaOutput(project.file("build/libs"))
+
+        assertSoftly { softly ->
+            dokkaProbe.assertOutput(softly, result.output)
+            softly.assertThat(dokkaOutput).describedAs("javadocJar contains real Dokka Javadoc pages").isTrue()
+        }
+    }
+
     private fun javadocJarContainsDokkaOutput(libsDir: File): Boolean {
         val javadocJar = libsDir.listFiles().orEmpty().single { it.name.endsWith("-javadoc.jar") }
         return ZipFile(javadocJar).use { zip ->
@@ -220,8 +245,8 @@ class DokkaJavadocFuncTest {
                 id("com.mreil.easy.settings")
             }
             rootProject.name = "dokka-javadoc"
-            extensions.configure<com.mreil.easy.EasyExtension>("easy") {
-                extensions.configure<com.mreil.easy.jvm.EasyJvmDefaultsExtension>("jvmDefaults") {
+            extensions.configure<com.mreil.easy.EasySettingsExtension>("easy") {
+                extensions.configure<com.mreil.easy.jvm.EasyJvmDefaultsSettingsExtension>("jvmDefaults") {
                     enabled.set($jvmDefaultsEnabled)
                     $optInLine
                 }
@@ -242,6 +267,7 @@ class DokkaJavadocFuncTest {
                 }
             }
             plugins {
+                id("com.mreil.easy.project")
                 `java-library`
                 $kotlinPlugin
             }
@@ -252,6 +278,47 @@ class DokkaJavadocFuncTest {
         if (includeChild) {
             stageChildProject()
         }
+    }
+
+    /**
+     * Scenario 2: only the project plugin is applied and the consumer applies `dokka-javadoc`
+     * themselves (no settings plugin / no `easy.jvmDefaults.dokkaJavadoc()` opt-in). The project
+     * plugin must still rewire the `javadocJar` it created, because it reacts to the Dokka plugin
+     * by id via `pluginManager.withPlugin(...)`.
+     */
+    private fun GradleTestProject.stageConsumerDokkaProject(probeScript: String) {
+        settings(
+            """
+            pluginManagement {
+                repositories {
+                    gradlePluginPortal()
+                    mavenCentral()
+                }
+                plugins {
+                    id("org.jetbrains.kotlin.jvm") version "$KGP_VERSION"
+                    id("org.jetbrains.dokka-javadoc") version "$DOKKA_VERSION"
+                }
+            }
+            rootProject.name = "consumer-dokka"
+            """.trimIndent(),
+        )
+        file("codemeta.json", CODEMETA_JSON)
+        file("src/main/kotlin/com/example/Placeholder.kt", kotlinSource("Placeholder"))
+        buildGradle(
+            """
+            plugins {
+                id("com.mreil.easy.project")
+                `java-library`
+                id("org.jetbrains.kotlin.jvm")
+                id("org.jetbrains.dokka-javadoc")
+            }
+            repositories { mavenCentral() }
+            easy {
+                jvmDefaults { enabled.set(true) }
+            }
+            $probeScript
+            """.trimIndent(),
+        )
     }
 
     private fun GradleTestProject.stageChildProject() {
@@ -281,6 +348,9 @@ class DokkaJavadocFuncTest {
     private companion object {
         /** Pinned to the `kotlin` version in `gradle/libs.versions.toml`. */
         const val KGP_VERSION = "2.4.20"
+
+        /** Matches `EasyJvmDefaultsSettingsExtension.DEFAULT_DOKKA_VERSION`. */
+        const val DOKKA_VERSION = "2.2.0"
 
         val CODEMETA_JSON =
             """

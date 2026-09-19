@@ -4,6 +4,7 @@ import com.mreil.easy.AbstractEasyProjectPlugin
 import com.mreil.easy.ApplyToSubprojects
 import com.mreil.easy.EnabledBy
 import com.mreil.easy.jvm.EasyJvmDefaultsExtension
+import com.mreil.easy.jvm.JvmDefaultsPlugins
 import org.gradle.api.Project
 
 /**
@@ -16,13 +17,13 @@ import org.gradle.api.Project
 @EnabledBy(EasyJvmDefaultsExtension::class)
 class EasyJvmDefaultsKotlinPlugin : AbstractEasyProjectPlugin() {
     override fun afterEnabled(target: Project) {
-        target.pluginManager.withPlugin(KOTLIN_JVM_PLUGIN) {
+        target.pluginManager.withPlugin(JvmDefaultsPlugins.KOTLIN_JVM_PLUGIN) {
             KotlinTargetWiring.configure(target)
         }
     }
 
     companion object {
         /** Plugin id of the Kotlin JVM Gradle plugin. */
-        const val KOTLIN_JVM_PLUGIN = "org.jetbrains.kotlin.jvm"
+        const val KOTLIN_JVM_PLUGIN = JvmDefaultsPlugins.KOTLIN_JVM_PLUGIN
     }
 }

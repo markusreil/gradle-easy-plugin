@@ -1,7 +1,7 @@
 package com.mreil.easy.release
 
 import com.mreil.easy.EasyExtension
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.easy.semver.EasySemverExtension
 import com.mreil.easy.vcs.VcsService
 import com.mreil.gradletest.project.evaluate
@@ -20,7 +20,7 @@ class EasyReleasePluginTest {
     @Test
     fun `release extension is registered`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
 
         val easy = project.extensions.getByType(EasyExtension::class.java)
         val release = easy.extensions.findByType(EasyReleaseExtension::class.java)
@@ -47,7 +47,7 @@ class EasyReleasePluginTest {
     @Test
     fun `every release task runs after preReleaseCheck`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck")
         val gated = project.tasks.filter { it.group == "release" && it.name != "preReleaseCheck" }
@@ -102,7 +102,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCheck fails when version file is untracked`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.evaluate()
@@ -122,7 +122,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCheck passes when version file is tracked`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.evaluate()
@@ -139,7 +139,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCheck fails when release tag already exists`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.evaluate()
@@ -158,7 +158,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCheck passes when release tag does not exist`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.evaluate()
@@ -196,7 +196,7 @@ class EasyReleasePluginTest {
         System.setProperty(EasyReleasePlugin.NEXT_VERSION_PROPERTY, "9.9.10-SNAPSHOT")
         try {
             val project = ProjectBuilder.builder().build()
-            project.pluginManager.apply(ProjectPlugin::class.java)
+            project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
             project.evaluate()
             project.tasks.getByName("preReleaseCheck")
             val state = releaseStateOf(project)
@@ -213,7 +213,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCheck fails without version or semver`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         val easy = project.extensions.getByType(EasyExtension::class.java)
@@ -231,7 +231,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCheck derives release from snapshot version`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.2.3-SNAPSHOT"
         project.evaluate()
@@ -245,7 +245,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCheck records state on success`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.evaluate()
@@ -265,7 +265,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCheck does not record state on failure`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.version = "1.0.0"
         project.evaluate()
         val check = project.tasks.getByName("preReleaseCheck") as PreReleaseCheckTask
@@ -279,7 +279,7 @@ class EasyReleasePluginTest {
     @Test
     fun `release service resolves custom tag template from the extension`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.2.3-SNAPSHOT"
         project.extensions
@@ -299,7 +299,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCommit is gated and defaults to root gradle properties`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
         val task = project.tasks.getByName("preReleaseCommit") as PreReleaseCommitTask
         assertSoftly { softly ->
@@ -321,7 +321,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCommit updates version file without vcs`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         registerVcsService(project)
@@ -342,7 +342,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCommit is a no-op when version file already at release version`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.evaluate()
@@ -360,7 +360,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseCommit fails without resolved release version`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.extensions
@@ -381,7 +381,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseTag is gated and runs after preReleaseCommit`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
         val task = project.tasks.getByName("preReleaseTag") as PreReleaseTagTask
         assertSoftly { softly ->
@@ -396,7 +396,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseTag is a no-op without vcs`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         registerVcsService(project)
@@ -409,7 +409,7 @@ class EasyReleasePluginTest {
     @Test
     fun `preReleaseTag fails without resolved release version`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.extensions
@@ -429,7 +429,7 @@ class EasyReleasePluginTest {
     @Test
     fun `postReleasePush is gated and runs after preReleaseTag`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
         val task = project.tasks.getByName("postReleasePush") as PostReleasePushTask
         assertSoftly { softly ->
@@ -445,7 +445,7 @@ class EasyReleasePluginTest {
     @Test
     fun `postReleasePush bumps to next version and commits`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         registerVcsService(project)
@@ -466,7 +466,7 @@ class EasyReleasePluginTest {
     @Test
     fun `postReleasePush is a no-op when version file already at next version`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
         registerVcsService(project)
@@ -485,7 +485,7 @@ class EasyReleasePluginTest {
     @Test
     fun `postReleasePush fails without resolved next version`() {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.group = "com.example"
         project.version = "1.0.0"
         project.extensions
@@ -561,7 +561,7 @@ class EasyReleasePluginTest {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
         val state = releaseStateOf(project)
 
@@ -591,7 +591,7 @@ class EasyReleasePluginTest {
         upToDate: Boolean = true,
     ): PreReleaseCheckTask {
         val project = ProjectBuilder.builder().build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         if (group != null) project.group = group
         if (version != null) project.version = version
         project.evaluate()
@@ -613,7 +613,7 @@ class EasyReleasePluginTest {
         val project = ProjectBuilder.builder().withProjectDir(repo).build()
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         project.evaluate()
         return releaseStateOf(project)
     }

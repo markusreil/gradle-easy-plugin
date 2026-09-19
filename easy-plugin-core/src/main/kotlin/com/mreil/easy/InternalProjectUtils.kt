@@ -15,7 +15,7 @@ import kotlin.reflect.KClass
  *
  * Returns the root project followed by all subprojects sorted by path.
  *
- * Centralizes the ordering used by [ProjectPlugin], [PluginRegistrar] and [ExtensionRegistrar]
+ * Centralizes the ordering used by [ProjectPluginEntryPoint], [PluginRegistrar] and [ExtensionRegistrar]
  * to ensure consistent fan-out when a contributor is annotated with [ApplyToSubprojects].
  */
 internal fun orderedAllProjects(project: Project): List<Project> =
@@ -24,17 +24,17 @@ internal fun orderedAllProjects(project: Project): List<Project> =
 /**
  * Checks whether [pluginClass] is annotated with [ApplyToSubprojects].
  *
- * Centralizes the `isAnnotationPresent` check duplicated in [ProjectPlugin] and [PluginRegistrar].
+ * Centralizes the `isAnnotationPresent` check duplicated in [ProjectPluginEntryPoint] and [PluginRegistrar].
  * Only the annotation on the plugin itself determines subproject fan-out.
  */
 internal fun PluginRegistry.shouldApplyToSubprojects(pluginClass: KClass<out Plugin<Project>>): Boolean =
     pluginClass.java.isAnnotationPresent(ApplyToSubprojects::class.java)
 
-internal fun Project.getPluginRegistry(): PluginRegistryService = gradle.getRegistry()
+internal fun Project.getPluginRegistry(): PluginRegistryService = gradle.getRegistry(PluginRegistry.NAME)
 
-internal fun Settings.getPluginRegistry(): PluginRegistryService = gradle.getRegistry()
+internal fun Settings.getPluginRegistry(): PluginRegistryService = gradle.getRegistry(PluginRegistry.SETTINGS_NAME)
 
-private fun Gradle.getRegistry(): PluginRegistryService =
-    sharedServices.registerIfAbsent(PluginRegistry.NAME, PluginRegistryService::class.java).get()
+private fun Gradle.getRegistry(name: String): PluginRegistryService =
+    sharedServices.registerIfAbsent(name, PluginRegistryService::class.java).get()
 
 internal fun Project.hasEasyExtension(): Boolean = extensions.findByType(EasyExtension::class.java) != null

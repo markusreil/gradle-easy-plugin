@@ -1,7 +1,7 @@
 package com.mreil.easy.publish.central
 
 import com.mreil.easy.EasyExtension
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.easy.publish.DefaultEasyPublishExtension
 import com.mreil.easy.publish.EasyPublishExtension
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
@@ -193,9 +193,9 @@ class EasyPublishCentralTest {
                 .withName("child")
                 .withParent(root)
                 .build()
-        root.pluginManager.apply(ProjectPlugin::class.java)
+        root.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         child.pluginManager.apply("java-library")
-        child.pluginManager.apply(ProjectPlugin::class.java)
+        child.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         child.pluginManager.apply("maven-publish")
         val publishing = child.extensions.getByType(PublishingExtension::class.java)
         publishing.publications.create("maven", MavenPublication::class.java) {
@@ -396,7 +396,7 @@ class EasyPublishCentralTest {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0"
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         val publish =
             (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
                 .extensions
@@ -729,9 +729,9 @@ private object ProjectBuilderHelper {
         }
         // Root-only harness (production model): the child gets `EasyPublishPlugin`/`maven-publish`
         // and the per-project Central tasks via the root's fan-out + live `withId` wiring. Applying
-        // `ProjectPlugin` here too would give the child its own `EasyJreleaserPlugin` and double
+        // `ProjectPluginEntryPoint` here too would give the child its own `EasyJreleaserPlugin` and double
         // register `checkCentralPoms`/`stripSignatureChecksums`.
-        root.pluginManager.apply(ProjectPlugin::class.java)
+        root.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         val rootPublish =
             (root.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
                 .extensions
@@ -751,7 +751,7 @@ private object ProjectBuilderHelper {
         project.group = "com.example"
         project.version = "1.0.0"
         project.pluginManager.apply("java-library")
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         val publish =
             (project.extensions.getByType(EasyExtension::class.java) as ExtensionAware)
                 .extensions

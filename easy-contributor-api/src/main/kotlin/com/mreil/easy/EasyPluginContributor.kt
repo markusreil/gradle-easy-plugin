@@ -15,6 +15,9 @@ interface EasyPluginContributor {
     /** Returns Settings plugin classes contributed by this provider. */
     fun settingsPlugins(): Set<KClass<out Plugin<Settings>>> = emptySet()
 
-    /** Returns extension classes contributed by this provider. */
+    /** Returns project-scope extension classes contributed by this provider, attached to the project root [EasyExtension]. */
     fun pluginExtensions(): Set<KClass<out EasyPluginExtension>> = emptySet()
+
+    /** Returns settings-scope extension classes contributed by this provider, attached to the settings root [EasySettingsExtension]. */
+    fun settingsExtensions(): Set<KClass<out EasyPluginExtension>> = emptySet()
 }

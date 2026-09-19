@@ -1,7 +1,7 @@
 package com.mreil.easy.codemeta
 
 import com.mreil.easy.EasyExtension
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.easy.vcs.EasyVcsExtension
 import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
@@ -18,7 +18,7 @@ class EasyCodemetaPluginTest {
 
     private fun project(dir: Path): Project {
         val project = ProjectBuilder.builder().withProjectDir(dir.toFile()).build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         return project
     }
 

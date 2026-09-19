@@ -33,7 +33,7 @@ class AbstractEasySettingsPluginTest {
     @Test
     fun `with EnabledBy defers until settingsEvaluated when enabled`() {
         val holder = ProjectBuilder.builder().build()
-        val easy = createEasy(holder, TestEnabledExtension::class)
+        val easy = createEasySettings(holder, TestEnabledExtension::class)
         val ext = easy.extensions.getByType(TestEnabledExtension::class.java)
         ext.enabled.set(true)
 
@@ -58,7 +58,7 @@ class AbstractEasySettingsPluginTest {
     @Test
     fun `with EnabledBy does not call afterEnabled when disabled`() {
         val holder = ProjectBuilder.builder().build()
-        val easy = createEasy(holder, TestEnabledExtension::class)
+        val easy = createEasySettings(holder, TestEnabledExtension::class)
         val ext = easy.extensions.getByType(TestEnabledExtension::class.java)
         ext.enabled.set(false)
 
@@ -77,7 +77,7 @@ class AbstractEasySettingsPluginTest {
     @Test
     fun `falls back to immediate check when settingsEvaluated throws and enabled`() {
         val holder = ProjectBuilder.builder().build()
-        val easy = createEasy(holder, TestEnabledExtension::class)
+        val easy = createEasySettings(holder, TestEnabledExtension::class)
         val ext = easy.extensions.getByType(TestEnabledExtension::class.java)
         ext.enabled.set(true)
 
@@ -95,7 +95,7 @@ class AbstractEasySettingsPluginTest {
     @Test
     fun `fallback does not call afterEnabled when disabled`() {
         val holder = ProjectBuilder.builder().build()
-        val easy = createEasy(holder, TestEnabledExtension::class)
+        val easy = createEasySettings(holder, TestEnabledExtension::class)
         val ext = easy.extensions.getByType(TestEnabledExtension::class.java)
         ext.enabled.set(false)
 
@@ -130,7 +130,7 @@ class AbstractEasySettingsPluginTest {
     @SetEnvironmentVariable(key = "MY_PROPERTY", value = "fromAfterEnabled")
     fun `property resolver lateinit is accessible in afterEnabled`() {
         val holder = ProjectBuilder.builder().build()
-        createEasy(holder, TestEnabledExtension::class)
+        createEasySettings(holder, TestEnabledExtension::class)
         val captured = mutableListOf<Action<Settings>>()
         val settings = newSettingsProxy(holder, captured)
 

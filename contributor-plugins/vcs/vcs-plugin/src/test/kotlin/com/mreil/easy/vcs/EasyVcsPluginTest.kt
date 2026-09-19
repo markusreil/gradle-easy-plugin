@@ -1,7 +1,7 @@
 package com.mreil.easy.vcs
 
 import com.mreil.easy.EasyExtension
-import com.mreil.easy.ProjectPlugin
+import com.mreil.easy.ProjectPluginEntryPoint
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
@@ -18,7 +18,7 @@ class EasyVcsPluginTest {
 
     private fun project(dir: Path): Project {
         val project = ProjectBuilder.builder().withProjectDir(dir.toFile()).build()
-        project.pluginManager.apply(ProjectPlugin::class.java)
+        project.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         return project
     }
 

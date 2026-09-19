@@ -8,10 +8,11 @@ It is a *contributor plugin*: it is discovered via the `EasyPluginContributor` S
 SPI (`EasyJvmDefaultsContributor`) and applied through the shared easy plugin infrastructure.
 It is applied to the root project **and every subproject** (`@ApplyToSubprojects`) and activates
 by default (`enabled` defaults to `true` in `DefaultEasyJvmDefaultsExtension`); disable it with
-`easy { jvmDefaults { enabled.set(false) } }`. The public extension API
-(`EasyJvmDefaultsExtension`) lives in `jvm-defaults-plugin-api`; the implementation
-(`DefaultEasyJvmDefaultsExtension`, annotated `@PublicType`) and wiring
-(`EasyJvmDefaultsPlugin`, `TestSuiteWiring`) live here. Java-specific wiring lives under the
+`easy { jvmDefaults { enabled.set(false) } }`. The public extension APIs
+(`EasyJvmDefaultsExtension` for project scope, `EasyJvmDefaultsSettingsExtension` for settings
+scope) live in `jvm-defaults-plugin-api`; the implementations
+(`DefaultEasyJvmDefaultsExtension`, `DefaultEasyJvmDefaultsSettingsExtension`, annotated
+`@PublicType`) and wiring (`EasyJvmDefaultsPlugin`, `TestSuiteWiring`) live here. Java-specific wiring lives under the
 `com.mreil.easy.jvm.java` package (`ToolchainWiring`, `TargetCompatibilityWiring`); Kotlin-specific
 wiring and its gated plugin live under `com.mreil.easy.jvm.kotlin` (`KotlinTargetWiring`,
 `EasyJvmDefaultsKotlinPlugin`).
@@ -86,6 +87,12 @@ JAVA_TARGET_VERSION=17 ./gradlew build
 
 ### Dokka Javadoc
 
+The settings-scope `easy.jvmDefaults` extension is a **distinct type**
+(`EasyJvmDefaultsSettingsExtension`) from the project-scope `EasyJvmDefaultsExtension`: the project
+extension no longer carries the Dokka opt-in. They are attached to different roots
+(`EasySettingsExtension` vs `EasyExtension`) and are never copied into each other, so
+`dokkaJavadoc(...)` is only available in `settings.gradle.kts`.
+
 When the Kotlin JVM plugin is applied, this dynamically applies Dokka's Javadoc plugin
 (`org.jetbrains.dokka-javadoc`) and rewires `javadocJar` to include Dokka's publication Javadoc
 output, so Kotlin sources get real Javadoc HTML instead of the empty stock `javadoc` output.
@@ -98,6 +105,10 @@ plugin is present. This relies on Gradle's buildscript classloader inheritance.
 
 The rewire only touches a `javadocJar` that the plugin itself created: a `javadocJar` declared
 manually in the build script is left untouched (the usual migration hint is logged instead).
+
+Applying Dokka yourself also works: if the consumer applies `org.jetbrains.dokka-javadoc` directly
+(with the project plugin applied and no settings opt-in), the plugin reacts to the Dokka plugin id
+and the `javadocJar` it created is backed by Dokka output — no `easy` configuration needed.
 
 The marker is resolved from the build's **existing buildscript repositories** — the build must
 declare them, e.g.:
@@ -129,9 +140,9 @@ easy {
 
 The function only enables adding the Dokka marker to the root project's buildscript classpath; if
 Dokka is present by other means, `javadocJar` is still backed by Dokka output. It is opt-in
-(not calling it means no classpath inclusion), settings-only, and the configured version is copied
-read-only to projects (calling `dokkaJavadoc(...)` on a project-scope copy throws). The default
-version is `2.2.0`; there is no Gradle-property override.
+(not calling it means no classpath inclusion), settings-only, and is never copied to projects —
+the project-scope `EasyJvmDefaultsExtension` has no `dokkaJavadoc`. The default version is `2.2.0`;
+there is no Gradle-property override.
 
 The wiring is coupled to Dokka's plugin id and its internal `dokkaGeneratePublicationJavadoc` task,
 and to Dokka's compatible Kotlin (KGP) version range matching the build's KGP. Passing a version
@@ -327,8 +338,10 @@ instantiating the implementation.
 
 ## Structure
 
-* `jvm-defaults-plugin-api` — public `EasyJvmDefaultsExtension` interface.
-* `jvm-defaults-plugin` — `DefaultEasyJvmDefaultsExtension` (`@PublicType`),
+* `jvm-defaults-plugin-api` — public `EasyJvmDefaultsExtension` (project scope) and
+  `EasyJvmDefaultsSettingsExtension` (settings scope) interfaces.
+* `jvm-defaults-plugin` — `DefaultEasyJvmDefaultsExtension` /
+  `DefaultEasyJvmDefaultsSettingsExtension` (`@PublicType`),
   `EasyJvmDefaultsPlugin` (`@EnabledBy`, `@ApplyToSubprojects`), `ToolchainWiring`
   (toolchain pinning), `TestSuiteWiring` (test-suite auto-configuration), `JacocoWiring`
   (JaCoCo application + coverage aggregation),

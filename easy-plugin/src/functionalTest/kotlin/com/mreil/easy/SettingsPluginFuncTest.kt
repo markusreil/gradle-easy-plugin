@@ -28,15 +28,10 @@ class SettingsPluginFuncTest {
     }
 
     @Test
-    fun `settings plugin creates easy extension on settings and copies to root project`() {
+    fun `settings plugin creates settings-scope easy extension and does not push to root project`() {
         val extensionProbe =
-            probeTask("verifyExtension") {
-                prelude(
-                    "val ext = project.extensions.findByName(\"easy\") as? EasyExtension",
-                    "val dummy = ext?.extensions?.findByName(\"dummy\") as? DummyExtension",
-                )
-                expect("HAS_ROOT_EXTENSION", "ext != null", "true")
-                expect("DUMMY_MESSAGE", "dummy?.message?.get()", "fromSettings")
+            probeTask("verifyNoRootExtension") {
+                expect("ROOT_HAS_NO_EASY", "project.extensions.findByName(\"easy\") == null", "true")
             }
         project.configure {
             settings(
@@ -44,28 +39,19 @@ class SettingsPluginFuncTest {
                 plugins {
                     id("com.mreil.easy.settings")
                 }
-                extensions.configure<com.mreil.easy.EasyExtension>("easy") {
-                    extensions.configure<com.mreil.easy.fixtures.DummyExtension>("dummy") {
-                        message.set("fromSettings")
-                    }
-                    extensions.configure<com.mreil.easy.codemeta.EasyCodemetaExtension>("codemeta") {
-                        enabled.set(false)
-                    }
+                check(extensions.findByName("easy") is com.mreil.easy.EasySettingsExtension) {
+                    "expected the settings-scope easy root to be EasySettingsExtension"
                 }
                 """.trimIndent(),
             )
             buildGradle(
                 """
-                import com.mreil.easy.EasyExtension
-                import com.mreil.easy.fixtures.DummyExtension
-
                 ${extensionProbe.script()}
                 """.trimIndent(),
             )
         }
 
-        val result =
-            project.build("verifyExtension")
+        val result = project.build("verifyNoRootExtension")
 
         assertSoftly { softly ->
             extensionProbe.assertOutput(softly, result.output)
@@ -73,15 +59,20 @@ class SettingsPluginFuncTest {
     }
 
     @Test
-    fun `settings plugin activates project plugins when extension enabled`() {
-        val probe =
-            probeTask("verifyProjectPlugin") {
+    fun `settings and project scopes register distinct registry services`() {
+        // TestKit loads both plugin IDs in one classloader, so this asserts the wiring/names are
+        // distinct (two registrations, two instances), not the cross-classloader behaviour itself.
+        val servicesProbe =
+            probeTask("verifyRegistries") {
                 prelude(
-                    "val easy = project.extensions.findByName(\"easy\") as? org.gradle.api.plugins.ExtensionAware",
-                    "val codemeta = easy?.extensions?.findByName(\"codemeta\")",
+                    "val registrations = project.gradle.sharedServices.registrations",
+                    "val projectService = registrations.getByName(PluginRegistry.NAME).service.get()",
+                    "val settingsService = registrations.getByName(PluginRegistry.SETTINGS_NAME).service.get()",
                 )
-                taskExists("HAS_GENERATE_CODEMETA", "generateCodemeta")
-                expect("HAS_CODEMETA_EXT", "codemeta != null", "true")
+                expect("HAS_PROJECT_EASY", "project.extensions.findByName(\"easy\") is EasyExtension", "true")
+                expect("HAS_PROJECT_REGISTRY", "registrations.findByName(PluginRegistry.NAME) != null", "true")
+                expect("HAS_SETTINGS_REGISTRY", "registrations.findByName(PluginRegistry.SETTINGS_NAME) != null", "true")
+                expect("DISTINCT_REGISTRY_SERVICES", "projectService !== settingsService", "true")
             }
         project.configure {
             stageCodemetaJson()
@@ -90,88 +81,26 @@ class SettingsPluginFuncTest {
                 plugins {
                     id("com.mreil.easy.settings")
                 }
-                easy {
-                    codemeta { enabled.set(true) }
-                }
-                """.trimIndent(),
-            )
-            buildGradle(
-                """
-                plugins {
-                    `java-library`
-                }
-                ${probe.script()}
-                """.trimIndent(),
-            )
-        }
-
-        val result = project.build("verifyProjectPlugin")
-
-        assertSoftly { softly ->
-            probe.assertOutput(softly, result.output)
-        }
-    }
-
-    @Test
-    fun `settings plugin copies easy extension to subprojects and activates project plugins`() {
-        val probe =
-            probeTask("verifySubproject") {
-                prelude(
-                    "val child = project.findProject(\":child\")!!",
-                    "val ext = child.extensions.findByName(\"easy\") as? EasyExtension",
-                    "val dummy = ext?.extensions?.findByName(\"dummy\") as? DummyExtension",
-                    "val publish = ext?.extensions?.findByName(\"publish\")",
-                )
-                expect("CHILD_HAS_ROOT_EXTENSION", "ext != null", "true")
-                expect("DUMMY_MESSAGE", "dummy?.message?.get()", "fromSettings")
-                expect("CHILD_HAS_PUBLISH_EXT", "publish != null", "true")
-                taskExists("CHILD_HAS_PUBLISH_TASK", "publish", inProject = ":child")
-            }
-        project.configure {
-            stageCodemetaJson()
-            settings(
-                """
-                plugins {
-                    id("com.mreil.easy.settings")
-                }
-                easy {
-                    dummy {
-                        message.set("fromSettings")
-                    }
-                    publish {
-                        enabled.set(true)
-                        toMavenLocal()
-                    }
-                }
-                include(":child")
                 """.trimIndent(),
             )
             buildGradle(
                 """
                 import com.mreil.easy.EasyExtension
-                import com.mreil.easy.fixtures.DummyExtension
+                import com.mreil.easy.PluginRegistry
 
-                ${probe.script()}
+                plugins {
+                    id("com.mreil.easy.project")
+                }
+
+                ${servicesProbe.script()}
                 """.trimIndent(),
             )
-            createChild {
-                buildGradle(
-                    """
-                    plugins {
-                        `java-library`
-                    }
-                    """.trimIndent(),
-                )
-            }
         }
 
-        val result = project.build("verifySubproject")
+        val result = project.build("verifyRegistries")
 
         assertSoftly { softly ->
-            probe.assertOutput(softly, result.output)
-            // ensureDefaultPublication must run exactly once per project: a second run would find
-            // the self-created 'maven' publication and log this spurious warning on every project.
-            softly.assertThat(result.output).doesNotContain("already exists")
+            servicesProbe.assertOutput(softly, result.output)
         }
     }
 }
