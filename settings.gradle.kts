@@ -8,7 +8,7 @@ pluginManagement {
     }
 }
 
-plugins { id("com.mreil.easy.settings") version "0.0.117-SNAPSHOT" }
+plugins { id("com.mreil.easy.settings") version "0.0.117" }
 
 rootProject.name = "gradle-easy-plugin"
 include("easy-plugin")
