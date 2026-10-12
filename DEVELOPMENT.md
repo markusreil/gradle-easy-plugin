@@ -208,6 +208,12 @@ Per module and version (`<groupId>/<artifactId>/<version>/`):
   wired into `check`) assert jar contents, third-party publication and scope disjointness —
   `check` fails on drift
 
+**Tiered releases (own repo vs Central/Portal):** destinations are tiered per
+declaration — plain `publish` ships tier 2 (own repos by `role`), `-Ppromote` additionally
+ships tier 3 (`promotionOnly` repos, `promoteToCentral()`, `promoteToPortal()`). Promoting
+a snapshot fails fast. Retroactive promotion rebuilds the tag as-is:
+`git checkout v0.0.x && ./gradlew publish -Ppromote`.
+
 **Local verification (no remote credentials required):**
 
 ```bash

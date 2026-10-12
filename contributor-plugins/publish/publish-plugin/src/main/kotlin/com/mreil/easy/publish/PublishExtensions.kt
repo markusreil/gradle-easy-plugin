@@ -25,7 +25,8 @@ internal fun Project.publishExtension(): DefaultEasyPublishExtension? = findEasy
 internal fun Project.isCentralEnabled(): Boolean =
     publishExtension()
         ?.takeIf { it.isEnabled() }
-        ?.deployToCentral?.get()
+        ?.deployToCentral
+        ?.get()
         ?: false
 
 /**
@@ -35,7 +36,8 @@ internal fun Project.isCentralEnabled(): Boolean =
 internal fun Project.isPromoteToCentralArmed(): Boolean =
     publishExtension()
         ?.takeIf { it.isEnabled() }
-        ?.promoteToCentral?.get()
+        ?.promoteToCentral
+        ?.get()
         ?: false
 
 /**
