@@ -124,7 +124,7 @@ class EasyPublishPluginTest {
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
         val repoDir = createTempDirectory("repo").toFile().apply { deleteOnExit() }
-        publish.mavenRepo("testRepo", repoDir.toURI().toString())
+        publish.mavenRepo("testRepo", repoDir.toURI().toString(), RepoRole.NEUTRAL)
 
         project.evaluate()
 
@@ -146,7 +146,7 @@ class EasyPublishPluginTest {
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
-        publish.mavenRepo("secureRepo", "http://localhost:1/repo", true)
+        publish.mavenRepo("secureRepo", "http://localhost:1/repo", RepoRole.NEUTRAL, true)
 
         project.evaluate()
 

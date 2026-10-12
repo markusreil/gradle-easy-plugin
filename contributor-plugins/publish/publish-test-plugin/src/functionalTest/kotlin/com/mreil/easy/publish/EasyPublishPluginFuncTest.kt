@@ -31,6 +31,8 @@ class EasyPublishPluginFuncTest {
             repoDir = createDir("repo")
             buildGradle(
                 """
+                import com.mreil.easy.publish.RepoRole
+
                 plugins {
                     `java-library`
                     id("com.mreil.easy.test.publish")
@@ -39,7 +41,7 @@ class EasyPublishPluginFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
-                        mavenRepo("testRepo", "${repoDir.invariantSeparatorsPath}")
+                        mavenRepo("testRepo", "${repoDir.invariantSeparatorsPath}", RepoRole.NEUTRAL)
                     }
                 }
                 """.trimIndent(),
@@ -91,7 +93,7 @@ class EasyPublishPluginFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
-                        mavenRepo("testRepo", "${repoDir.invariantSeparatorsPath}")
+                        mavenRepo("testRepo", "${repoDir.invariantSeparatorsPath}", com.mreil.easy.publish.RepoRole.NEUTRAL)
                     }
                 }
                 """.trimIndent(),

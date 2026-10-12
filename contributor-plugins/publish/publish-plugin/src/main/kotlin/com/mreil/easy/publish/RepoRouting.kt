@@ -1,5 +1,6 @@
 package com.mreil.easy.publish
 
+import org.gradle.api.GradleException
 import org.semver4j.Semver
 
 /**
@@ -11,25 +12,29 @@ import org.semver4j.Semver
  * are treated as releases. When semver is disabled or parsing fails, the `-SNAPSHOT` version
  * suffix fallback decides instead.
  *
- * Naming contract: a repository whose name contains `release` (case-insensitive)
- * is a release repo, one containing `snapshot` is a snapshot repo, anything else
- * is neutral and always used. A repo containing both counts as both, so it is
- * skipped for either kind (e.g. `mySnapshotRelease` never publishes).
+ * Roles are explicit ([MavenRepoSpec.role]): a repository publishes exactly what its role
+ * declares. An unset role fails fast so a missing declaration can never silently change
+ * what gets published.
  */
 internal object RepoRouting {
     fun shouldPublishToRepo(
-        repoName: String,
+        spec: MavenRepoSpec,
         isSnapshot: Boolean?,
     ): Boolean {
         if (isSnapshot == null) return true
-        val lower = repoName.lowercase()
-        val isReleaseRepo = lower.contains("release")
-        val isSnapshotRepo = lower.contains("snapshot")
-        return when {
-            isSnapshot -> !isReleaseRepo
-            else -> !isSnapshotRepo
+        return when (requireRole(spec)) {
+            RepoRole.SNAPSHOT -> isSnapshot
+            RepoRole.RELEASE -> !isSnapshot
+            RepoRole.NEUTRAL -> true
         }
     }
+
+    fun requireRole(spec: MavenRepoSpec): RepoRole =
+        spec.role.orNull
+            ?: throw GradleException(
+                "Repository '${spec.name}' declares no role. Set `role` to RepoRole.SNAPSHOT, " +
+                    "RepoRole.RELEASE or RepoRole.NEUTRAL in the mavenRepo declaration.",
+            )
 
     fun isSnapshot(semver: Semver?): Boolean? = semver?.let { it.preRelease == listOf("SNAPSHOT") }
 }

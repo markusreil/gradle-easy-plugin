@@ -156,9 +156,9 @@ Each contributor has a `-test-plugin` harness (`com.mreil.easy.test.publish` etc
 
 The `publish` contributor publishes **every Maven publication of every project** to
 **every repository declared via `easy.publish.mavenRepo(...)`**, filtered by
-`RepoRouting` name rules: a repo name containing `release` only
-receives non-snapshot versions, one containing `snapshot` only snapshots (snapshot
-routing requires `easy.semver`), any other name is neutral and receives everything.
+the spec's explicit `role`: `RepoRole.RELEASE` only receives non-snapshot versions,
+`RepoRole.SNAPSHOT` only snapshots, `RepoRole.NEUTRAL` everything. An unset role fails
+fast at configuration time (no name guessing).
 `toMavenStaging()`/`toSonatypeSnapshots()` are `mavenRepo`s under the hood
 (`mavenStaging`, `sonatypeSnapshots`); `toMavenCentral()` instead stages into
 `mavenStaging` and lets JReleaser deploy that staged set to Maven Central.

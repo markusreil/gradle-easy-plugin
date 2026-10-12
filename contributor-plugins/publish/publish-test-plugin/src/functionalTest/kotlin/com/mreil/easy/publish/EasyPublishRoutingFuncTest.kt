@@ -34,6 +34,8 @@ class EasyPublishRoutingFuncTest {
             neutralDir = createDir("repoNeutral")
             buildGradle(
                 """
+                import com.mreil.easy.publish.RepoRole
+
                 plugins {
                     `java-library`
                     id("com.mreil.easy.test.publish")
@@ -43,9 +45,9 @@ class EasyPublishRoutingFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
-                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
-                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}")
-                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}")
+                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}", RepoRole.RELEASE)
+                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}", RepoRole.SNAPSHOT)
+                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}", RepoRole.NEUTRAL)
                     }
                 }
                 """.trimIndent(),
@@ -76,6 +78,8 @@ class EasyPublishRoutingFuncTest {
             neutralDir = createDir("repoNeutral")
             buildGradle(
                 """
+                import com.mreil.easy.publish.RepoRole
+
                 plugins {
                     `java-library`
                     id("com.mreil.easy.test.publish")
@@ -85,9 +89,9 @@ class EasyPublishRoutingFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
-                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
-                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}")
-                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}")
+                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}", RepoRole.RELEASE)
+                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}", RepoRole.SNAPSHOT)
+                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}", RepoRole.NEUTRAL)
                     }
                 }
                 """.trimIndent(),
@@ -118,6 +122,8 @@ class EasyPublishRoutingFuncTest {
             neutralDir = createDir("repoNeutral")
             buildGradle(
                 """
+                import com.mreil.easy.publish.RepoRole
+
                 plugins {
                     `java-library`
                     id("com.mreil.easy.test.publish")
@@ -126,9 +132,9 @@ class EasyPublishRoutingFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
-                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
-                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}")
-                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}")
+                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}", RepoRole.RELEASE)
+                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}", RepoRole.SNAPSHOT)
+                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}", RepoRole.NEUTRAL)
                     }
                 }
                 """.trimIndent(),
@@ -160,6 +166,8 @@ class EasyPublishRoutingFuncTest {
             neutralDir = createDir("repoNeutral")
             buildGradle(
                 """
+                import com.mreil.easy.publish.RepoRole
+
                 plugins {
                     `java-library`
                     id("com.mreil.easy.test.publish")
@@ -169,9 +177,9 @@ class EasyPublishRoutingFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
-                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}")
-                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}")
-                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}")
+                        mavenRepo("myRelease", "${releaseDir.invariantSeparatorsPath}", RepoRole.RELEASE)
+                        mavenRepo("mySnapshot", "${snapshotDir.invariantSeparatorsPath}", RepoRole.SNAPSHOT)
+                        mavenRepo("myNeutral", "${neutralDir.invariantSeparatorsPath}", RepoRole.NEUTRAL)
                     }
                 }
                 """.trimIndent(),

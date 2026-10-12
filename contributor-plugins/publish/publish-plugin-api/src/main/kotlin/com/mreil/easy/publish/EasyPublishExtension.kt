@@ -78,11 +78,13 @@ interface EasyPublishExtension :
      *
      * @param name the repository name.
      * @param url the repository URL.
+     * @param role which version kind the repository receives.
      * @param withPasswordCredentials whether to enable password credentials (default `false`).
      */
     fun mavenRepo(
         name: String,
         url: String,
+        role: RepoRole,
         withPasswordCredentials: Boolean = false,
     )
 

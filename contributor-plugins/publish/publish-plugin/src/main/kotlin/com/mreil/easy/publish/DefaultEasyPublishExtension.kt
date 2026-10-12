@@ -81,7 +81,11 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     override fun toSonatypeSnapshots() {
         sonatypeSnapshots.set(true)
         if (mavenRepos.findByName(SONATYPE_SNAPSHOTS_REPO) == null) {
-            mavenRepo(SONATYPE_SNAPSHOTS_REPO, SONATYPE_SNAPSHOTS_URL, true)
+            mavenRepo(SONATYPE_SNAPSHOTS_REPO) {
+                it.url.set(SONATYPE_SNAPSHOTS_URL)
+                it.passwordCredentials.set(true)
+                it.role.set(RepoRole.SNAPSHOT)
+            }
         }
     }
 
@@ -97,10 +101,12 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     override fun mavenRepo(
         name: String,
         url: String,
+        role: RepoRole,
         withPasswordCredentials: Boolean,
     ) {
         mavenRepos.create(name) {
             it.url.set(url)
+            it.role.set(role)
             it.passwordCredentials.set(withPasswordCredentials)
         }
     }

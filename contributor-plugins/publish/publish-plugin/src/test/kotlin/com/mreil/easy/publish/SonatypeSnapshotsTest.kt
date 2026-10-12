@@ -34,7 +34,7 @@ class SonatypeSnapshotsTest {
         val project = createProject()
         val publish = publishOf(project)
         publish.enabled.set(true)
-        publish.mavenRepo(SONATYPE_SNAPSHOTS_REPO, "https://example.com/custom-snapshots", true)
+        publish.mavenRepo(SONATYPE_SNAPSHOTS_REPO, "https://example.com/custom-snapshots", RepoRole.SNAPSHOT, true)
         publish.toSonatypeSnapshots()
         publish.toSonatypeSnapshots()
 
@@ -59,7 +59,7 @@ class SonatypeSnapshotsTest {
         // (absent extension behaves identically via isEasyChildEnabled).
         semverOf(project).enabled.set(false)
         publish.toSonatypeSnapshots()
-        publish.mavenRepo("myRelease", "https://example.com/releases")
+        publish.mavenRepo("myRelease", "https://example.com/releases", RepoRole.RELEASE)
 
         project.evaluate()
 
@@ -80,7 +80,7 @@ class SonatypeSnapshotsTest {
         publish.enabled.set(true)
         semverOf(project).enabled.set(false)
         publish.toSonatypeSnapshots()
-        publish.mavenRepo("myRelease", "https://example.com/releases")
+        publish.mavenRepo("myRelease", "https://example.com/releases", RepoRole.RELEASE)
 
         project.evaluate()
 

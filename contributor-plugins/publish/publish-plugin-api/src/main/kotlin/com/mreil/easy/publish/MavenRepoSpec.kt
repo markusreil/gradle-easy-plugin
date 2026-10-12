@@ -24,6 +24,13 @@ abstract class MavenRepoSpec
         abstract val url: Property<String>
 
         /**
+         * Which version kind this repository receives. No default: an unset role fails
+         * fast when repositories are wired, so a missing declaration can never silently
+         * publish (or skip) by accident.
+         */
+        abstract val role: Property<RepoRole>
+
+        /**
          * Whether this repository requires password credentials. When enabled, Gradle
          * resolves the username/password from the repository's credentials properties.
          */

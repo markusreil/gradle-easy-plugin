@@ -200,7 +200,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         }
         val isSnapshot = resolveIsSnapshot(target)
         publishExt.mavenRepos
-            .filter { RepoRouting.shouldPublishToRepo(it.name, isSnapshot) }
+            .filter { RepoRouting.shouldPublishToRepo(it, isSnapshot) }
             .forEach { spec -> publishing.repositories.maven { repo -> spec.configure(target, repo) } }
     }
 
@@ -224,7 +224,10 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
                         .dir(path)
                         .get()
                         .asFile.invariantSeparatorsPath
-                publishExt.mavenRepo(MAVEN_STAGING_REPO, url)
+                publishExt.mavenRepo(MAVEN_STAGING_REPO) {
+                    it.url.set(url)
+                    it.role.set(RepoRole.NEUTRAL)
+                }
             }
         }
     }

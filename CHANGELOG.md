@@ -9,7 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `publish`: new explicit `RepoRole` (`SNAPSHOT`/`RELEASE`/`NEUTRAL`) on `MavenRepoSpec`
+  plus a `mavenRepo(name, url, role)` convenience overload.
+
 ### Changed
+
+- `publish`: repository routing no longer guesses from repo names — every `mavenRepo`
+  declaration must set `role` (unset fails fast at configuration time). Pre-0.1.0: no
+  back-compat, no deprecation period.
 
 ### Deprecated
 

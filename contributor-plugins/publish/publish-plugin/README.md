@@ -28,7 +28,7 @@ plugin infrastructure. It activates by default (`enabled` defaults to `true` in 
 * **Password credentials** – opt-in per repository via `passwordCredentials` (or `withPasswordCredentials = true`).
 * **Staging repository** – `toMavenStaging(path)` creates a `mavenStaging` file repo under `build/<path>` (default `build/stagingRepo`).
 * **Maven local wiring** – `toMavenLocal()` makes `publish` depend on `publishToMavenLocal`.
-* **Semver-aware routing** – when `easy.semver` is enabled (`easy { semver {} }`), the version is parsed via `semver4j` (`EasySemver.of(project)`). A version is a snapshot iff its semver pre-release is exactly `SNAPSHOT` (Maven convention); `0.x` releases and other pre-releases (e.g. `1.0.0-RC1`) are treated as releases. Snapshots skip `*release*` repos, releases skip `*snapshot*` repos; neutral names always publish. Without semver, a `-SNAPSHOT` version suffix decides instead, so routing always filters.
+* **Semver-aware routing** – when `easy.semver` is enabled (`easy { semver {} }`), the version is parsed via `semver4j` (`EasySemver.of(project)`). A version is a snapshot iff its semver pre-release is exactly `SNAPSHOT` (Maven convention); `0.x` releases and other pre-releases (e.g. `1.0.0-RC1`) are treated as releases. Every repo declares a `role` (`RepoRole.SNAPSHOT`/`RELEASE`/`NEUTRAL`): snapshots publish to `SNAPSHOT` repos, releases to `RELEASE` repos, `NEUTRAL` repos always publish. An unset role fails fast. Without semver, a `-SNAPSHOT` version suffix decides instead, so routing always filters.
 * **Sonatype snapshots** – `toSonatypeSnapshots()` publishes snapshots directly to Central's snapshot repository via `maven-publish` (parallel, no JReleaser round-trip). Creates the `sonatypeSnapshots` repo (`https://central.sonatype.com/repository/maven-snapshots/` with standard `sonatypeSnapshotsUsername`/`sonatypeSnapshotsPassword` credentials) unless already declared manually. It is a pure repo shorthand: routing is decided by semver when enabled, or by the `-SNAPSHOT` suffix when semver is off — no semver requirement.
 * **Gradle Plugin Portal** – `toPluginPortal()` makes `publish` run the `publishPlugins` task (from `com.gradle.plugin-publish`) on release versions in plugin projects. Snapshots are silently skipped. Intended as a build-wide toggle in the root `easy { publish { } }` block: it inherits to every project, but projects that are not Gradle plugin projects (no `publishPlugins` task) — including a non-`java` root with no `publish` task — are skipped with a lifecycle note. Missing Portal credentials (`gradle.publish.key` / `gradle.publish.secret`) in a plugin project fail `publish` with an actionable error. Credentials can be provided via `GRADLE_PUBLISH_KEY`/`GRADLE_PUBLISH_SECRET` environment variables or the corresponding Gradle properties.
 
@@ -48,10 +48,11 @@ easy {
         /* Publish to a remote repo. */
         mavenRepo("releases") {
             url.set("https://repo.example.com/releases")
+            role.set(RepoRole.RELEASE)
             passwordCredentials.set(true) // optional. Use gradle default mechanism to retrieve credentials.
         }
         /* Publish to a local repo. */
-        mavenRepo("local", "build/repo")
+        mavenRepo("local", "build/repo", RepoRole.NEUTRAL)
         /* Execute `publishToMavenLocal` when `publish` task is executed */
         toMavenLocal()
         /* Publish to a per-project repo in the project's build directory
@@ -85,9 +86,9 @@ easy {
     //     enabled.set(true)
     // } 
     publish {
-        mavenRepo("myRelease", "https://repo.example.com/releases")
-        mavenRepo("mySnapshot", "https://repo.example.com/snapshots")
-        mavenRepo("myNeutral", "https://repo.example.com/central") // always published
+        mavenRepo("myRelease", "https://repo.example.com/releases", RepoRole.RELEASE)
+        mavenRepo("mySnapshot", "https://repo.example.com/snapshots", RepoRole.SNAPSHOT)
+        mavenRepo("myNeutral", "https://repo.example.com/central", RepoRole.NEUTRAL) // always published
         // version 1.0.0 -> publishes to myRelease + myNeutral
         // version 1.0.0-SNAPSHOT -> publishes to mySnapshot + myNeutral
         // version 0.0.100 -> publishes to myRelease + myNeutral
@@ -217,6 +218,6 @@ Shared: PublishExtensions.publishExtension() + central.ensureRootPublishTask()
    `url`/`scm` come from Codemeta only — without it they stay unset (never a
    hardcoded placeholder) and `checkCentralPoms` reports them before Central upload.
 5. If `stagingPath` is present (`toMavenStaging`), creates `mavenStaging` via helper `mavenRepo("mavenStaging", buildDirectory/dir(path))` per-project.
-6. Resolves the snapshot flag via `EasySemver.of(target).orNull` (`semver4j`, strict parse, `isExtensionEnabled(EasySemverExtension::class)` guard) — when semver is disabled, a `-SNAPSHOT` version suffix decides. `RepoRouting.shouldPublishToRepo(name, isSnapshot)` skips `*release*` repos for snapshots and `*snapshot*` repos for releases (case-insensitive); neutral names always added.
+6. Resolves the snapshot flag via `EasySemver.of(target).orNull` (`semver4j`, strict parse, `isExtensionEnabled(EasySemverExtension::class)` guard) — when semver is disabled, a `-SNAPSHOT` version suffix decides. `RepoRouting.shouldPublishToRepo(spec, isSnapshot)` publishes per the spec's explicit `role` (`SNAPSHOT` repos for snapshots, `RELEASE` repos for releases, `NEUTRAL` always); an unset role fails fast.
 7. Attaches filtered `mavenRepos` to `publishing.repositories` (`spec.configure(target, repo)`), enabling `PasswordCredentials` when requested.
 8. If `toMavenLocal` is true, wires `publish -> publishToMavenLocal` eagerly via `tasks.named("publish").configure { dependsOn("publishToMavenLocal") }` (CC-safe, one-shot; no `afterEvaluate` needed since only final extension values are read).

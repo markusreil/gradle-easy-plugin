@@ -5,6 +5,7 @@ import com.mreil.easy.ProjectPluginEntryPoint
 import com.mreil.easy.publish.DefaultEasyPublishExtension
 import com.mreil.easy.publish.EasyPublishExtension
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
+import com.mreil.easy.publish.RepoRole
 import com.mreil.gradletest.project.evaluate
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.gradle.api.Project
@@ -447,7 +448,7 @@ class EasyPublishCentralTest {
         val project = ProjectBuilderHelper.createSingleProject()
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
-        project.publish.mavenRepo("testRepo", "file:///tmp/test-repo")
+        project.publish.mavenRepo("testRepo", "file:///tmp/test-repo", RepoRole.NEUTRAL)
 
         project.project.evaluate()
 
@@ -612,7 +613,7 @@ class EasyPublishCentralTest {
         project.publish.enabled.set(true)
         project.publish.toMavenCentral()
         project.publish.toMavenStaging("stagingRepo")
-        project.publish.mavenRepo("testRepo", "file:///tmp/test-repo")
+        project.publish.mavenRepo("testRepo", "file:///tmp/test-repo", RepoRole.NEUTRAL)
 
         project.project.evaluate()
 

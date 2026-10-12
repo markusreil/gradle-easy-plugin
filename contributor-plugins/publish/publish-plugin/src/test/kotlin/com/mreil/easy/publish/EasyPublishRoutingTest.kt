@@ -1,39 +1,69 @@
 package com.mreil.easy.publish
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.SoftAssertions.assertSoftly
+import org.gradle.api.GradleException
+import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.EnumSource
 import org.semver4j.Semver
 
 class EasyPublishRoutingTest {
-    @ParameterizedTest(name = "repo={0} snapshot={1} expected={2}")
+    @ParameterizedTest(name = "role={0} snapshot={1} expected={2}")
     @CsvSource(
-        "myRelease, true, false",
-        "mySnapshot, true, true",
-        "myNeutral, true, true",
-        "MY-RELEASE, true, false",
-        "my-release, true, false",
-        "myRelease, false, true",
-        "mySnapshot, false, false",
-        "myNeutral, false, true",
-        "myRelease, null, true",
-        "mySnapshot, null, true",
-        "myNeutral, null, true",
-        "mySnapshotRelease, true, false",
-        "mySnapshotRelease, false, false",
+        "SNAPSHOT, true, true",
+        "RELEASE, true, false",
+        "NEUTRAL, true, true",
+        "SNAPSHOT, false, false",
+        "RELEASE, false, true",
+        "NEUTRAL, false, true",
+        "SNAPSHOT, null, true",
+        "RELEASE, null, true",
+        "NEUTRAL, null, true",
     )
-    fun `shouldPublishToRepo follows naming convention`(
-        repoName: String,
+    fun `shouldPublishToRepo follows explicit role`(
+        role: RepoRole,
         isSnapshotParam: String,
         expected: Boolean,
     ) {
+        val project = ProjectBuilder.builder().build()
+        val spec =
+            project.objects.newInstance(
+                MavenRepoSpec::class.java,
+                "anyNameGoesHere",
+            )
+        spec.role.set(role)
         val isSnapshot = isSnapshotParam.takeIf { it != "null" }?.toBooleanStrict()
-        val result = RepoRouting.shouldPublishToRepo(repoName, isSnapshot)
+        val result = RepoRouting.shouldPublishToRepo(spec, isSnapshot)
         assertSoftly { softly ->
             softly.assertThat(result).isEqualTo(expected)
         }
+    }
+
+    @ParameterizedTest(name = "role={0}")
+    @EnumSource(RepoRole::class)
+    fun `repo name never influences routing`(role: RepoRole) {
+        val project = ProjectBuilder.builder().build()
+        listOf("myRelease", "mySnapshot", "myNeutral", "mySnapshotRelease", "plain").forEach { name ->
+            val spec = project.objects.newInstance(MavenRepoSpec::class.java, name)
+            spec.role.set(role)
+            assertThat(RepoRouting.shouldPublishToRepo(spec, true))
+                .isEqualTo(role != RepoRole.RELEASE)
+            assertThat(RepoRouting.shouldPublishToRepo(spec, false))
+                .isEqualTo(role != RepoRole.SNAPSHOT)
+        }
+    }
+
+    @Test
+    fun `unset role fails fast`() {
+        val project = ProjectBuilder.builder().build()
+        val spec = project.objects.newInstance(MavenRepoSpec::class.java, "roless")
+        assertThatThrownBy { RepoRouting.shouldPublishToRepo(spec, false) }
+            .isInstanceOf(GradleException::class.java)
+            .hasMessageContaining("roless")
     }
 
     @ParameterizedTest(name = "version={0} expected={1}")
