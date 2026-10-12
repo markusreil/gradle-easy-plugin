@@ -1,5 +1,6 @@
 pluginManagement {
     repositories {
+        mavenLocal()
         gradlePluginPortal()
         mavenCentral()
         maven { url = uri("https://central.sonatype.com/repository/maven-snapshots/") }
@@ -7,7 +8,7 @@ pluginManagement {
     }
 }
 
-plugins { id("com.mreil.easy.settings") version "0.0.116" }
+plugins { id("com.mreil.easy.settings") version "0.0.117-SNAPSHOT" }
 
 rootProject.name = "gradle-easy-plugin"
 include("easy-plugin")

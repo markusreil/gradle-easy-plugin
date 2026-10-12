@@ -1,4 +1,5 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
+import com.mreil.easy.publish.RepoRole
 import dev.detekt.gradle.extensions.DetektExtension
 
 plugins {
@@ -8,7 +9,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.spotless) apply false
-    id("com.mreil.easy.project") version "0.0.116"
+    id("com.mreil.easy.project") version "0.0.117-SNAPSHOT"
 }
 
 repositories {
@@ -21,11 +22,12 @@ repositories {
 easy {
     publish {
         toMavenStaging()
-        toSonatypeSnapshots()
-        toPluginPortal()
+        deployToSnapshots()
+        deployToPortal()
         mavenRepo(
             "mreilComGradlePluginsSnapshots",
             "https://repo.mreil.com/gradle-plugins-snapshots",
+            RepoRole.SNAPSHOT,
             true
         )
     }
