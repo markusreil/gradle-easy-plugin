@@ -14,15 +14,15 @@ import org.junit.jupiter.api.Test
 
 class SonatypeSnapshotsTest {
     @Test
-    fun `toSonatypeSnapshots creates snapshot repo with credentials`() {
+    fun `deployToSnapshots creates snapshot repo with credentials`() {
         val project = createProject()
         val publish = publishOf(project)
         publish.enabled.set(true)
-        publish.toSonatypeSnapshots()
+        publish.deployToSnapshots()
 
         val spec = publish.mavenRepos.findByName(SONATYPE_SNAPSHOTS_REPO)
         assertSoftly { softly ->
-            softly.assertThat(publish.sonatypeSnapshots.get()).isTrue()
+            softly.assertThat(publish.deployToSnapshots.get()).isTrue()
             softly.assertThat(spec).isNotNull()
             softly.assertThat(spec?.url?.get()).isEqualTo(SONATYPE_SNAPSHOTS_URL)
             softly.assertThat(spec?.passwordCredentials?.get()).isTrue()
@@ -30,13 +30,13 @@ class SonatypeSnapshotsTest {
     }
 
     @Test
-    fun `toSonatypeSnapshots is idempotent and keeps manual declaration`() {
+    fun `deployToSnapshots is idempotent and keeps manual declaration`() {
         val project = createProject()
         val publish = publishOf(project)
         publish.enabled.set(true)
         publish.mavenRepo(SONATYPE_SNAPSHOTS_REPO, "https://example.com/custom-snapshots", RepoRole.SNAPSHOT, true)
-        publish.toSonatypeSnapshots()
-        publish.toSonatypeSnapshots()
+        publish.deployToSnapshots()
+        publish.deployToSnapshots()
 
         assertSoftly { softly ->
             softly.assertThat(publish.mavenRepos.map { it.name }.count { it == SONATYPE_SNAPSHOTS_REPO }).isEqualTo(1)
@@ -51,14 +51,14 @@ class SonatypeSnapshotsTest {
     }
 
     @Test
-    fun `toSonatypeSnapshots attaches snapshot repo and filters release repos for SNAPSHOT version without semver`() {
+    fun `deployToSnapshots attaches snapshot repo and filters release repos for SNAPSHOT version without semver`() {
         val project = createProject(version = "1.0.0-SNAPSHOT")
         val publish = publishOf(project)
         publish.enabled.set(true)
         // semver defaults to enabled when on the classpath — disable to simulate "not active"
         // (absent extension behaves identically via isEasyChildEnabled).
         semverOf(project).enabled.set(false)
-        publish.toSonatypeSnapshots()
+        publish.deployToSnapshots()
         publish.mavenRepo("myRelease", "https://example.com/releases", RepoRole.RELEASE)
 
         project.evaluate()
@@ -74,12 +74,12 @@ class SonatypeSnapshotsTest {
     }
 
     @Test
-    fun `toSonatypeSnapshots is skipped and release repos attach for release version without semver`() {
+    fun `deployToSnapshots is skipped and release repos attach for release version without semver`() {
         val project = createProject(version = "1.0.0")
         val publish = publishOf(project)
         publish.enabled.set(true)
         semverOf(project).enabled.set(false)
-        publish.toSonatypeSnapshots()
+        publish.deployToSnapshots()
         publish.mavenRepo("myRelease", "https://example.com/releases", RepoRole.RELEASE)
 
         project.evaluate()
@@ -97,7 +97,7 @@ class SonatypeSnapshotsTest {
         val publish = publishOf(project)
         publish.enabled.set(true)
         semverOf(project).enabled.set(true)
-        publish.toSonatypeSnapshots()
+        publish.deployToSnapshots()
 
         project.evaluate()
 
@@ -118,7 +118,7 @@ class SonatypeSnapshotsTest {
         val publish = publishOf(project)
         publish.enabled.set(true)
         semverOf(project).enabled.set(true)
-        publish.toSonatypeSnapshots()
+        publish.deployToSnapshots()
 
         project.evaluate()
 
@@ -138,7 +138,7 @@ class SonatypeSnapshotsTest {
         val publish = publishOf(project)
         publish.enabled.set(true)
         semverOf(project).enabled.set(true)
-        publish.toSonatypeSnapshots()
+        publish.deployToSnapshots()
 
         project.evaluate()
 
@@ -158,7 +158,7 @@ class SonatypeSnapshotsTest {
         val publish = publishOf(project)
         publish.enabled.set(true)
         semverOf(project).enabled.set(true)
-        publish.toSonatypeSnapshots()
+        publish.deployToSnapshots()
 
         project.evaluate()
 

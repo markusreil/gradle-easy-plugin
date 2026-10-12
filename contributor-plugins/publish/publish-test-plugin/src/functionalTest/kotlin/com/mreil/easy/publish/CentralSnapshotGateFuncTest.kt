@@ -38,9 +38,9 @@ class CentralSnapshotGateFuncTest {
         easy {
             publish {
                 enabled.set(true)
-                toMavenCentral()
+                deployToCentral()
                 toMavenStaging()
-                // toMavenCentral() turns signing on by default; these tests don't
+                // deployToCentral() turns signing on by default; these tests don't
                 // supply GPG keys, so disable signing explicitly.
                 signingEnabled.set(false)
             }

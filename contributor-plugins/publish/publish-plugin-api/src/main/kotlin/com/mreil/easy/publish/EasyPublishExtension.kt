@@ -26,9 +26,9 @@ interface EasyPublishExtension :
      */
     fun toMavenStaging(path: String = "stagingRepo")
 
-    fun toMavenLocal()
+    fun deployToMavenLocal()
 
-    fun toMavenCentral()
+    fun deployToCentral()
 
     /**
      * Publishes snapshots directly to Sonatype's snapshot repository via `maven-publish`
@@ -42,7 +42,7 @@ interface EasyPublishExtension :
      * is decided by semver when enabled, and by the `-SNAPSHOT` version suffix when
      * semver is disabled — so it works with or without `easy.semver`.
      */
-    fun toSonatypeSnapshots()
+    fun deployToSnapshots()
 
     /**
      * Publishes Gradle plugins to the Gradle Plugin Portal by making `publish` depend on the
@@ -55,7 +55,19 @@ interface EasyPublishExtension :
      * non-`java` root) are skipped with a lifecycle note; a plugin project missing
      * `gradle.publish.key`/`gradle.publish.secret` fails `publish` with an actionable error.
      */
-    fun toPluginPortal()
+    fun deployToPortal()
+
+    /**
+     * Promotion-gated Central deploy: like [deployToCentral] but active only on `-Ppromote`
+     * invocations. Mutually exclusive with [deployToCentral].
+     */
+    fun promoteToCentral()
+
+    /**
+     * Promotion-gated Portal deploy: like [deployToPortal] but active only on `-Ppromote`
+     * invocations. Mutually exclusive with [deployToPortal].
+     */
+    fun promoteToPortal()
 
     val signingEnabled: Property<Boolean>
 

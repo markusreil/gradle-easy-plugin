@@ -49,7 +49,7 @@ class EasyJreleaserPluginTest {
         val project = singleProject()
         project.publishExtension()!!.apply {
             enabled.set(true)
-            toMavenCentral()
+            deployToCentral()
         }
         // Disable the codemeta extension that the test classpath registers by default.
         val codemetaExt =
@@ -76,7 +76,7 @@ class EasyJreleaserPluginTest {
         val project = singleProject()
         project.publishExtension()!!.apply {
             enabled.set(true)
-            toMavenCentral()
+            deployToCentral()
         }
         project.version = "1.0.0-SNAPSHOT"
 
@@ -95,7 +95,7 @@ class EasyJreleaserPluginTest {
         val project = singleProject()
         project.publishExtension()!!.apply {
             enabled.set(true)
-            toMavenCentral()
+            deployToCentral()
         }
         project.version = "1.0.0"
 
@@ -115,7 +115,7 @@ class EasyJreleaserPluginTest {
         val project = singleProject()
         project.publishExtension()!!.apply {
             enabled.set(true)
-            toMavenCentral()
+            deployToCentral()
         }
         project.version = "1.0.0-RC1"
 
@@ -134,7 +134,7 @@ class EasyJreleaserPluginTest {
         val project = singleProject()
         project.publishExtension()!!.apply {
             enabled.set(true)
-            toMavenCentral()
+            deployToCentral()
         }
         project.version = "0.0.105"
 
@@ -153,7 +153,7 @@ class EasyJreleaserPluginTest {
         val project = singleProject()
         project.publishExtension()!!.apply {
             enabled.set(true)
-            toMavenCentral()
+            deployToCentral()
         }
         project.version = "1.0.0-SNAPSHOT"
         semverOf(project).enabled.set(false)
@@ -173,7 +173,7 @@ class EasyJreleaserPluginTest {
         val project = singleProject()
         project.publishExtension()!!.apply {
             enabled.set(true)
-            toMavenCentral()
+            deployToCentral()
         }
         project.version = "1.0.0"
         semverOf(project).enabled.set(false)

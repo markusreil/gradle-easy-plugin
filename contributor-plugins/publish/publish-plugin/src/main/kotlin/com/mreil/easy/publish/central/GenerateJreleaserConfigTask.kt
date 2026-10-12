@@ -14,7 +14,7 @@ import org.gradle.api.tasks.TaskAction
 /**
  * Generates a JReleaser JSON config for Maven Central deployment.
  *
- * Registered only on the root project when [DefaultEasyPublishExtension.toMavenCentral]
+ * Registered only on the root project when [DefaultEasyPublishExtension.deployToCentral]
  * is set (see [EasyJreleaserPlugin] for the gating rule).
  * Holds the lazy `@Input` properties and delegates rendering to [JreleaserJson.buildJson].
  * See [JreleaserJson.Config] for the resolved values (including the test-only nexus

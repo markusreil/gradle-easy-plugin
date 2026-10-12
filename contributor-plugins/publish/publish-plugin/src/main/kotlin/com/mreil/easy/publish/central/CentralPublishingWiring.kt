@@ -3,7 +3,7 @@ package com.mreil.easy.publish.central
 import com.mreil.easy.publish.DefaultEasyPublishExtension
 import com.mreil.easy.publish.EasyPublishPlugin
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
-import com.mreil.easy.publish.isCentralEnabled
+import com.mreil.easy.publish.isCentralActive
 import com.mreil.easy.publish.publishExtension
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.tasks.GenerateMavenPom
@@ -25,11 +25,14 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
  * Both tasks run in every central-enabled project (see [EasyPublishPlugin]). The wiring
  * only runs when any project opts into Maven Central — root-inherited or a single
  * subproject — see [EasyJreleaserPlugin] for the ANY gating rule. Non-central projects
- * (no `toMavenCentral`) get no `checkCentralPoms`/`stripSignatureChecksums`.
+ * (no `deployToCentral`) get no `checkCentralPoms`/`stripSignatureChecksums`.
  */
 internal object CentralPublishingWiring {
-    fun wire(target: Project) {
-        if (!target.isCentralEnabled()) return
+    fun wire(
+        target: Project,
+        promoted: Boolean,
+    ) {
+        if (!target.isCentralActive(promoted)) return
         val publishExt = target.publishExtension() ?: return
         wirePomCheck(target)
         wireStagingCleanup(target, publishExt)
@@ -67,7 +70,7 @@ internal object CentralPublishingWiring {
         target: Project,
         publishExt: DefaultEasyPublishExtension,
     ) {
-        // staging dir only exists when a staging path is set (toMavenStaging / toMavenCentral)
+        // staging dir only exists when a staging path is set (toMavenStaging / deployToCentral)
         publishExt.stagingPath.orNull?.let { path ->
             val stripProvider =
                 target.tasks.register("stripSignatureChecksums", StripSignatureChecksumsTask::class.java) { task ->

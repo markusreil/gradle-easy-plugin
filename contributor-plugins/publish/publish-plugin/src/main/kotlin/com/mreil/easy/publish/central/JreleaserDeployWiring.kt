@@ -1,7 +1,7 @@
 package com.mreil.easy.publish.central
 
 import com.mreil.easy.publish.MAVEN_STAGING_REPO
-import com.mreil.easy.publish.isCentralEnabled
+import com.mreil.easy.publish.isCentralActive
 import com.mreil.utils.catalogVersionOrDefault
 import com.mreil.utils.isRoot
 import org.gradle.api.Project
@@ -22,7 +22,10 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
  * single subproject — see [EasyJreleaserPlugin] for the ANY gating rule.
  */
 internal object JreleaserDeployWiring {
-    fun wire(target: Project) {
+    fun wire(
+        target: Project,
+        promoted: Boolean,
+    ) {
         if (!target.isRoot()) return
 
         val jreleaserConf =
@@ -59,7 +62,7 @@ internal object JreleaserDeployWiring {
         // regardless of evaluation order. Configured once here — never from inside a
         // task-creation callback (illegal mutation context).
         target.allprojects { project ->
-            if (project.isCentralEnabled()) {
+            if (project.isCentralActive(promoted)) {
                 deployProvider.configure { deploy ->
                     deploy.dependsOn(
                         project.tasks

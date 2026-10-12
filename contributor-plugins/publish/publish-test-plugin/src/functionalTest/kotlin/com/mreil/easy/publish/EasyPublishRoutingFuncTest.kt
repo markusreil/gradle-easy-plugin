@@ -14,7 +14,7 @@ import java.io.File
  * Functional tests for publish routing (snapshot vs. release vs. neutral repositories).
  *
  * Covers version-based repository filtering via semver and, when semver is disabled, the
- * `-SNAPSHOT` suffix fallback. `toMavenLocal` wiring is covered by unit tests in `publish-plugin`.
+ * `-SNAPSHOT` suffix fallback. `deployToMavenLocal` wiring is covered by unit tests in `publish-plugin`.
  */
 @ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
 @DisableAllEasyPlugins

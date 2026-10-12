@@ -7,9 +7,11 @@ import com.mreil.easy.isEasyChildEnabled
 import com.mreil.easy.publish.EasyPublishExtension
 import com.mreil.easy.publish.RepoRouting
 import com.mreil.easy.publish.isCentralEnabled
+import com.mreil.easy.publish.isPromoteToCentralArmed
 import com.mreil.easy.publish.publishExtension
 import com.mreil.easy.semver.EasySemver
 import com.mreil.utils.hasSnapshotVersion
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 
 /**
@@ -33,9 +35,10 @@ import org.gradle.api.Project
  * Registers `generateJreleaserConfig` (JSON generation, gated on every central-enabled
  * project's `checkCentralPoms`), the root `publish` aggregation over subproject `publish`
  * tasks, and `publishToMavenCentral` (JReleaser `deploy`). The gate is ANY: wiring becomes
- * active when any project opts into Maven Central — a root `easy { publish { toMavenCentral() } }`
- * (inherited by every subproject) or a single subproject setting `toMavenCentral()` from its
- * own script. Unless that ANY condition holds, the plugin wires nothing. Versions with a
+ * active when any project opts into Maven Central — a root `easy { publish { deployToCentral() } }`
+ * (inherited by every subproject) or a single subproject setting `deployToCentral()` from its
+ * own script — or, on `-Ppromote` invocations, any project arming `promoteToCentral()`.
+ * Unless that ANY condition holds, the plugin wires nothing. Versions with a
  * `-SNAPSHOT` pre-release are detected via the semver
  * API and skip JReleaser entirely; other pre-releases like `1.0.0-RC1` are treated as
  * deployable releases. The codemeta extension is required so the published POMs
@@ -44,7 +47,7 @@ import org.gradle.api.Project
 @EnabledBy(EasyPublishExtension::class)
 class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
     override fun afterEnabled(target: Project) {
-        // toMavenCentral on the root is the fast path: it is inherited by every subproject
+        // deployToCentral on the root is the fast path: it is inherited by every subproject
         // (DEEP convention), so wiring can proceed immediately (backwards compatible). When
         // the root is unset but a single subproject opts in from its own script, that value
         // is only settled once the subproject is evaluated — which happens after root's
@@ -52,7 +55,9 @@ class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
         // evaluated. The remaining skip reasons (snapshot, missing codemeta) share the same
         // wiring skip + lifecycle-log behavior, factored into [skipReason] so this function
         // stays within detekt's ReturnCount limit.
-        if (target.publishExtension()?.toMavenCentral?.get() == true) {
+        val ext = target.publishExtension()
+        val promoted = propertyResolver.get("promote").orNull != null
+        if (ext?.deployToCentral?.get() == true || (promoted && ext?.promoteToCentral?.get() == true)) {
             wireIfCentral(target)
         } else {
             target.gradle.projectsEvaluated { wireIfCentral(target) }
@@ -60,7 +65,17 @@ class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
     }
 
     private fun wireIfCentral(target: Project) {
-        if (target.allprojects.none { it.isCentralEnabled() }) return
+        target.allprojects.forEach { project ->
+            val ext = project.publishExtension()
+            if (ext != null && ext.deployToCentral.get() && ext.promoteToCentral.get()) {
+                throw GradleException(
+                    "Project '${project.path}' sets both deployToCentral() and promoteToCentral(): " +
+                        "Central cannot be tier 2 and tier 3 at once.",
+                )
+            }
+        }
+        val promoted = propertyResolver.get("promote").orNull != null
+        if (target.allprojects.none { it.isCentralEnabled() || (promoted && it.isPromoteToCentralArmed()) }) return
         skipReason(target)?.let { reason ->
             target.logger.lifecycle(reason)
         } ?: run {
@@ -70,11 +85,11 @@ class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
             // (EasyPublishPlugin's fan-out covers subprojects regardless of evaluation order).
             // No nested afterEvaluate.
             target.allprojects { project ->
-                project.plugins.withId("maven-publish") { CentralPublishingWiring.wire(project) }
+                project.plugins.withId("maven-publish") { CentralPublishingWiring.wire(project, promoted) }
             }
-            JreleaserConfigWiring.wire(target, propertyResolver)
+            JreleaserConfigWiring.wire(target, propertyResolver, promoted)
             PublishAggregationWiring.wire(target)
-            JreleaserDeployWiring.wire(target)
+            JreleaserDeployWiring.wire(target, promoted)
         }
     }
 
@@ -84,7 +99,7 @@ class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
      *
      * Reasons, in order:
      * 1. **SNAPSHOT version** — JReleaser deploys only releases; snapshots go directly
-     *    via `maven-publish` (`toSonatypeSnapshots`). The semver extension decides when
+     *    via `maven-publish` (`deployToSnapshots`). The semver extension decides when
      *    enabled (only `-SNAPSHOT` pre-releases are skipped; other pre-releases like
      *    `1.0.0-RC1` are deployable releases); when semver is off, a `-SNAPSHOT` suffix
      *    fallback decides.

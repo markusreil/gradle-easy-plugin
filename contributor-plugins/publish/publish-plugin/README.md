@@ -60,16 +60,19 @@ easy {
             promotionOnly.set(true)
         }
         /* Execute `publishToMavenLocal` when `publish` task is executed */
-        toMavenLocal()
+        deployToMavenLocal()
         /* Publish to a per-project repo in the project's build directory
            Mainly used for publishing to mavenCentral. 
            Default is: `./build/stagingRepo`. */
         toMavenStaging()
         toMavenStaging("custom")
         /* Publish to Maven Central via jreleaser cli. */
-        toMavenCentral()
+        deployToCentral()
         /* Publish to the Gradle Plugin Portal on releases (plugin projects only). */
-        toPluginPortal()
+        deployToPortal()
+        /* Promotion-gated variants: active only on `-Ppromote` invocations. */
+        promoteToCentral()
+        promoteToPortal()
         /* Enable PGP artifact signing. */
         signingEnabled = true
     }
@@ -155,9 +158,9 @@ implementation and not part of the public API – consumers use `mavenRepo(name)
 | `mavenRepo(name, url, withPasswordCredentials = false)` | Convenience overload — creates `MavenRepoSpec` with `url`/`passwordCredentials` without exposing spec type. | Nothing. |
 | `toMavenStaging(path = "stagingRepo")` | Creates `mavenStaging` file repo under `build/<path>` via `Property<String>` (`stagingPath`) + helper `mavenRepo`. | Nothing; setting `stagingPath` registers the repo and `cleanStagingRepo` per project. |
 | `toMavenLocal()` | One-shot flag (`Property<Boolean> toMavenLocal`) — makes `publish` depend on `publishToMavenLocal`. | Nothing. |
-| `toMavenCentral()` | One-shot flag (`Property<Boolean> toMavenCentral`) — stages + deploys releases to Maven Central via JReleaser. | Turns on `signingEnabled` and a default `stagingPath` (`build/stagingRepo`) automatically. Requires the `codemeta` extension and a non-snapshot version — otherwise central wiring is skipped with a log message. |
+| `deployToCentral()` | One-shot flag (`Property<Boolean> deployToCentral`) — stages + deploys releases to Maven Central via JReleaser. | Turns on `signingEnabled` and a default `stagingPath` (`build/stagingRepo`) automatically. Requires the `codemeta` extension and a non-snapshot version — otherwise central wiring is skipped with a log message. |
 | `toSonatypeSnapshots()` | One-shot flag (`Property<Boolean> sonatypeSnapshots`) — creates the `sonatypeSnapshots` repo (Central snapshots URL + password credentials) unless present; routing via semver or `-SNAPSHOT` suffix. | Nothing (pure repo shorthand). |
-| `toPluginPortal()` | One-shot flag (`Property<Boolean> toPluginPortal`) — makes `publish` depend on `publishPlugins` (from `com.gradle.plugin-publish`) on releases in plugin projects; snapshots skip; non-plugin projects (and root projects without a `publish` task) skip with a lifecycle note. | Requires `gradle.publish.key`/`gradle.publish.secret` credentials in plugin projects (missing ones fail `publish` with an actionable error). |
+| `deployToPortal()` | One-shot flag (`Property<Boolean> deployToPortal`) — makes `publish` depend on `publishPlugins` (from `com.gradle.plugin-publish`) on releases in plugin projects; snapshots skip; non-plugin projects (and root projects without a `publish` task) skip with a lifecycle note. | Requires `gradle.publish.key`/`gradle.publish.secret` credentials in plugin projects (missing ones fail `publish` with an actionable error). |
 | `signingEnabled` | Enables PGP artifact signing (`Property<Boolean>`, default `false`). | Auto-enabled by `toMavenCentral()`; set `signingEnabled.set(false)` afterwards to opt out. |
 | `mavenRepos` | `NamedDomainObjectContainer<MavenRepoSpec>` of declared repositories (internal, on `DefaultEasyPublishExtension`). | — (populated via `mavenRepo(...)` / the `to*` shorthands). |
 | `stagingPath` | `Property<String>` holding staging template (creates `mavenStaging` per-project via `buildDirectory`). | Set via `toMavenStaging(...)`, or automatically by `toMavenCentral()`. |

@@ -112,7 +112,7 @@ class GenerateJreleaserConfigTaskTest {
         val maven = json["deploy"]!!.jsonObject["maven"]!!.jsonObject
 
         assertSoftly { softly ->
-            // Snapshots publish directly via maven-publish (toSonatypeSnapshots), never via JReleaser.
+            // Snapshots publish directly via maven-publish (deployToSnapshots), never via JReleaser.
             softly.assertThat(maven).doesNotContainKey("nexus2")
             softly.assertThat(maven).doesNotContainKey("sonatype-snapshots")
             softly.assertThat(json.toString()).doesNotContain("SNAPSHOT")

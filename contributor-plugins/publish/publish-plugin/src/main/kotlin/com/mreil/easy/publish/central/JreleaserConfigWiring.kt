@@ -1,6 +1,6 @@
 package com.mreil.easy.publish.central
 
-import com.mreil.easy.publish.isCentralEnabled
+import com.mreil.easy.publish.isCentralActive
 import com.mreil.easy.publish.publishExtension
 import com.mreil.utils.PropertyResolver
 import com.mreil.utils.isRoot
@@ -11,8 +11,8 @@ import org.gradle.api.publish.PublishingExtension
  * Root-only registration of `generateJreleaserConfig` (JReleaser JSON generation).
  *
  * Registered lazily with convention defaults. The wiring runs when any project opts into
- * Maven Central — a root `easy { publish { toMavenCentral() } }` (inherited by every
- * subproject) or a single subproject setting `toMavenCentral()` from its own script. See
+ * Maven Central — a root `easy { publish { deployToCentral() } }` (inherited by every
+ * subproject) or a single subproject setting `deployToCentral()` from its own script. See
  * [EasyJreleaserPlugin] for the ANY gating rule.
  * Config generation explicitly waits for every central-enabled project's `checkCentralPoms`
  * (see [CentralPublishingWiring]) so POM validation stays a separate step before any
@@ -23,6 +23,7 @@ internal object JreleaserConfigWiring {
     fun wire(
         target: Project,
         propertyResolver: PropertyResolver,
+        promoted: Boolean,
     ) {
         if (!target.isRoot()) return
 
@@ -41,14 +42,14 @@ internal object JreleaserConfigWiring {
                 // Per-project staging dirs, resolved eagerly: extension values are final once
                 // afterEnabled runs post-evaluation, and inheritance is live provider linkage
                 // (see ExtensionCopier), so root-set values are visible here. Only central-enabled
-                // projects are included (toMavenCentral + isEnabled); a child disabling
+                // projects are included (deployToCentral + isEnabled); a child disabling
                 // itself in its own later-evaluated script may still contribute a dangling
                 // entry — same tolerance as the previous single shared dir.
                 // Default staging path is "stagingRepo" when central is enabled without explicit staging.
                 val stagingDirs =
                     target.allprojects
                         .sortedBy { it.path }
-                        .mapNotNull { stagingDirFor(it) }
+                        .mapNotNull { stagingDirFor(it, promoted) }
                         .distinct()
                 task.stagingDirs.convention(stagingDirs)
                 task.mavenCentralUsername.convention(
@@ -79,7 +80,7 @@ internal object JreleaserConfigWiring {
         target.gradle.taskGraph.whenReady { graph ->
             val generate = taskProvider.get()
             if (graph.hasTask(generate)) {
-                generate.stagingDirs.set(stagingDirsForPublishing(target.allprojects))
+                generate.stagingDirs.set(stagingDirsForPublishing(target.allprojects, promoted))
             }
         }
     }
@@ -91,19 +92,25 @@ internal object JreleaserConfigWiring {
      * their dirs are never created and JReleaser fails on the first missing
      * `stagingRepository`. Publications are final once the task graph is ready.
      */
-    internal fun stagingDirsForPublishing(projects: Iterable<Project>): List<String> =
+    internal fun stagingDirsForPublishing(
+        projects: Iterable<Project>,
+        promoted: Boolean = false,
+    ): List<String> =
         projects
             .sortedBy { it.path }
             .filter { it.hasMavenPublications() }
-            .mapNotNull { stagingDirFor(it) }
+            .mapNotNull { stagingDirFor(it, promoted) }
             .distinct()
 
     private fun Project.hasMavenPublications(): Boolean =
         extensions.findByType(PublishingExtension::class.java)?.publications?.isNotEmpty() == true
 
-    private fun stagingDirFor(project: Project): String? =
+    private fun stagingDirFor(
+        project: Project,
+        promoted: Boolean,
+    ): String? =
         project
-            .takeIf { it.isCentralEnabled() }
+            .takeIf { it.isCentralActive(promoted) }
             ?.publishExtension()
             ?.let { ext ->
                 val path = ext.stagingPath.orNull ?: "stagingRepo"

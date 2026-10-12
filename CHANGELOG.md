@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus a `mavenRepo(name, url, role)` convenience overload.
 - `publish`: new `promotionOnly` flag on `MavenRepoSpec` — flagged repos are skipped by
   plain `publish` and attached with `-Ppromote`; promoting a snapshot version fails fast.
+- `publish`: deploy destinations renamed `to*()` → `deployTo*()` (`deployToCentral`,
+  `deployToPortal`, `deployToMavenLocal`, `deployToSnapshots`; `toMavenStaging()` stays).
+- `publish`: new `promoteToCentral()` / `promoteToPortal()` — promotion-gated deploys
+  active only on `-Ppromote` invocations; setting both spellings for one destination
+  fails fast.
 
 ### Changed
 

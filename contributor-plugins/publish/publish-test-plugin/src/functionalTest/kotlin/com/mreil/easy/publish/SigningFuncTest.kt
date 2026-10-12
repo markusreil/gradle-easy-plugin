@@ -155,7 +155,7 @@ class SigningFuncTest {
     }
 
     private fun publishBuild(signing: Boolean = true): String {
-        // Signing is opt-in (defaults to false; only toMavenCentral() turns it on). The
+        // Signing is opt-in (defaults to false; only deployToCentral() turns it on). The
         // signing-specific tests below need it explicitly enabled; the "without signing"
         // path needs it explicitly disabled to override the previous helper's default.
         val signingLine =

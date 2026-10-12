@@ -97,6 +97,90 @@ class PromotionReposFuncTest {
         }
     }
 
+    /** `promoteToCentral` without the flag wires no Central tasks. */
+    @Test
+    fun `promoteToCentral without flag wires no central tasks`() {
+        project.configure {
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "demo",
+                  "version": "1.0.0"
+                }
+                """.trimIndent(),
+            )
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.publish")
+                }
+                repositories {
+                    mavenCentral()
+                }
+                easy {
+                    publish {
+                        enabled.set(true)
+                        promoteToCentral()
+                    }
+                    codemeta { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+        }
+
+        val result = project.build("tasks", "--all")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).doesNotContain("publishToMavenCentral")
+        }
+    }
+
+    /** `promoteToCentral` with the flag activates the Central pipeline (hermetic: empty staging). */
+    @Test
+    fun `promoteToCentral with flag activates central deploy`() {
+        project.configure {
+            file(
+                "codemeta.json",
+                """
+                {
+                  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+                  "@type": "SoftwareSourceCode",
+                  "name": "demo",
+                  "version": "1.0.0"
+                }
+                """.trimIndent(),
+            )
+            buildGradle(
+                """
+                plugins {
+                    id("com.mreil.easy.test.publish")
+                }
+                repositories {
+                    mavenCentral()
+                }
+                easy {
+                    publish {
+                        enabled.set(true)
+                        promoteToCentral()
+                    }
+                    codemeta { enabled.set(true) }
+                }
+                """.trimIndent(),
+            )
+            systemProperty("jreleaser.mavencentral.username", "test-central-username")
+            systemProperty("jreleaser.mavencentral.password", "test-central-password")
+        }
+
+        val result = project.build("publishToMavenCentral", "-Ppromote")
+
+        assertSoftly { softly ->
+            softly.assertThat(result.output).contains("nothing staged, skipping deploy")
+        }
+    }
+
     /** Promoting a snapshot fails fast with the guard message. */
     @Test
     fun `promote flag on snapshot version fails fast`() {

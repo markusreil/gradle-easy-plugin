@@ -131,7 +131,7 @@ class ProjectPluginFuncTest {
                     }
                     publish {
                         enabled.set(true)
-                        toMavenLocal()
+                        deployToMavenLocal()
                     }
                 }
 

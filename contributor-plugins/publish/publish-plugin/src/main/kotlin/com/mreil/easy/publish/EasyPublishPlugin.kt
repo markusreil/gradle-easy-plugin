@@ -121,7 +121,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     private fun wirePublishToMavenLocal(target: Project) {
         // Eager: only extension values are read (final once afterEnabled runs post-evaluation)
         // and tasks.named is lazy, so no afterEvaluate deferral is needed here.
-        if (target.publishExtension()?.toMavenLocal?.get() == true) {
+        if (target.publishExtension()?.deployToMavenLocal?.get() == true) {
             target.tasks.named("publish").configure { it.dependsOn("publishToMavenLocal") }
         }
     }
@@ -130,9 +130,10 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
      * Wires the Gradle Plugin Portal `publishPlugins` task into `publish` for plugin projects
      * applying `com.gradle.plugin-publish`, on release versions only.
      *
-     * Opt-in via [EasyPublishExtension.toPluginPortal] (convention false), intended as a
-     * build-wide toggle set in the root `easy { publish { } }` block and inherited by every
-     * project. Snapshots never portal-publish (silently skipped). Projects without a `publish`
+     * Opt-in via [EasyPublishExtension.deployToPortal] (every release publish) or
+     * [EasyPublishExtension.promoteToPortal] (`-Ppromote` invocations only; mutually exclusive
+     * with `deployToPortal`), intended as a build-wide toggle set in the root `easy { publish { } }`
+     * block and inherited by every project. Snapshots never portal-publish (silently skipped). Projects without a `publish`
      * task (no `maven-publish`, e.g. a root project without the `java` plugin) or without a
      * `publishPlugins` task (not a plugin project) are skipped with a lifecycle note, since a
      * root-inherited toggle must be safe on every project it reaches. Missing
@@ -148,14 +149,22 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
      */
     private fun wirePluginPortalPublishing(target: Project) {
         val publishExt = target.publishExtension() ?: return
-        if (!publishExt.toPluginPortal.get()) return
+        val always = publishExt.deployToPortal.get()
+        val promoted = publishExt.promoteToPortal.get() && propertyResolver.get("promote").orNull != null
+        if (always && publishExt.promoteToPortal.get()) {
+            throw GradleException(
+                "Project '${target.path}' sets both deployToPortal() and promoteToPortal(): " +
+                    "the Portal cannot be tier 2 and tier 3 at once.",
+            )
+        }
+        if (!always && !promoted) return
         target.tasks.matching { it.name == "publish" }.configureEach { publishTask ->
             if (resolveIsSnapshot(target)) return@configureEach
             val publishPlugins =
                 target.tasks.findByName("publishPlugins")
                     ?: run {
                         target.logger.lifecycle(
-                            "easy.publish.toPluginPortal() is enabled in project '${target.path}' but it is not a " +
+                            "easy.publish.deployToPortal() is enabled in project '${target.path}' but it is not a " +
                                 "Gradle plugin project (no 'publishPlugins' task from `com.gradle.plugin-publish`) - " +
                                 "skipping Plugin Portal publishing.",
                         )
@@ -170,7 +179,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
                         if (!hasSecret) add("gradle.publish.secret")
                     }.joinToString(", ")
                 throw GradleException(
-                    "easy.publish.toPluginPortal() is enabled but Plugin Portal credentials are missing: $missing. " +
+                    "easy.publish.deployToPortal() is enabled but Plugin Portal credentials are missing: $missing. " +
                         "Provide them via the GRADLE_PUBLISH_KEY / GRADLE_PUBLISH_SECRET environment variables or " +
                         "the gradle.publish.key / gradle.publish.secret Gradle properties.",
                 )
@@ -192,9 +201,9 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
         publishing: PublishingExtension,
     ) {
         val publishExt = target.publishExtension() ?: return
-        if (publishExt.sonatypeSnapshots.get() && !target.isEasyChildEnabled<EasySemverExtension>()) {
+        if (publishExt.deployToSnapshots.get() && !target.isEasyChildEnabled<EasySemverExtension>()) {
             target.logger.lifecycle(
-                "easy.publish.toSonatypeSnapshots(): semver is disabled, so snapshot detection " +
+                "easy.publish.deployToSnapshots(): semver is disabled, so snapshot detection " +
                     "falls back to the '-SNAPSHOT' version suffix convention.",
             )
         }
@@ -243,7 +252,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
      * Resolves whether this project is publishing a snapshot version, used by [RepoRouting] to
      * filter repositories. Semver decides when `easy.semver` is enabled; otherwise the `-SNAPSHOT`
      * version suffix decides. Routing therefore always filters — the old attach-everywhere `null`
-     * default is gone, so `toSonatypeSnapshots()` needs no semver requirement.
+     * default is gone, so `deployToSnapshots()` needs no semver requirement.
      */
     private fun resolveIsSnapshot(target: Project): Boolean =
         RepoRouting.isSnapshot(EasySemver.of(target).orNull) ?: target.hasSnapshotVersion()

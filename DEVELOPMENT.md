@@ -159,8 +159,8 @@ The `publish` contributor publishes **every Maven publication of every project**
 the spec's explicit `role`: `RepoRole.RELEASE` only receives non-snapshot versions,
 `RepoRole.SNAPSHOT` only snapshots, `RepoRole.NEUTRAL` everything. An unset role fails
 fast at configuration time (no name guessing).
-`toMavenStaging()`/`toSonatypeSnapshots()` are `mavenRepo`s under the hood
-(`mavenStaging`, `sonatypeSnapshots`); `toMavenCentral()` instead stages into
+`toMavenStaging()`/`deployToSnapshots()` are `mavenRepo`s under the hood
+(`mavenStaging`, `sonatypeSnapshots`); `deployToCentral()` instead stages into
 `mavenStaging` and lets JReleaser deploy that staged set to Maven Central.
 
 This section is the source of truth for the deployed artifact set — update it
@@ -253,7 +253,7 @@ Currently configured in GitHub:
 |---|---|---|---|
 | Variable | `ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSSNAPSHOTSUSERNAME` | `mreilComGradlePluginsSnapshotsUsername` | Snapshot repo user (`mreilComGradlePluginsSnapshots`) |
 | Secret | `ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSSNAPSHOTSPASSWORD` | `mreilComGradlePluginsSnapshotsPassword` | Snapshot repo password |
-| Variable | `ORG_GRADLE_PROJECT_SONATYPESNAPSHOTSUSERNAME` | `sonatypeSnapshotsUsername` | Sonatype snapshots user (`toSonatypeSnapshots()`) |
+| Variable | `ORG_GRADLE_PROJECT_SONATYPESNAPSHOTSUSERNAME` | `sonatypeSnapshotsUsername` | Sonatype snapshots user (`deployToSnapshots()`) |
 | Secret | `ORG_GRADLE_PROJECT_SONATYPESNAPSHOTSPASSWORD` | `sonatypeSnapshotsPassword` | Sonatype snapshots token |
 | Secret | `JRELEASER_PGP_PRIVATEKEY` | `jreleaser.gpg.privateKey` (env `JRELEASER_GPG_PRIVATE_KEY`) | PGP signing (base64 armored private key) |
 | Secret | `JRELEASER_PGP_PASSPHRASE` | `jreleaser.gpg.passphrase` (env `JRELEASER_GPG_PASSPHRASE`) | PGP signing passphrase |

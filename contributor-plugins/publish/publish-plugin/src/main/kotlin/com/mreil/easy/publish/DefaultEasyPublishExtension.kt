@@ -21,12 +21,14 @@ internal const val MAVEN_STAGING_REPO = "mavenStaging"
 abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     init {
         enabled.convention(true)
-        toMavenLocal.convention(false)
-        toMavenCentral.convention(false)
-        sonatypeSnapshots.convention(false)
-        toPluginPortal.convention(false)
+        deployToMavenLocal.convention(false)
+        deployToCentral.convention(false)
+        promoteToCentral.convention(false)
+        deployToSnapshots.convention(false)
+        deployToPortal.convention(false)
+        promoteToPortal.convention(false)
         // Signing is opt-in: staging-only / local / snapshot publishing skips it.
-        // [toMavenCentral] turns it on because the JReleaser deploy verifies every artifact
+        // [deployToCentral] turns it on because the JReleaser deploy verifies every artifact
         // is signed, so consumers must sign before deploy.
         signingEnabled.convention(false)
     }
@@ -40,21 +42,29 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
         stagingPath.set(path)
     }
 
-    abstract val toMavenLocal: Property<Boolean>
+    abstract val deployToMavenLocal: Property<Boolean>
 
-    override fun toMavenLocal() {
-        toMavenLocal.set(true)
+    override fun deployToMavenLocal() {
+        deployToMavenLocal.set(true)
     }
 
     // DEEP (inheritable convention, overridable per-project): a single subproject may opt
     // into Maven Central from its own script while the root stays unset. READ_ONLY would
     // disallow the per-project override.
-    abstract val toMavenCentral: Property<Boolean>
+    abstract val deployToCentral: Property<Boolean>
 
-    abstract val toPluginPortal: Property<Boolean>
+    abstract val promoteToCentral: Property<Boolean>
 
-    override fun toPluginPortal() {
-        toPluginPortal.set(true)
+    abstract val deployToPortal: Property<Boolean>
+
+    abstract val promoteToPortal: Property<Boolean>
+
+    override fun deployToPortal() {
+        deployToPortal.set(true)
+    }
+
+    override fun promoteToPortal() {
+        promoteToPortal.set(true)
     }
 
     /**
@@ -64,8 +74,21 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
      * `signingEnabled` because the JReleaser deploy verifies every artifact is signed;
      * callers who want to opt out can set `signingEnabled.set(false)` after calling this.
      */
-    override fun toMavenCentral() {
-        toMavenCentral.set(true)
+    override fun deployToCentral() {
+        deployToCentral.set(true)
+        enableCentralDefaults()
+    }
+
+    /**
+     * Promotion-gated JReleaser Central deploy: like [deployToCentral] (staging default +
+     * signing) but active only on `-Ppromote` invocations.
+     */
+    override fun promoteToCentral() {
+        promoteToCentral.set(true)
+        enableCentralDefaults()
+    }
+
+    private fun enableCentralDefaults() {
         signingEnabled.set(true)
         if (stagingPath.orNull == null) {
             // Best-effort default staging: a subproject inheriting READ_ONLY staging from the
@@ -76,10 +99,10 @@ abstract class DefaultEasyPublishExtension : EasyPublishExtension {
     }
 
     @get:CopyMode(CopyMode.Mode.READ_ONLY)
-    abstract val sonatypeSnapshots: Property<Boolean>
+    abstract val deployToSnapshots: Property<Boolean>
 
-    override fun toSonatypeSnapshots() {
-        sonatypeSnapshots.set(true)
+    override fun deployToSnapshots() {
+        deployToSnapshots.set(true)
         if (mavenRepos.findByName(SONATYPE_SNAPSHOTS_REPO) == null) {
             mavenRepo(SONATYPE_SNAPSHOTS_REPO) {
                 it.url.set(SONATYPE_SNAPSHOTS_URL)

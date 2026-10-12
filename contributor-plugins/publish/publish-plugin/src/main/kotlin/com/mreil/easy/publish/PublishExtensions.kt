@@ -16,7 +16,7 @@ import org.gradle.api.Project
 internal fun Project.publishExtension(): DefaultEasyPublishExtension? = findEasyChild<EasyPublishExtension, DefaultEasyPublishExtension>()
 
 /**
- * True when this project has opted into Maven Central (its own `toMavenCentral` value
+ * True when this project has opted into Maven Central (its own `deployToCentral` value
  * or the inherited root convention) and the publish extension is enabled.
  *
  * The single gate shared by every Central wiring unit: config collection, deploy
@@ -25,5 +25,21 @@ internal fun Project.publishExtension(): DefaultEasyPublishExtension? = findEasy
 internal fun Project.isCentralEnabled(): Boolean =
     publishExtension()
         ?.takeIf { it.isEnabled() }
-        ?.let { it.toMavenCentral.get() == true }
+        ?.deployToCentral?.get()
         ?: false
+
+/**
+ * True when this project arms the promotion-gated Central deploy (`promoteToCentral`).
+ * The wiring additionally requires the `-Ppromote` invocation flag (see callers).
+ */
+internal fun Project.isPromoteToCentralArmed(): Boolean =
+    publishExtension()
+        ?.takeIf { it.isEnabled() }
+        ?.promoteToCentral?.get()
+        ?: false
+
+/**
+ * True when Central wiring applies to this project: always-central (`deployToCentral`)
+ * or promotion-armed (`promoteToCentral`) on a `-Ppromote` invocation.
+ */
+internal fun Project.isCentralActive(promoted: Boolean): Boolean = isCentralEnabled() || (promoted && isPromoteToCentralArmed())

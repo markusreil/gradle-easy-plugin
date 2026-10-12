@@ -59,7 +59,7 @@ class JreleaserVersionFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
-                        toMavenCentral()
+                        deployToCentral()
                     }
                     codemeta { enabled.set(true) }
                 }
@@ -109,7 +109,7 @@ class JreleaserVersionFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
-                        toMavenCentral()
+                        deployToCentral()
                     }
                     codemeta { enabled.set(true) }
                 }

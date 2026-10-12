@@ -54,7 +54,7 @@ class JreleaserDeployFuncTest {
                 easy {
                     publish {
                         enabled.set(true)
-                        toMavenCentral()
+                        deployToCentral()
                     }
                     codemeta { enabled.set(true) }
                 }

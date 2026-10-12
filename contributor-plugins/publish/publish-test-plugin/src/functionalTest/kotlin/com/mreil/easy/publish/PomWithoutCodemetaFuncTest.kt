@@ -44,7 +44,7 @@ class PomWithoutCodemetaFuncTest {
             javaSource()
         }
 
-        // publishToMavenCentral does not exist when toMavenCentral() is not requested
+        // publishToMavenCentral does not exist when deployToCentral() is not requested
         // (EasyJreleaserPlugin now skips wiring entirely), so no -x is needed.
         project.build("publish")
 
@@ -82,7 +82,7 @@ class PomWithoutCodemetaFuncTest {
                     publish {
                         enabled.set(true)
                         signingEnabled.set(false)
-                        toMavenCentral()
+                        deployToCentral()
                         toMavenStaging()
                     }
                 }

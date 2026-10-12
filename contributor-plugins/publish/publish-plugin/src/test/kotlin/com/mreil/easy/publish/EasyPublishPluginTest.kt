@@ -171,7 +171,7 @@ class EasyPublishPluginTest {
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
-        publish.toMavenLocal()
+        publish.deployToMavenLocal()
 
         project.evaluate()
 
@@ -201,7 +201,7 @@ class EasyPublishPluginTest {
     }
 
     @Test
-    fun `toPluginPortal defaults to false`() {
+    fun `deployToPortal defaults to false`() {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0"
@@ -212,12 +212,12 @@ class EasyPublishPluginTest {
         publish.enabled.set(true)
 
         assertSoftly { softly ->
-            softly.assertThat(publish.toPluginPortal.get()).isFalse()
+            softly.assertThat(publish.deployToPortal.get()).isFalse()
         }
     }
 
     @Test
-    fun `publish depends on publishPlugins when toPluginPortal enabled on release with credentials`() {
+    fun `publish depends on publishPlugins when deployToPortal enabled on release with credentials`() {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0"
@@ -226,7 +226,7 @@ class EasyPublishPluginTest {
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
-        publish.toPluginPortal()
+        publish.deployToPortal()
         project.tasks.register("publishPlugins")
 
         val oldKey = System.getProperty("gradle.publish.key")
@@ -246,7 +246,7 @@ class EasyPublishPluginTest {
     }
 
     @Test
-    fun `publish does not depend on publishPlugins when toPluginPortal enabled but project is not a plugin project`() {
+    fun `publish does not depend on publishPlugins when deployToPortal enabled but project is not a plugin project`() {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0"
@@ -255,7 +255,7 @@ class EasyPublishPluginTest {
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
-        publish.toPluginPortal()
+        publish.deployToPortal()
 
         project.evaluate()
 
@@ -266,9 +266,9 @@ class EasyPublishPluginTest {
     }
 
     @Test
-    fun `toPluginPortal does not fail when project has no publish task`() {
+    fun `deployToPortal does not fail when project has no publish task`() {
         // Root-like project: no java plugin, so maven-publish is never applied and there is
-        // no `publish` task. toPluginPortal() is a build-wide toggle that inherits to every
+        // no `publish` task. deployToPortal() is a build-wide toggle that inherits to every
         // project, so wiring must not throw "Task with name 'publish' not found".
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
@@ -277,7 +277,7 @@ class EasyPublishPluginTest {
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
-        publish.toPluginPortal()
+        publish.deployToPortal()
 
         project.evaluate()
 
@@ -287,7 +287,7 @@ class EasyPublishPluginTest {
     }
 
     @Test
-    fun `publish throws when toPluginPortal enabled but credentials missing`() {
+    fun `publish throws when deployToPortal enabled but credentials missing`() {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0"
@@ -296,7 +296,7 @@ class EasyPublishPluginTest {
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
-        publish.toPluginPortal()
+        publish.deployToPortal()
         project.tasks.register("publishPlugins")
 
         val oldKey = System.getProperty("gradle.publish.key")
@@ -318,7 +318,7 @@ class EasyPublishPluginTest {
     }
 
     @Test
-    fun `publish does not throw when snapshot with toPluginPortal enabled`() {
+    fun `publish does not throw when snapshot with deployToPortal enabled`() {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0-SNAPSHOT"
@@ -327,7 +327,7 @@ class EasyPublishPluginTest {
         val easy = project.extensions.getByType(EasyExtension::class.java) as ExtensionAware
         val publish = easy.extensions.getByType(EasyPublishExtension::class.java)
         publish.enabled.set(true)
-        publish.toPluginPortal()
+        publish.deployToPortal()
 
         project.evaluate()
 
@@ -338,7 +338,7 @@ class EasyPublishPluginTest {
     }
 
     @Test
-    fun `publish does not throw when toPluginPortal not enabled`() {
+    fun `publish does not throw when deployToPortal not enabled`() {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
         project.version = "1.0.0"

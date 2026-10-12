@@ -16,7 +16,7 @@ import kotlinx.serialization.json.putJsonArray
  *
  * Snapshots are deliberately not deployed via JReleaser (single-threaded per-file
  * upload is too slow) — they go directly through `maven-publish` via
- * `easy.publish.toSonatypeSnapshots()`, so only the release deployer remains.
+ * `easy.publish.deployToSnapshots()`, so only the release deployer remains.
  */
 internal sealed interface JreleaserMavenDeployer {
     val section: String
@@ -82,7 +82,7 @@ internal fun commonDeployerJson(
  * Resolves the deployer list for a [JreleaserJson.Config].
  *
  * Only releases go through JReleaser (Portal); snapshots publish directly via
- * `maven-publish` (see `toSonatypeSnapshots`). In nexus test mode everything
+ * `maven-publish` (see `deployToSnapshots`). In nexus test mode everything
  * remote is NEVER so smoke runs stay local-only.
  */
 internal fun deployersFor(config: JreleaserJson.Config): List<JreleaserMavenDeployer> {
