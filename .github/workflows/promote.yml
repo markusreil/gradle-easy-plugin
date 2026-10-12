@@ -1,0 +1,79 @@
+name: Promote
+
+# Retroactive tier-3 promotion: rebuilds an existing release tag as-is and publishes
+# it with `-Ppromote` (promotion-only repos, Central, Portal). Plain `publish` behavior
+# is untouched — this workflow is the only path that spends Central quota.
+#
+# Run from the Actions tab or via:
+#   gh workflow run promote.yml -f tag=v0.0.120 [-f dry-run=false]
+#
+# Quota governance lives in the `central` environment (required reviewers): each real
+# promotion needs a human approval. `dry-run: true` (the default) stages, validates and
+# resolves everything without deploying, so the safe path is the default path.
+#
+# Prerequisites (one-time repo setup): create the `central` environment with required
+# reviewers, and provide the secrets/vars referenced below. Promoted tags must contain
+# the promotion feature itself — older tags silently publish tier 2 only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to promote (e.g. v0.0.120)'
+        required: true
+      dry-run:
+        description: 'Stage and validate only, skip the Central deploy'
+        type: boolean
+        default: true
+
+jobs:
+  promote:
+    name: Promote release tag
+    runs-on: ubuntu-latest
+    environment: central
+    concurrency:
+      group: promote-central
+      cancel-in-progress: false
+    env:
+      ORG_GRADLE_PROJECT_mreilComGradlePluginsReleasesUsername: ${{ vars.ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSRELEASESUSERNAME }}
+      ORG_GRADLE_PROJECT_mreilComGradlePluginsReleasesPassword: ${{ secrets.ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSRELEASESPASSWORD }}
+      JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+      JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+      GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+      GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+      JRELEASER_GPG_PRIVATE_KEY: ${{ secrets.JRELEASER_PGP_PRIVATEKEY }}
+      JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_PGP_PASSPHRASE }}
+    steps:
+      - name: Validate tag input
+        run: |
+          [[ '${{ inputs.tag }}' =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Tag must look like v0.0.120, got '${{ inputs.tag }}'"
+            exit 1
+          }
+
+      - uses: actions/checkout@v4
+        with:
+          # Promote the tag's exact bytes, never main.
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        # Deliberately no build-scan publishing (see ci.yml): deploy logs stay private.
+
+      - name: Verify tag state
+        # A broken tag fails here, before any quota is spent.
+        run: ./gradlew build --build-cache
+
+      - name: Reject snapshots
+        run: |
+          if ./gradlew -q :easy-plugin:properties 2>/dev/null | grep -q -- '-SNAPSHOT'; then
+            echo "Tag '${{ inputs.tag }}' is a snapshot and snapshots can never be promoted."
+            exit 1
+          fi
+
+      - name: Promote
+        run: ./gradlew publish -Ppromote ${{ inputs.dry-run == true && '--dry-run' || '' }}
