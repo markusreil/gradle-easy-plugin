@@ -84,10 +84,21 @@ subprojects {
         }
         kotlinGradle {
             target("*.gradle.kts")
-            ktlint()
+            ktlint(libs.versions.ktlint.get())
             trimTrailingWhitespace()
             endWithNewline()
         }
+    }
+    // Workaround for diffplug/spotless#3067: every `clean` carries a doLast that closes the
+    // shared SpotlessCache classloaders, which races with concurrently-running `spotless*`
+    // tasks under org.gradle.parallel=true (`clean build` => LINE_UNDEFINED NoClassDefFoundError).
+    // Per-project mustRunAfter is NOT enough: the race is cross-project (:a:clean vs
+    // :b:spotlessCheck). Order every spotless task after every clean task by task path, so the
+    // clear cannot land mid-flight. (`./gradlew clean && ./gradlew build` also avoids it;
+    // --stop only re-rolls the timing.)
+    val allCleanPaths = rootProject.allprojects.map { "${it.path}:clean" }
+    tasks.matching { it.name.startsWith("spotless") }.configureEach {
+        mustRunAfter(allCleanPaths)
     }
     // Shared detekt config (previously repeated in every module build file); the `check` wiring
     // below also applies to every leaf project.
