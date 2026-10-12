@@ -234,15 +234,24 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
     private fun addStagingRepository(target: Project) {
         val publishExt = target.publishExtension() ?: return
         publishExt.stagingPath.orNull?.let { path ->
-            if (publishExt.mavenRepos.findByName(MAVEN_STAGING_REPO) == null) {
-                val url =
-                    target.layout.buildDirectory
-                        .dir(path)
-                        .get()
-                        .asFile.invariantSeparatorsPath
-                publishExt.mavenRepo(MAVEN_STAGING_REPO) {
-                    it.url.set(url)
-                    it.role.set(RepoRole.NEUTRAL)
+            // A user-declared `mavenStaging` spec flows through `configureMavenRepositories`
+            // like any repo and takes precedence. The wiring-owned staging repo is attached
+            // directly (never via the shared spec container): the container is forwarded live
+            // into subprojects, so a wiring-created spec would shadow every child's own
+            // per-project staging dir with the declaring project's URL.
+            if (publishExt.mavenRepos.findByName(MAVEN_STAGING_REPO) != null) return@let
+            target.plugins.withId("maven-publish") {
+                val publishing = target.extensions.getByType(PublishingExtension::class.java)
+                if (publishing.repositories.findByName(MAVEN_STAGING_REPO) == null) {
+                    val url =
+                        target.layout.buildDirectory
+                            .dir(path)
+                            .get()
+                            .asFile.invariantSeparatorsPath
+                    publishing.repositories.maven { repo ->
+                        repo.name = MAVEN_STAGING_REPO
+                        repo.url = target.uri(url)
+                    }
                 }
             }
         }

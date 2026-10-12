@@ -151,7 +151,12 @@ object ExtensionCopier {
         mode: CopyMode.Mode,
     ) {
         requireDeep(mode, propName, "DomainObjectCollection")
-        (pair.to as DomainObjectCollection<Any>).addAll(pair.from as Collection<Any>)
+        // Live forwarding, not a snapshot: `all {}` fires for existing elements and every
+        // element added later. A snapshot (`addAll`) would miss declarations made after the
+        // copy — e.g. root `easy { publish { mavenRepo(...) } }` runs after the entry point
+        // already injected (and copied) extensions into subprojects.
+        val to = pair.to as DomainObjectCollection<Any>
+        (pair.from as DomainObjectCollection<Any>).all { to.add(it) }
     }
 
     private fun copyNested(

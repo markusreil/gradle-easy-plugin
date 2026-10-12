@@ -97,6 +97,49 @@ class PromotionReposFuncTest {
         }
     }
 
+    /** Repos declared in the root `easy {}` block (after plugin application) reach subprojects. */
+    @Test
+    fun `root-declared repos publish from subprojects`() {
+        lateinit var repoDir: File
+        project.configure {
+            settings("include(\":child\")")
+            repoDir = createDir("repo")
+            buildGradle(
+                """
+                import com.mreil.easy.publish.RepoRole
+
+                plugins {
+                    id("com.mreil.easy.test.publish")
+                }
+                easy {
+                    publish {
+                        enabled.set(true)
+                        signingEnabled.set(false)
+                        mavenRepo("repos", "${repoDir.invariantSeparatorsPath}", RepoRole.RELEASE)
+                    }
+                }
+                """.trimIndent(),
+            )
+            createChild {
+                buildGradle(
+                    """
+                    plugins {
+                        `java-library`
+                    }
+                    """.trimIndent(),
+                )
+            }
+            javaSource()
+        }
+
+        project.build(":child:publish")
+
+        val coordinates = MavenCoordinates(name = "child")
+        assertSoftly { softly ->
+            softly.assertThat(project).hasArtifact(repoDir, coordinates)
+        }
+    }
+
     /** `promoteToCentral` without the flag wires no Central tasks. */
     @Test
     fun `promoteToCentral without flag wires no central tasks`() {

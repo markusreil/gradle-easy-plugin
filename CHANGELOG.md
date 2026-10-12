@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `easy-plugin-core`: `ExtensionCopier` forwards `DomainObjectCollection` elements live
+  instead of snapshotting them, so `mavenRepo` declarations in the root `easy {}` block
+  (which runs after extensions are injected into subprojects) now reach subprojects.
+  Previously only `mavenStaging` ever published from CI — remote repos silently received
+  nothing.
 - `release`: a disabled `release` contributor no longer realizes `EasySemver` while the
   configuration cache is stored, so an invalid/absent project version no longer fails the build when
   only `semver` is enabled. `ReleaseStateService` is now registered in the enabled-gated

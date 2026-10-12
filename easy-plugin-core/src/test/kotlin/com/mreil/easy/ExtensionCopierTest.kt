@@ -197,6 +197,34 @@ class ExtensionCopierTest {
     }
 
     @Test
+    fun `forwards DomainObjectCollection items added after copy`() {
+        val from = newCollectionTestExtension()
+        val to = newCollectionTestExtension()
+
+        ExtensionCopier.copy(from, to)
+
+        from.items.add("late")
+
+        assertSoftly { softly ->
+            softly.assertThat(to.items).containsExactly("late")
+        }
+    }
+
+    @Test
+    fun `forwards NamedDomainObjectContainer items added after copy`() {
+        val from = newCollectionTestExtension()
+        val to = newCollectionTestExtension()
+
+        ExtensionCopier.copy(from, to)
+
+        from.container.create("lateItem")
+
+        assertSoftly { softly ->
+            softly.assertThat(to.container.names).containsExactly("lateItem")
+        }
+    }
+
+    @Test
     fun `copies NamedDomainObjectContainer items via DEEP copy`() {
         val from = newCollectionTestExtension()
         val to = newCollectionTestExtension()
