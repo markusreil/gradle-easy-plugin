@@ -199,8 +199,15 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             )
         }
         val isSnapshot = resolveIsSnapshot(target)
+        val promoted = propertyResolver.get("promote").orNull != null
+        if (promoted && isSnapshot == true) {
+            throw GradleException(
+                "Promotion (`-Ppromote`) requires a release version: project '${target.path}' " +
+                    "is a snapshot and snapshots can never be promoted.",
+            )
+        }
         publishExt.mavenRepos
-            .filter { RepoRouting.shouldPublishToRepo(it, isSnapshot) }
+            .filter { RepoRouting.shouldPublishToRepo(it, isSnapshot, promoted) }
             .forEach { spec -> publishing.repositories.maven { repo -> spec.configure(target, repo) } }
     }
 

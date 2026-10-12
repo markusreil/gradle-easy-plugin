@@ -53,6 +53,12 @@ easy {
         }
         /* Publish to a local repo. */
         mavenRepo("local", "build/repo", RepoRole.NEUTRAL)
+        /* Publish to a promotion-gated repo: skipped by plain `publish`, attached with `-Ppromote`. */
+        mavenRepo("gated") {
+            url.set("https://repo.example.com/gated")
+            role.set(RepoRole.RELEASE)
+            promotionOnly.set(true)
+        }
         /* Execute `publishToMavenLocal` when `publish` task is executed */
         toMavenLocal()
         /* Publish to a per-project repo in the project's build directory

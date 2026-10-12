@@ -31,6 +31,13 @@ abstract class MavenRepoSpec
         abstract val role: Property<RepoRole>
 
         /**
+         * Whether this repository only publishes on promotion invocations (`-Ppromote`).
+         * Promotion-gated destinations stay detached from plain `publish` so quota-limited
+         * or publicly visible repos are never hit by accident.
+         */
+        abstract val promotionOnly: Property<Boolean>
+
+        /**
          * Whether this repository requires password credentials. When enabled, Gradle
          * resolves the username/password from the repository's credentials properties.
          */
@@ -38,6 +45,7 @@ abstract class MavenRepoSpec
 
         init {
             passwordCredentials.convention(false)
+            promotionOnly.convention(false)
         }
 
         /**

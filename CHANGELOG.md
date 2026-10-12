@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `publish`: new explicit `RepoRole` (`SNAPSHOT`/`RELEASE`/`NEUTRAL`) on `MavenRepoSpec`
   plus a `mavenRepo(name, url, role)` convenience overload.
+- `publish`: new `promotionOnly` flag on `MavenRepoSpec` — flagged repos are skipped by
+  plain `publish` and attached with `-Ppromote`; promoting a snapshot version fails fast.
 
 ### Changed
 

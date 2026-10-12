@@ -57,6 +57,43 @@ class EasyPublishRoutingTest {
         }
     }
 
+    @ParameterizedTest(name = "role={0} snapshot={1} promoted={2} expected={3}")
+    @CsvSource(
+        "RELEASE, false, false, false",
+        "RELEASE, false, true, true",
+        "RELEASE, true, true, false",
+        "SNAPSHOT, true, false, false",
+        "SNAPSHOT, true, true, true",
+        "NEUTRAL, false, false, false",
+        "NEUTRAL, false, true, true",
+        "NEUTRAL, null, false, false",
+        "NEUTRAL, null, true, true",
+    )
+    fun `promotion-only repos attach only when promoted`(
+        role: RepoRole,
+        isSnapshotParam: String,
+        promoted: Boolean,
+        expected: Boolean,
+    ) {
+        val project = ProjectBuilder.builder().build()
+        val spec = project.objects.newInstance(MavenRepoSpec::class.java, "gated")
+        spec.role.set(role)
+        spec.promotionOnly.set(true)
+        val isSnapshot = isSnapshotParam.takeIf { it != "null" }?.toBooleanStrict()
+        val result = RepoRouting.shouldPublishToRepo(spec, isSnapshot, promoted)
+        assertSoftly { softly ->
+            softly.assertThat(result).isEqualTo(expected)
+        }
+    }
+
+    @Test
+    fun `promotionOnly defaults to false`() {
+        val project = ProjectBuilder.builder().build()
+        val spec = project.objects.newInstance(MavenRepoSpec::class.java, "plain")
+        spec.role.set(RepoRole.RELEASE)
+        assertThat(RepoRouting.shouldPublishToRepo(spec, false)).isTrue()
+    }
+
     @Test
     fun `unset role fails fast`() {
         val project = ProjectBuilder.builder().build()

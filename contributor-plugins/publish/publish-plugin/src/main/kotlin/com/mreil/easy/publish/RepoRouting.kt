@@ -20,13 +20,15 @@ internal object RepoRouting {
     fun shouldPublishToRepo(
         spec: MavenRepoSpec,
         isSnapshot: Boolean?,
+        promoted: Boolean = false,
     ): Boolean {
-        if (isSnapshot == null) return true
-        return when (requireRole(spec)) {
-            RepoRole.SNAPSHOT -> isSnapshot
-            RepoRole.RELEASE -> !isSnapshot
-            RepoRole.NEUTRAL -> true
-        }
+        if (spec.promotionOnly.get() && !promoted) return false
+        return isSnapshot == null ||
+            when (requireRole(spec)) {
+                RepoRole.SNAPSHOT -> isSnapshot
+                RepoRole.RELEASE -> !isSnapshot
+                RepoRole.NEUTRAL -> true
+            }
     }
 
     fun requireRole(spec: MavenRepoSpec): RepoRole =
