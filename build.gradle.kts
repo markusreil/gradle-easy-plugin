@@ -23,7 +23,16 @@ easy {
     publish {
         toMavenStaging()
         deployToSnapshots()
-        deployToPortal()
+        // Tier 2: every release lands on the self-hosted releases repo (unlimited).
+        mavenRepo(
+            "mreilComGradlePluginsReleases",
+            "https://repo.mreil.com/gradle-plugins-releases",
+            RepoRole.RELEASE,
+            true
+        )
+        // Tier 3 (`-Ppromote` only): Portal + Central. Quota spend, see promote.yml.
+        promoteToPortal()
+        promoteToCentral()
         mavenRepo(
             "mreilComGradlePluginsSnapshots",
             "https://repo.mreil.com/gradle-plugins-snapshots",
