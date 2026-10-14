@@ -23,6 +23,14 @@ easy {
     publish {
         toMavenStaging()
         deployToSnapshots()
+        // Phase 1: promotion targets the self-hosted releases repo only (unlimited).
+        // `-Ppromote` publishes here; plain `publish` is unchanged. Phase 2 adds Central.
+        mavenRepo("mreilComGradlePluginsReleases") {
+            url.set("https://repo.mreil.com/gradle-plugins-releases")
+            role.set(RepoRole.RELEASE)
+            passwordCredentials.set(true)
+            promotionOnly.set(true)
+        }
         deployToPortal()
         mavenRepo(
             "mreilComGradlePluginsSnapshots",
