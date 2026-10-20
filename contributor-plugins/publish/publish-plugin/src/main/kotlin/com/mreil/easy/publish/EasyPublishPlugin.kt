@@ -10,6 +10,7 @@ import com.mreil.easy.semver.EasySemverExtension
 import com.mreil.utils.hasSnapshotVersion
 import org.gradle.api.GradleException
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
@@ -158,36 +159,45 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             )
         }
         if (!always && !promoted) return
+        val portalToggle = if (always) "deployToPortal()" else "promoteToPortal()"
         target.tasks.matching { it.name == "publish" }.configureEach { publishTask ->
-            if (resolveIsSnapshot(target)) return@configureEach
-            val publishPlugins =
-                target.tasks.findByName("publishPlugins")
-                    ?: run {
-                        // info, not lifecycle: the toggle is inherited build-wide, so most
-                        // projects reaching here skip by design and a console line each is noise.
-                        target.logger.info(
-                            "easy.publish.deployToPortal() is enabled in project '${target.path}' but it is not a " +
-                                "Gradle plugin project (no 'publishPlugins' task from `com.gradle.plugin-publish`) - " +
-                                "skipping Plugin Portal publishing.",
-                        )
-                        return@configureEach
-                    }
-            val hasKey = propertyResolver.get("gradle.publish.key").orNull != null
-            val hasSecret = propertyResolver.get("gradle.publish.secret").orNull != null
-            if (!hasKey || !hasSecret) {
-                val missing =
-                    buildList {
-                        if (!hasKey) add("gradle.publish.key")
-                        if (!hasSecret) add("gradle.publish.secret")
-                    }.joinToString(", ")
-                throw GradleException(
-                    "easy.publish.deployToPortal() is enabled but Plugin Portal credentials are missing: $missing. " +
-                        "Provide them via the GRADLE_PUBLISH_KEY / GRADLE_PUBLISH_SECRET environment variables or " +
-                        "the gradle.publish.key / gradle.publish.secret Gradle properties.",
-                )
-            }
-            publishTask.dependsOn(publishPlugins)
+            attachPortalPublish(target, publishTask, portalToggle)
         }
+    }
+
+    private fun attachPortalPublish(
+        target: Project,
+        publishTask: Task,
+        portalToggle: String,
+    ) {
+        if (resolveIsSnapshot(target)) return
+        val publishPlugins =
+            target.tasks.findByName("publishPlugins")
+                ?: run {
+                    // info, not lifecycle: the toggle is inherited build-wide, so most
+                    // projects reaching here skip by design and a console line each is noise.
+                    target.logger.info(
+                        "easy.publish.$portalToggle is enabled in project '${target.path}' but it is not a " +
+                            "Gradle plugin project (no 'publishPlugins' task from `com.gradle.plugin-publish`) - " +
+                            "skipping Plugin Portal publishing.",
+                    )
+                    return
+                }
+        val hasKey = propertyResolver.get("gradle.publish.key").orNull != null
+        val hasSecret = propertyResolver.get("gradle.publish.secret").orNull != null
+        if (!hasKey || !hasSecret) {
+            val missing =
+                buildList {
+                    if (!hasKey) add("gradle.publish.key")
+                    if (!hasSecret) add("gradle.publish.secret")
+                }.joinToString(", ")
+            throw GradleException(
+                "easy.publish.$portalToggle is enabled but Plugin Portal credentials are missing: $missing. " +
+                    "Provide them via the GRADLE_PUBLISH_KEY / GRADLE_PUBLISH_SECRET environment variables or " +
+                    "the gradle.publish.key / gradle.publish.secret Gradle properties.",
+            )
+        }
+        publishTask.dependsOn(publishPlugins)
     }
 
     /**
