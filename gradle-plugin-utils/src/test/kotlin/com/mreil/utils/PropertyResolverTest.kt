@@ -273,5 +273,4 @@ class PropertyResolverTest {
     ) {
         assertThat(PropertyResolver.toPropertyKey(input)).isEqualTo(expected)
     }
-
-
+}
