@@ -34,15 +34,10 @@ jobs:
     concurrency:
       group: promote-central
       cancel-in-progress: false
-    env:
-      ORG_GRADLE_PROJECT_mreilComGradlePluginsReleasesUsername: ${{ vars.ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSRELEASESUSERNAME }}
-      ORG_GRADLE_PROJECT_mreilComGradlePluginsReleasesPassword: ${{ secrets.ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSRELEASESPASSWORD }}
-      JRELEASER_MAVENCENTRAL_USERNAME: ${{ vars.JRELEASER_MAVENCENTRAL_USERNAME }}
-      JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
-      GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
-      GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
-      JRELEASER_GPG_PRIVATE_KEY: ${{ secrets.JRELEASER_PGP_PRIVATEKEY }}
-      JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_PGP_PASSPHRASE }}
+    # No job-level env: credentials live only on the Promote step below. Earlier
+    # steps (notably Verify tag state) run functional tests whose TestKit children
+    # inherit the parent environment — job-level signing keys would leak into tests
+    # like SigningFuncTest's missing-keys case and flip their outcome.
     steps:
       - name: Validate tag input
         run: |
@@ -76,4 +71,24 @@ jobs:
           fi
 
       - name: Promote
+        # Sole consumer of every credential: releases/Central/Portal deploys happen here.
+        env:
+          ORG_GRADLE_PROJECT_mreilComGradlePluginsReleasesUsername: ${{ vars.ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSRELEASESUSERNAME }}
+          ORG_GRADLE_PROJECT_mreilComGradlePluginsReleasesPassword: ${{ secrets.ORG_GRADLE_PROJECT_MREILCOMGRADLEPLUGINSRELEASESPASSWORD }}
+          JRELEASER_MAVENCENTRAL_USERNAME: ${{ vars.JRELEASER_MAVENCENTRAL_USERNAME }}
+          JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+          JRELEASER_GPG_PRIVATE_KEY: ${{ secrets.JRELEASER_PGP_PRIVATEKEY }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_PGP_PASSPHRASE }}
         run: ./gradlew publish -Ppromote ${{ inputs.dry-run == true && '--dry-run' || '' }}
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: promote-test-reports-${{ github.run_number }}
+          retention-days: 7
+          path: |
+            build/reports/**
+            **/build/test-results/**
