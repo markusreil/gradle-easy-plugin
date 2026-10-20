@@ -11,6 +11,8 @@ This document keeps track of tasks that need to be completed.
 * publish: derive an artifact classifier from the git branch name so every branch
   publishes a distinct snapshot artifact (no overwrites of `latest.integration`),
   while still publishing on every push regardless of branch
+* semver: turn into general versioning plugin. support CD vs. semver. How does that affect
+  publish and release? artifact classifier (or additional prerelease) from above should live here.
 
 ## Other tasks
 
