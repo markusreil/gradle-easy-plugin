@@ -273,4 +273,25 @@ class PropertyResolverTest {
     ) {
         assertThat(PropertyResolver.toPropertyKey(input)).isEqualTo(expected)
     }
+
+    @Test
+    @SetEnvironmentVariable(key = "BLANK_SECRET", value = "   ")
+    @SetSystemProperty(key = "blank.secret", value = "from-system")
+    fun `blank env var falls through to system property`() {
+        val project = ProjectBuilder.builder().build()
+        val resolver = PropertyResolver(project.providers)
+
+        assertThat(resolver.get("blank.secret").get()).isEqualTo("from-system")
+    }
+
+    @Test
+    @SetEnvironmentVariable(key = "BLANK_ONLY", value = "")
+    fun `blank env var with no fallback is absent`() {
+        val project = ProjectBuilder.builder().build()
+        val resolver = PropertyResolver(project.providers)
+
+        val provider = resolver.get("blank.only")
+        assertThat(provider.isPresent).isFalse()
+        assertThat(provider.base64Decode().isPresent).isFalse()
+    }
 }

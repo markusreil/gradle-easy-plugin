@@ -1,6 +1,7 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import com.mreil.easy.publish.RepoRole
 import dev.detekt.gradle.extensions.DetektExtension
+import org.gradle.api.tasks.testing.Test
 
 plugins {
     `lifecycle-base`
@@ -118,6 +119,25 @@ subprojects {
         config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml"))
     }
     tasks.named("check") { dependsOn("detekt") }
+    // Test isolation for TestKit fixtures: functional tests launch child Gradle builds that
+    // inherit this JVM's environment, so CI secrets would leak into tests that assert on
+    // missing credentials (e.g. SigningFuncTest's missing-keys case). Blank the publish
+    // credential variables for every Test task — blanks resolve as absent (see PropertyResolver),
+    // while tests that need keys set them explicitly via system properties (which blanked env
+    // falls through to). The outer build keeps its real environment, so release signing still
+    // works wherever keys are legitimately present.
+    tasks.withType<Test>().configureEach {
+        listOf(
+            "JRELEASER_GPG_PRIVATE_KEY",
+            "JRELEASER_GPG_PASSPHRASE",
+            "GRADLE_PUBLISH_KEY",
+            "GRADLE_PUBLISH_SECRET",
+            "JRELEASER_MAVENCENTRAL_USERNAME",
+            "JRELEASER_MAVENCENTRAL_PASSWORD",
+            "JRELEASER_NEXUS_USERNAME",
+            "JRELEASER_NEXUS_PASSWORD",
+        ).forEach { environment(it, "") }
+    }
     // detekt 2.x analyses with type resolution, one task per source set (detektMain, detektTest,
     // detektFunctionalTest, ...). Route the conventional `detekt` task — and therefore `check` —
     // through those type-aware tasks, and disable the plain task's own non-type-aware run so no

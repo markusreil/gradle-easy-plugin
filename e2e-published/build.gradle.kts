@@ -7,8 +7,10 @@ repositories { mavenCentral() }
 // Published-consumer guard for the two-jar split (see TWO_JAR_SPLIT.md step 5). TestKit's
 // `withPluginClasspath()` flattens the plugin classpath, so the settings/project classloader
 // boundary can only be reproduced by resolving the two staged marker artifacts from a real
-// (local) Maven repository. Staging is credential-free in this repo (signing is not configured),
-// so the test can depend on the publish tasks directly.
+// (local) Maven repository. Staging signs on release versions (signing auto-enabled);
+// the test only needs the files present, signed or not, so it can depend on the
+// publish tasks directly. Test-task env scrubbing (see root build.gradle.kts) keeps
+// CI secrets out of these fixtures either way.
 tasks.withType<Test>().configureEach {
     dependsOn(
         ":easy-plugin:publishAllPublicationsToMavenStagingRepository",

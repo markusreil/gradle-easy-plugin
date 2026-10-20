@@ -39,27 +39,45 @@ class PropertyResolver(
         val envKey = toEnvKey(name)
         val propertyKey = toPropertyKey(name)
 
+        // Each source is blank-filtered BEFORE the orElse chain: a set-but-blank source
+        // must fall through to the next source (filtering after the reduce would turn a
+        // blank first hit into absent with no fallback left).
         val candidates = mutableListOf<Provider<String>>()
-        candidates += providers.environmentVariable(envKey)
+        candidates += blankAsAbsent(providers.environmentVariable(envKey))
 
         val systemKeys = linkedSetOf(propertyKey)
         if (name != propertyKey) systemKeys += name
 
         for (key in systemKeys) {
-            candidates += providers.systemProperty(key)
+            candidates += blankAsAbsent(providers.systemProperty(key))
         }
 
         val gradleKeys = linkedSetOf(propertyKey)
         if (name != propertyKey) gradleKeys += name
 
         for (key in gradleKeys) {
-            candidates += providers.gradleProperty(key)
+            candidates += blankAsAbsent(providers.gradleProperty(key))
         }
 
         return StringProvider(
             candidates.reduce { acc, next -> acc.orElse(next) },
             providers,
         )
+    }
+
+    /**
+     * Maps blank values to absent, staying lazy and CC-compatible: an env var or property
+     * that is set-but-blank falls through as missing, so test suites can isolate fixtures
+     * by blanking credential variables.
+     *
+     * The cast is safe: a `null` mapping result is Gradle-normalized to absent, so `get()`
+     * throws instead of returning null — the same contract as any missing provider.
+     */
+    private fun blankAsAbsent(provider: Provider<String>): Provider<String> {
+        @Suppress("UNCHECKED_CAST")
+        return provider.flatMap { value ->
+            providers.provider { value.ifBlank { null } }
+        } as Provider<String>
     }
 
     /**
