@@ -31,11 +31,9 @@ easy {
             passwordCredentials.set(true)
             promotionOnly.set(true)
         }
-        // Portal is tier 3: only -Ppromote invocations reach it. Central arming
-        // (promoteToCentral()) lands with the 0.1.0 release itself: it auto-enables
-        // signing, and the dogfood 0.0.117 plugin building this repo has no snapshot
-        // skip yet, so arming it now would break keyless snapshot CI.
+        // Portal and Central are tier 3: only -Ppromote invocations reach them.
         promoteToPortal()
+        promoteToCentral()
         mavenRepo(
             "mreilComGradlePluginsSnapshots",
             "https://repo.mreil.com/gradle-plugins-snapshots",
