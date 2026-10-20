@@ -28,10 +28,23 @@ jobs:
           build-scan-terms-of-use-agree: 'yes'
       - name: Build
         if: github.event_name != 'pull_request'
+        # Release-version builds sign artifacts (signing auto-enabled by
+        # deployToCentral()/promoteToCentral()), so the real GPG keys are needed here.
+        # Test suites are isolated from these via blanked Test-task env (see root
+        # build.gradle.kts): fixtures that need keys set them explicitly, the
+        # missing-keys cases genuinely see none. Trusted runs only (never PRs).
+        env:
+          JRELEASER_GPG_PRIVATE_KEY: ${{ secrets.JRELEASER_PGP_PRIVATEKEY }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_PGP_PASSPHRASE }}
         run: ./gradlew build --build-cache
       - name: Check (PR)
         if: github.event_name == 'pull_request'
-        run: ./gradlew check --build-cache
+        # PR builds get no secrets; snapshot signing is skipped by the plugin, but the
+        # dogfood version predating the skip still enforces it — so sign PR snapshots
+        # with the committed throwaway test key (public by design, never a real key).
+        run: |
+          KEY=$(base64 -w0 contributor-plugins/publish/publish-test-plugin/src/functionalTest/resources/signing-test-key.asc)
+          JRELEASER_GPG_PRIVATE_KEY=$KEY JRELEASER_GPG_PASSPHRASE=easy-test-passphrase ./gradlew check --build-cache
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4

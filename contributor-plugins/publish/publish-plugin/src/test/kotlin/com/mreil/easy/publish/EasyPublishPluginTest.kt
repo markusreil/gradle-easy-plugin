@@ -13,8 +13,19 @@ import org.gradle.api.publish.PublishingExtension
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junitpioneer.jupiter.ClearEnvironmentVariable
 import kotlin.io.path.createTempDirectory
 
+// Portal/Central wiring reads credentials from the environment first: clear them so
+// credential-absence cases genuinely see none, regardless of CI secrets being present.
+@ClearEnvironmentVariable(key = "JRELEASER_GPG_PRIVATE_KEY")
+@ClearEnvironmentVariable(key = "JRELEASER_GPG_PASSPHRASE")
+@ClearEnvironmentVariable(key = "GRADLE_PUBLISH_KEY")
+@ClearEnvironmentVariable(key = "GRADLE_PUBLISH_SECRET")
+@ClearEnvironmentVariable(key = "JRELEASER_MAVENCENTRAL_USERNAME")
+@ClearEnvironmentVariable(key = "JRELEASER_MAVENCENTRAL_PASSWORD")
+@ClearEnvironmentVariable(key = "JRELEASER_NEXUS_USERNAME")
+@ClearEnvironmentVariable(key = "JRELEASER_NEXUS_PASSWORD")
 class EasyPublishPluginTest {
     @Test
     fun `publish task is registered when publish extension enabled`() {

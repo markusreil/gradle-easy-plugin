@@ -1,6 +1,7 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import com.mreil.easy.publish.RepoRole
 import dev.detekt.gradle.extensions.DetektExtension
+import org.gradle.api.tasks.testing.Test
 
 plugins {
     `lifecycle-base`
@@ -118,6 +119,12 @@ subprojects {
         config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml"))
     }
     tasks.named("check") { dependsOn("detekt") }
+    // JUnit Pioneer manipulates environment variables via reflection for
+    // @SetEnvironmentVariable/@ClearEnvironmentVariable (used to isolate TestKit fixtures
+    // from CI secrets); JDK 17 strong encapsulation blocks that without an explicit open.
+    tasks.withType<Test>().configureEach {
+        jvmArgs("--add-opens", "java.base/java.util=ALL-UNNAMED")
+    }
     // detekt 2.x analyses with type resolution, one task per source set (detektMain, detektTest,
     // detektFunctionalTest, ...). Route the conventional `detekt` task — and therefore `check` —
     // through those type-aware tasks, and disable the plain task's own non-type-aware run so no

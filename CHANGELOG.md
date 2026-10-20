@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `publish`: snapshot builds skip signing wiring even when `signingEnabled` is on (e.g. via
   `promoteToCentral()`/`deployToCentral()` auto-enable) — snapshots never reach Central, so
   keyless snapshot CI stays green; release builds still fail fast on missing keys.
+- test isolation: TestKit children inherit the test JVM's environment, so CI secrets used to
+  leak into fixtures asserting on missing credentials. Credential-absence tests now clear the
+  publish credential variables with pioneer's `@ClearEnvironmentVariable` (see `SigningFuncTest`);
+  test JVMs also open `java.base/java.util` for pioneer's reflective env access.
 - `easy-plugin-core`: `ExtensionCopier` forwards `DomainObjectCollection` elements live
   instead of snapshotting them, so `mavenRepo` declarations in the root `easy {}` block
   (which runs after extensions are injected into subprojects) now reach subprojects.
