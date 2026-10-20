@@ -135,7 +135,7 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
      * with `deployToPortal`), intended as a build-wide toggle set in the root `easy { publish { } }`
      * block and inherited by every project. Snapshots never portal-publish (silently skipped). Projects without a `publish`
      * task (no `maven-publish`, e.g. a root project without the `java` plugin) or without a
-     * `publishPlugins` task (not a plugin project) are skipped with a lifecycle note, since a
+     * `publishPlugins` task (not a plugin project) are skipped silently (info-level note), since a
      * root-inherited toggle must be safe on every project it reaches. Missing
      * `gradle.publish.key` / `gradle.publish.secret` in a plugin project is a real error and
      * surfaces eagerly — when `publish` is realized — with an actionable message.
@@ -163,7 +163,9 @@ class EasyPublishPlugin : AbstractEasyProjectPlugin() {
             val publishPlugins =
                 target.tasks.findByName("publishPlugins")
                     ?: run {
-                        target.logger.lifecycle(
+                        // info, not lifecycle: the toggle is inherited build-wide, so most
+                        // projects reaching here skip by design and a console line each is noise.
+                        target.logger.info(
                             "easy.publish.deployToPortal() is enabled in project '${target.path}' but it is not a " +
                                 "Gradle plugin project (no 'publishPlugins' task from `com.gradle.plugin-publish`) - " +
                                 "skipping Plugin Portal publishing.",
