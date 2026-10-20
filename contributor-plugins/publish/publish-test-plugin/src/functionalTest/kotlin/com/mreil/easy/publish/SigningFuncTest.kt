@@ -10,6 +10,7 @@ import com.mreil.gradletest.project.assertj.MavenCoordinates
 import com.mreil.gradletest.project.assertj.assertSoftly
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junitpioneer.jupiter.ClearEnvironmentVariable
 import java.util.Base64
 
 /**
@@ -22,6 +23,16 @@ import java.util.Base64
  */
 @ExtendWith(GradleTestProjectExtension::class, DisableAllEasyPluginsExtension::class)
 @DisableAllEasyPlugins
+// TestKit children inherit this JVM's environment: clear publish credentials so fixtures
+// asserting on missing keys genuinely see none, regardless of CI secrets being present.
+@ClearEnvironmentVariable(key = "JRELEASER_GPG_PRIVATE_KEY")
+@ClearEnvironmentVariable(key = "JRELEASER_GPG_PASSPHRASE")
+@ClearEnvironmentVariable(key = "GRADLE_PUBLISH_KEY")
+@ClearEnvironmentVariable(key = "GRADLE_PUBLISH_SECRET")
+@ClearEnvironmentVariable(key = "JRELEASER_MAVENCENTRAL_USERNAME")
+@ClearEnvironmentVariable(key = "JRELEASER_MAVENCENTRAL_PASSWORD")
+@ClearEnvironmentVariable(key = "JRELEASER_NEXUS_USERNAME")
+@ClearEnvironmentVariable(key = "JRELEASER_NEXUS_PASSWORD")
 class SigningFuncTest {
     lateinit var project: GradleTestProject
 

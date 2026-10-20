@@ -16,6 +16,7 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.plugins.signing.Sign
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.io.TempDir
+import org.junitpioneer.jupiter.ClearEnvironmentVariable
 import java.io.File
 import org.junit.jupiter.api.Test as JUnitTest
 
@@ -26,7 +27,19 @@ import org.junit.jupiter.api.Test as JUnitTest
  *
  * The full lifecycle is covered by `SigningFuncTest`; this file gives JaCoCo
  * coverage of the closure body and a fast feedback path for the error message.
+ *
+ * Signing reads credentials from the environment first, so the publish credential
+ * variables are cleared below: absence-cases must genuinely see no keys regardless
+ * of CI secrets being present.
  */
+@ClearEnvironmentVariable(key = "JRELEASER_GPG_PRIVATE_KEY")
+@ClearEnvironmentVariable(key = "JRELEASER_GPG_PASSPHRASE")
+@ClearEnvironmentVariable(key = "GRADLE_PUBLISH_KEY")
+@ClearEnvironmentVariable(key = "GRADLE_PUBLISH_SECRET")
+@ClearEnvironmentVariable(key = "JRELEASER_MAVENCENTRAL_USERNAME")
+@ClearEnvironmentVariable(key = "JRELEASER_MAVENCENTRAL_PASSWORD")
+@ClearEnvironmentVariable(key = "JRELEASER_NEXUS_USERNAME")
+@ClearEnvironmentVariable(key = "JRELEASER_NEXUS_PASSWORD")
 class SigningWiringTest {
     @TempDir
     lateinit var stagingDir: File
