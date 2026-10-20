@@ -136,6 +136,25 @@ class SigningFuncTest {
         }
     }
 
+    /** `publish` on a snapshot succeeds unsigned with signing enabled (snapshots never reach Central). */
+    @Test
+    fun `publish succeeds unsigned on snapshots even with signing enabled and no keys`() {
+        project.configure {
+            version = "1.0.0-SNAPSHOT"
+            buildGradle(publishBuild())
+            javaSource()
+        }
+
+        project.build("publish")
+
+        val stagingRepo = project.file("build/stagingRepo")
+        val coordinates = MavenCoordinates(name = project.projectDir.name, version = "1.0.0-SNAPSHOT")
+        assertSoftly { softly ->
+            softly.assertThat(project).hasArtifact(stagingRepo, coordinates)
+            softly.assertThat(project).doesNotHaveArtifact(stagingRepo, coordinates.copy(extension = "jar.asc"))
+        }
+    }
+
     /** `publish` succeeds without signatures when signing is disabled. */
     @Test
     fun `publish succeeds without signatures when signing is disabled`() {

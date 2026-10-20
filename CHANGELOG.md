@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `publish`: non-plugin projects inheriting `deployToPortal()`/`promoteToPortal()` skip Portal
   wiring silently (info-level note) instead of logging one lifecycle warning per project.
+- `publish`: snapshot builds skip signing wiring even when `signingEnabled` is on (e.g. via
+  `promoteToCentral()`/`deployToCentral()` auto-enable) — snapshots never reach Central, so
+  keyless snapshot CI stays green; release builds still fail fast on missing keys.
 - `easy-plugin-core`: `ExtensionCopier` forwards `DomainObjectCollection` elements live
   instead of snapshotting them, so `mavenRepo` declarations in the root `easy {}` block
   (which runs after extensions are injected into subprojects) now reach subprojects.

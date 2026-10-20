@@ -1,7 +1,10 @@
 package com.mreil.easy.publish.central
 
+import com.mreil.easy.publish.RepoRouting
 import com.mreil.easy.publish.publishExtension
+import com.mreil.easy.semver.EasySemver
 import com.mreil.utils.PropertyResolver
+import com.mreil.utils.hasSnapshotVersion
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.publish.PublishingExtension
@@ -13,6 +16,8 @@ import org.gradle.plugins.signing.SigningExtension
  *
  * Behavior (see EasyPublishPlugin):
  * - If `signingEnabled` is false -> no-op.
+ * - If the project version is a snapshot -> no-op (snapshots never reach Central, so there
+ *   is nothing signatures would gate; keeps keyless snapshot CI green).
  * - If `signingEnabled` is true and both `jreleaser.gpg.privateKey` (base64) + `jreleaser.gpg.passphrase`
  *   present -> apply `signing`, `useInMemoryPgpKeys`, `sign(publications)`.
  * - Otherwise (enabled but missing one/both) -> apply `signing` + sign wiring but `Sign` tasks fail
@@ -30,7 +35,10 @@ internal object SigningWiring {
         propertyResolver: PropertyResolver,
     ) {
         val publishExt = target.publishExtension() ?: return
-        if (!publishExt.signingEnabled.get()) return
+        // Snapshots never deploy to Central, so signing stays a release-only concern.
+        // Skipping here (rather than failing on missing keys) keeps snapshot builds green
+        // when signing was auto-enabled (e.g. via promoteToCentral()/deployToCentral()).
+        if (!publishExt.signingEnabled.get() || isSnapshot(target)) return
 
         val privateKeyProvider = propertyResolver.get(JreleaserVersions.PROPERTY_GPG_PRIVATE_KEY).base64Decode()
         val passphraseProvider = propertyResolver.get(JreleaserVersions.PROPERTY_GPG_PASSPHRASE)
@@ -93,4 +101,6 @@ internal object SigningWiring {
             }
         }
     }
+
+    private fun isSnapshot(target: Project): Boolean = RepoRouting.isSnapshot(EasySemver.of(target).orNull) ?: target.hasSnapshotVersion()
 }

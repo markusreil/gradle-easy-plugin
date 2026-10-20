@@ -92,6 +92,16 @@ class SigningWiringTest {
         }
     }
 
+    @JUnitTest
+    fun `no Sign tasks are registered for snapshot versions even with signing enabled`() {
+        val project = projectWithPublicationAndSigning(signingEnabled = true, version = "1.0.0-SNAPSHOT")
+
+        val signTasks = project.tasks.withType(Sign::class.java).toList()
+        assertSoftly { softly ->
+            softly.assertThat(signTasks).isEmpty()
+        }
+    }
+
     /**
      * Builds a project with `java-library` + `maven-publish`, a Maven publication,
      * and the publish extension enabled with `signingEnabled` as requested. Order
@@ -99,10 +109,13 @@ class SigningWiringTest {
      * `EasyPublishPlugin.afterEnabled` (fired by `afterEvaluate`) calls
      * `SigningWiring.wire` itself.
      */
-    private fun projectWithPublicationAndSigning(signingEnabled: Boolean): Project {
+    private fun projectWithPublicationAndSigning(
+        signingEnabled: Boolean,
+        version: String = "1.0.0",
+    ): Project {
         val project = ProjectBuilder.builder().build()
         project.group = "com.example"
-        project.version = "1.0.0"
+        project.version = version
         project.pluginManager.apply("java-library")
         project.pluginManager.apply("maven-publish")
         // ProjectPluginEntryPoint registers the publish extension via SPI - apply it before
