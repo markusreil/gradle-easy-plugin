@@ -347,14 +347,14 @@ class EasyPublishCentralTest {
     }
 
     @Test
-    fun `stripSignatureChecksums is registered when deployToCentral is set and runs after staging upload`() {
+    fun `stripChecksums is registered when deployToCentral is set and runs after staging upload`() {
         val project = ProjectBuilderHelper.createSingleProject()
         project.publish.enabled.set(true)
         project.publish.deployToCentral()
 
         project.project.evaluate()
 
-        val strip = project.project.tasks.getByName("stripSignatureChecksums") as? StripSignatureChecksumsTask
+        val strip = project.project.tasks.getByName("stripChecksums") as? StripChecksumsTask
         val stagingUploads =
             project.project.tasks
                 .withType(PublishToMavenRepository::class.java)

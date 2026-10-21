@@ -38,6 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   leak into fixtures asserting on missing credentials. Credential-absence tests now clear the
   publish credential variables with pioneer's `@ClearEnvironmentVariable` (see `SigningFuncTest`);
   test JVMs also open `java.base/java.util` for pioneer's reflective env access.
+- `publish`: staging cleanup now strips ALL Gradle-generated checksums (task renamed
+  `StripSignatureChecksumsTask` → `StripChecksumsTask`); Central generates and serves its own.
+  Measured 0.1.0 footprint was ~492 files/month vs the 1,000 limit — this plus unpublishing
+  `e2e-published` targets ~171.
+- `publish`: `e2e-published` (test-only consumer guard) no longer publishes anywhere.
 - `easy-plugin-core`: `ExtensionCopier` forwards `DomainObjectCollection` elements live
   instead of snapshotting them, so `mavenRepo` declarations in the root `easy {}` block
   (which runs after extensions are injected into subprojects) now reach subprojects.
