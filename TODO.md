@@ -4,13 +4,15 @@ This document keeps track of tasks that need to be completed.
 
 ## Meta
 
-* retrospective on the 0.1.0 promotion work: why did it take so many iterations
-  (credential leak into TestKit, snapshot signing, Verify sign exclusions, e2e staging
-  coupling)? Working hypothesis: first-time CI integration teething problems, not inherent
-  complexity. Confirm or refute, then decide what changes so the 0.2.0 (or next
-  promotion-gated) cycle is boring:
-  test isolation by default, verify/prod parity in CI, dogfood lag accounted for,
-  quota math done up front?
+* 0.1.0 promotion retrospective — verdict: mixed. Test/CI preflight gaps were avoidable;
+  TestKit env inheritance, dogfood lag, staging-e2e coupling and the Central quota model
+  are structural and recur unless planned for. Acceptance criteria for boring-by-0.2.0:
+  credential-absence tests clear env vars (proven by exporting all 8 vars locally and
+  watching only the asserting classes fail without the annotations); Verify-vs-prod
+  differences listed explicitly with proof elsewhere; rollout plans record the dogfood
+  version and treat source fixes as unproven until release + bump; quota math (staged and
+  submitted file counts) done before tagging. See .omo/plans/promote-optimizations.md
+  Phase 3 for the remaining checklist.
 
 ## Architecture changes / fixes
 
