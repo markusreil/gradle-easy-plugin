@@ -14,18 +14,17 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
  *
  * Owns two responsibilities:
  * - **POM validation**: validates generated POMs before staging ([CheckCentralPomsTask]).
- * - **Staging cleanup**: strips unneeded checksums (signature checksums and optional
- *   SHA-256/SHA-512) from the staging dir after the `mavenStaging` upload and before
- *   the JReleaser deploy ([StripSignatureChecksumsTask]). Two-phase pipeline per
+ * - **Staging cleanup**: strips checksums from the staging dir after the `mavenStaging`
+ *   upload and before the JReleaser deploy ([StripChecksumsTask]). Two-phase pipeline per
  *   project: (1) `maven-publish` stages artifacts into the local staging dir,
- *   (2) `stripSignatureChecksums` removes the checksums Central rejects,
+ *   (2) `stripChecksums` removes the checksums Central regenerates itself,
  *   (3) root `publishToMavenCentral` deploys the cleaned staging dirs.
  *   Contrast `cleanStagingRepo`, which runs *before* the staging upload.
  *
  * Both tasks run in every central-enabled project (see [EasyPublishPlugin]). The wiring
  * only runs when any project opts into Maven Central — root-inherited or a single
  * subproject — see [EasyJreleaserPlugin] for the ANY gating rule. Non-central projects
- * (no `deployToCentral`) get no `checkCentralPoms`/`stripSignatureChecksums`.
+ * (no `deployToCentral`) get no `checkCentralPoms`/`stripChecksums`.
  */
 internal object CentralPublishingWiring {
     fun wire(
@@ -73,7 +72,7 @@ internal object CentralPublishingWiring {
         // staging dir only exists when a staging path is set (toMavenStaging / deployToCentral)
         publishExt.stagingPath.orNull?.let { path ->
             val stripProvider =
-                target.tasks.register("stripSignatureChecksums", StripSignatureChecksumsTask::class.java) { task ->
+                target.tasks.register("stripChecksums", StripChecksumsTask::class.java) { task ->
                     task.group = "verification"
                     task.stagingDir.set(target.layout.buildDirectory.dir(path))
                 }

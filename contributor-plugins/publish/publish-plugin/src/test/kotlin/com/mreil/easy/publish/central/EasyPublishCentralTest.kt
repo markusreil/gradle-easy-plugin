@@ -300,7 +300,7 @@ class EasyPublishCentralTest {
             softly.assertThat(root.project.tasks.findByName("publishToMavenCentral")).isNull()
             softly.assertThat(root.project.tasks.findByName("checkCentralPoms")).isNull()
             softly.assertThat(child.project.tasks.findByName("checkCentralPoms")).isNull()
-            softly.assertThat(root.project.tasks.findByName("stripSignatureChecksums")).isNull()
+            softly.assertThat(root.project.tasks.findByName("stripChecksums")).isNull()
         }
     }
 
@@ -347,14 +347,14 @@ class EasyPublishCentralTest {
     }
 
     @Test
-    fun `stripSignatureChecksums is registered when deployToCentral is set and runs after staging upload`() {
+    fun `stripChecksums is registered when deployToCentral is set and runs after staging upload`() {
         val project = ProjectBuilderHelper.createSingleProject()
         project.publish.enabled.set(true)
         project.publish.deployToCentral()
 
         project.project.evaluate()
 
-        val strip = project.project.tasks.getByName("stripSignatureChecksums") as? StripSignatureChecksumsTask
+        val strip = project.project.tasks.getByName("stripChecksums") as? StripChecksumsTask
         val stagingUploads =
             project.project.tasks
                 .withType(PublishToMavenRepository::class.java)
@@ -731,7 +731,7 @@ private object ProjectBuilderHelper {
         // Root-only harness (production model): the child gets `EasyPublishPlugin`/`maven-publish`
         // and the per-project Central tasks via the root's fan-out + live `withId` wiring. Applying
         // `ProjectPluginEntryPoint` here too would give the child its own `EasyJreleaserPlugin` and double
-        // register `checkCentralPoms`/`stripSignatureChecksums`.
+        // register `checkCentralPoms`/`stripChecksums`.
         root.pluginManager.apply(ProjectPluginEntryPoint::class.java)
         val rootPublish =
             (root.extensions.getByType(EasyExtension::class.java) as ExtensionAware)

@@ -6,31 +6,32 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
-class StripSignatureChecksumsTaskTest {
+class StripChecksumsTaskTest {
     @TempDir
     lateinit var stagingDir: File
 
     @Test
-    fun `strip removes signature checksums and plain sha256 sha512 but keeps md5 and sha1`() {
+    fun `strip removes every checksum but keeps distributables and signatures`() {
         val expectedRemaining =
             setOf(
                 "foo.jar",
                 "foo.jar.asc",
-                "foo.jar.md5",
-                "foo.jar.sha1",
                 "foo.pom",
-                "foo.pom.md5",
-                "foo.pom.sha1",
+                "foo.module",
             )
         createStagedFiles(
             expectedRemaining +
                 setOf(
+                    "foo.jar.md5",
+                    "foo.jar.sha1",
                     "foo.jar.sha256",
                     "foo.jar.sha512",
                     "foo.jar.asc.md5",
                     "foo.jar.asc.sha1",
                     "foo.jar.asc.sha256",
                     "foo.jar.asc.sha512",
+                    "foo.pom.md5",
+                    "foo.pom.sha1",
                     "foo.pom.sha256",
                     "foo.pom.sha512",
                 ),
@@ -46,13 +47,13 @@ class StripSignatureChecksumsTaskTest {
         val expectedRemaining =
             setOf(
                 "bar.jar",
-                "bar.jar.md5",
-                "bar.jar.sha1",
                 "license.txt",
             )
         createStagedFiles(
             expectedRemaining +
                 setOf(
+                    "bar.jar.md5",
+                    "bar.jar.sha1",
                     "bar.jar.sha256",
                     "bar.jar.sha512",
                 ),
@@ -69,7 +70,7 @@ class StripSignatureChecksumsTaskTest {
         val nonexistentDir = File(stagingDir, "nonexistent")
         val task =
             project.tasks
-                .register("stripSignatureChecksums", StripSignatureChecksumsTask::class.java) {
+                .register("stripChecksums", StripChecksumsTask::class.java) {
                     it.stagingDir.set(nonexistentDir)
                 }.get()
 
@@ -91,8 +92,6 @@ class StripSignatureChecksumsTaskTest {
         val expectedRemaining =
             setOf(
                 "foo-1.0.0.jar",
-                "foo-1.0.0.jar.md5",
-                "foo-1.0.0.jar.sha1",
                 "foo-1.0.0.jar.asc",
             )
         (
@@ -121,7 +120,7 @@ class StripSignatureChecksumsTaskTest {
         val project = ProjectBuilder.builder().build()
         val task =
             project.tasks
-                .register("stripSignatureChecksums", StripSignatureChecksumsTask::class.java) {
+                .register("stripChecksums", StripChecksumsTask::class.java) {
                     it.stagingDir.set(stagingDir)
                 }.get()
         task.strip()

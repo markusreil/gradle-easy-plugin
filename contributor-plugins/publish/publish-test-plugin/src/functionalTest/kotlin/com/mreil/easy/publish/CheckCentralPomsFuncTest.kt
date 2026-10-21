@@ -156,7 +156,7 @@ class CheckCentralPomsFuncTest {
         assertSoftly { softly ->
             // `tasks --all` lists subproject tasks without a leading path colon.
             softly.assertThat(result.output).contains("child:checkCentralPoms")
-            softly.assertThat(result.output).contains("child:stripSignatureChecksums")
+            softly.assertThat(result.output).contains("child:stripChecksums")
         }
     }
 

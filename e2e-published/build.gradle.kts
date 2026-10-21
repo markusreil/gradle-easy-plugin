@@ -2,6 +2,11 @@ plugins {
     `java-library`
 }
 
+// Test-only published-consumer guard: must not ship to Central (see TODO.md).
+easy {
+    publish.enabled = false
+}
+
 repositories { mavenCentral() }
 
 // Published-consumer guard for the two-jar split (see TWO_JAR_SPLIT.md step 5). TestKit's

@@ -72,7 +72,7 @@ internal object JreleaserDeployWiring {
                             .matching { it.repository?.name == MAVEN_STAGING_REPO },
                     )
                     // Strip after the staging upload, before deploy (second upload to Central).
-                    deploy.dependsOn(project.tasks.withType(StripSignatureChecksumsTask::class.java))
+                    deploy.dependsOn(project.tasks.withType(StripChecksumsTask::class.java))
                 }
             }
         }
