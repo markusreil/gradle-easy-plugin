@@ -60,8 +60,18 @@ jobs:
         # Deliberately no build-scan publishing (see ci.yml): deploy logs stay private.
 
       - name: Verify tag state
-        # A broken tag fails here, before any quota is spent.
-        run: ./gradlew build --build-cache
+        # A broken tag fails here, before any quota is spent. Signing is deliberately
+        # NOT validated here: Sign tasks need GPG keys the verify step must not hold
+        # (TestKit children would inherit them and break credential-absence fixtures).
+        # The four marker Sign tasks are excluded, so staging uploads unsigned and the
+        # e2e published-consumer guard still runs against the staged files. Real signing
+        # is proven at the Promote step, which holds the keys and deploys for real.
+        run: >
+          ./gradlew build --build-cache
+          -x :easy-plugin:signPluginMavenPublication
+          -x :easy-plugin:signEasyProjectPluginMarkerMavenPublication
+          -x :easy-plugin-settings:signPluginMavenPublication
+          -x :easy-plugin-settings:signEasySettingsPluginMarkerMavenPublication
 
       - name: Reject snapshots
         run: |
