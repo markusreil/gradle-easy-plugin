@@ -224,6 +224,16 @@ Every project stages exactly the artifact set above into its own `build/stagingR
 directory (signed, with checksums). This is the fastest way to confirm what the next
 `publish` would deploy to any `mavenRepo()`-declared repository.
 
+**Central quota footprint (measured at 0.1.0, Oct 2026):** one release deposits
+~492 files against the 1,000/month free org limit (markers stage 46 files each,
+plain modules 35 each — roughly 10 distributables + signatures and ~17
+Gradle-generated checksums per module that Central does not require). A second
+release in the same month would land near the cap, so quota optimization (extended
+checksum stripping, unpublishing `e2e-published`, cadence discipline) is tracked as a
+separate step after the promotion feature — see TODO.md. Limits reset monthly; see the
+[Usage Center](https://central.sonatype.org/publish/publish-portal-usage-center/) and
+[Reducing Publishing Usage](https://central.sonatype.org/publish/reducing-publishing-usage/).
+
 ## Testing
 
 * **Unit:** `easy-plugin/src/test`, `easy-plugin-core/src/test`, `easy-contributor-support/src/test`, `contributor-plugins/*/src/test` — JUnit Jupiter 5.11.3 + AssertJ, `ProjectBuilder` for `PluginRegistryService`/`ExtensionRegistrar`/`PluginRegistrar`.
