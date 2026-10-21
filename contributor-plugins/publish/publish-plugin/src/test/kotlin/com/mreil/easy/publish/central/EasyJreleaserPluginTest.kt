@@ -65,7 +65,7 @@ class EasyJreleaserPluginTest {
             softly.assertThat(project.tasks.findByName("generateJreleaserConfig")).isNull()
             softly.assertThat(project.tasks.findByName("publishToMavenCentral")).isNull()
             // The strip task is wired by CentralPublishingWiring which is skipped too.
-            softly.assertThat(project.tasks.findByName("stripSignatureChecksums")).isNull()
+            softly.assertThat(project.tasks.findByName("stripChecksums")).isNull()
         }
     }
 

@@ -27,7 +27,7 @@ import org.gradle.api.Project
  * of fanning out and no-op-ing on every subproject. The JReleaser wiring it owns
  * ([JreleaserConfigWiring], [JreleaserDeployWiring], [PublishAggregationWiring]) is
  * root-only by construction. The per-project Central wiring ([CentralPublishingWiring]:
- * `checkCentralPoms` / `stripSignatureChecksums`) is instead registered from the root via
+ * `checkCentralPoms` / `stripChecksums`) is instead registered from the root via
  * a live `withId("maven-publish")` callback over `allprojects`, so every child that gets
  * `maven-publish` through the [EasyPublishPlugin] fan-out is wired without nested
  * `afterEvaluate` blocks — the enabled-gate is simply `maven-publish` being applied.
@@ -79,7 +79,7 @@ class EasyJreleaserPlugin : AbstractEasyProjectPlugin() {
         skipReason(target)?.let { reason ->
             target.logger.lifecycle(reason)
         } ?: run {
-            // Per-project Central wiring (checkCentralPoms / stripSignatureChecksums) lives on
+            // Per-project Central wiring (checkCentralPoms / stripChecksums) lives on
             // maven-publish adopters, not on this root-only plugin: iterate all projects and
             // wire each central-enabled one live as soon as maven-publish is applied
             // (EasyPublishPlugin's fan-out covers subprojects regardless of evaluation order).
