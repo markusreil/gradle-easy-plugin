@@ -2,7 +2,28 @@
 
 This document keeps track of tasks that need to be completed.
 
+## Meta
+
+* retrospective on the 0.1.0 promotion work: why did it take so many iterations
+  (credential leak into TestKit, snapshot signing, Verify sign exclusions, e2e staging
+  coupling)? Working hypothesis: first-time CI integration teething problems, not inherent
+  complexity. Confirm or refute, then decide what changes so the 0.2.0 (or next
+  promotion-gated) cycle is boring:
+  test isolation by default, verify/prod parity in CI, dogfood lag accounted for,
+  quota math done up front?
+
 ## Architecture changes / fixes
+
+* first separate contributor plugin in its own repo: the benchmark that informs this
+  repo's final structure — in particular whether the test fixtures (`easy-test-support`,
+  `gradle-plugin-testutils`) stay published for external consumers. Decides the deferred
+  TODO.md quota item on fixtures; see also the future-improvements list in AGENTS.md
+  (shared `easy-plugin-core` dependency, dropping `-api` publishes, extracting utils).
+* publish: Central quota optimization (measured 0.1.0 at ~492 files/month vs 1,000 limit;
+  see DEVELOPMENT.md). Extend checksum stripping to all Gradle-generated checksums
+  (Central generates its own), unpublish `e2e-published` (`easy.publish.enabled = false`
+  + DEVELOPMENT.md artifact list), keep test fixtures published only if external consumers
+  need them. Required before the next same-month release after 0.1.0.
 
 * serialization: factor shared JSON file handling (pretty-print config, read/write) into
   `gradle-plugin-utils` alongside `GradleProperties` once a third consumer appears; keep
