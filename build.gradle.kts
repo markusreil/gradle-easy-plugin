@@ -10,7 +10,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.spotless) apply false
-    id("com.mreil.easy.project") version "0.0.117"
+    id("com.mreil.easy.project") version "0.1.0"
 }
 
 repositories {
