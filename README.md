@@ -1,8 +1,11 @@
 # gradle-easy-plugin
 
+[![com.mreil.easy.project](https://img.shields.io/gradle-plugin-portal/v/com.mreil.easy.project?label=com.mreil.easy.project&color=02303A&logo=gradle)](https://plugins.gradle.org/plugin/com.mreil.easy.project) [![com.mreil.easy.settings](https://img.shields.io/gradle-plugin-portal/v/com.mreil.easy.settings?label=com.mreil.easy.settings&color=02303A&logo=gradle)](https://plugins.gradle.org/plugin/com.mreil.easy.settings)
+
 Umbrella Gradle plugin that provides a single `easy { }` DSL and discovers feature plugins via SPI. Built with Kotlin, `java-gradle-plugin`, Gradle 9.4.1.
 
 > **For contributors & plugin development, see [DEVELOPMENT.md](DEVELOPMENT.md).**
+> **Writing an external contributor plugin in your own repo? Start with [CONTRIBUTING.md](CONTRIBUTING.md).**
 
 ## Requirements
 
