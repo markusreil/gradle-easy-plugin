@@ -30,18 +30,19 @@ jobs:
         if: github.event_name != 'pull_request'
         # Release-version builds sign artifacts (signing auto-enabled by
         # deployToCentral()/promoteToCentral()), so the real GPG keys are needed here.
-        # Test suites are isolated from these via blanked Test-task env (see root
-        # build.gradle.kts): fixtures that need keys set them explicitly, the
-        # missing-keys cases genuinely see none. Trusted runs only (never PRs).
+        # Test suites are isolated from these via test-level @ClearEnvironmentVariable
+        # (see AGENTS.md testing conventions; root build only adds --add-opens): fixtures
+        # that need keys set them explicitly, the missing-keys cases genuinely see none.
+        # Trusted runs only (never PRs).
         env:
           JRELEASER_GPG_PRIVATE_KEY: ${{ secrets.JRELEASER_PGP_PRIVATEKEY }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_PGP_PASSPHRASE }}
         run: ./gradlew build --build-cache
       - name: Check (PR)
         if: github.event_name == 'pull_request'
-        # PR builds get no secrets; snapshot signing is skipped by the plugin, but the
-        # dogfood version predating the skip still enforces it — so sign PR snapshots
-        # with the committed throwaway test key (public by design, never a real key).
+        # PR builds get no secrets. Snapshot signing is skipped by the plugin, so the
+        # throwaway test key below is belt-and-braces (public by design, never a real
+        # key): it only matters if a future dogfood regresses the snapshot skip.
         run: |
           KEY=$(base64 -w0 contributor-plugins/publish/publish-test-plugin/src/functionalTest/resources/signing-test-key.asc)
           JRELEASER_GPG_PRIVATE_KEY=$KEY JRELEASER_GPG_PASSPHRASE=easy-test-passphrase ./gradlew check --build-cache

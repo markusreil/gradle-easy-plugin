@@ -198,6 +198,17 @@ do this ad-hoc when a release/snapshot must be verified. Build a throwaway proje
    `mavenCentral` to `NEVER`, so it can never touch real Central) — see
    `contributor-plugins/publish/publish-plugin`.
 
+## Promotion preflight (before any Central release or `promote.yml` change)
+
+- Workflow parity: every difference between Verify and the real Promote step is explicit
+  in `promote.yml` with its reason and its equivalent proof elsewhere (currently:
+  `:e2e-published:test` excluded from Verify, proven on main CI; signing proven at Promote).
+- Dogfood version: record which released plugin builds this repo, and treat a source fix
+  as unproven in-repo until the release + dogfood bump have landed.
+- Quota budget: count the staging files (`publishAllPublicationsToMavenStagingRepository`
+  per-dir counts) and compare against the remaining monthly Central file limit before
+  tagging — see DEVELOPMENT.md "Central quota footprint".
+
 ## Dependencies
 - All dependencies/plugins must be in `gradle/libs.versions.toml` and referenced
 by alias (e.g., `alias(libs.plugins.kotlin.jvm)`, `libs.assertj.core`). No

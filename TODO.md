@@ -4,13 +4,15 @@ This document keeps track of tasks that need to be completed.
 
 ## Meta
 
-* retrospective on the 0.1.0 promotion work: why did it take so many iterations
-  (credential leak into TestKit, snapshot signing, Verify sign exclusions, e2e staging
-  coupling)? Working hypothesis: first-time CI integration teething problems, not inherent
-  complexity. Confirm or refute, then decide what changes so the 0.2.0 (or next
-  promotion-gated) cycle is boring:
-  test isolation by default, verify/prod parity in CI, dogfood lag accounted for,
-  quota math done up front?
+* 0.1.0 promotion retrospective — verdict: mixed. Test/CI preflight gaps were avoidable;
+  TestKit env inheritance, dogfood lag, staging-e2e coupling and the Central quota model
+  are structural and recur unless planned for. Acceptance criteria for boring-by-0.2.0:
+  credential-absence tests clear env vars (proven by exporting all 8 vars locally and
+  watching only the asserting classes fail without the annotations); Verify-vs-prod
+  differences listed explicitly with proof elsewhere; rollout plans record the dogfood
+  version and treat source fixes as unproven until release + bump; quota math (staged and
+  submitted file counts) done before tagging. See .omo/plans/promote-optimizations.md
+  Phase 3 for the remaining checklist.
 
 ## Architecture changes / fixes
 
@@ -19,6 +21,18 @@ This document keeps track of tasks that need to be completed.
   `gradle-plugin-testutils`) stay published for external consumers. Decides the deferred
   TODO.md quota item on fixtures; see also the future-improvements list in AGENTS.md
   (shared `easy-plugin-core` dependency, dropping `-api` publishes, extracting utils).
+* publish: promotion/signing matrix test (unit, ProjectBuilder — would have caught the
+  snapshot-signing and Verify-sign iterations pre-CI): `promoteToCentral()` on a snapshot
+  registers no Sign tasks and needs no keys; on a release it requires signing keys;
+  plain `publish` activates nothing promotion-gated. Do before 0.2.0.
+* publish: confirm the ~171-file target after the next dogfood bump carries the strip
+  (re-run the staging count, update the plan ledger + DEVELOPMENT.md footprint note).
+  Required before treating the quota work as done.
+* publish: document the 2-tier deployment process (valid, established use case):
+  `deployToPortal()` ships markers on every release publish (no quota), while Maven
+  artifacts wait for Central quota via `promoteToCentral()` + `-Ppromote`. Spell out
+  when a Portal-only release is appropriate (e.g. marker bugfixes while Central is
+  capped) and what plain `publish` vs `publish -Ppromote` each deploy to.
 * publish: Central quota optimization (measured 0.1.0 at ~492 files/month vs 1,000 limit;
   see DEVELOPMENT.md). Extend checksum stripping to all Gradle-generated checksums
   (Central generates its own), unpublish `e2e-published` (`easy.publish.enabled = false`
@@ -48,4 +62,4 @@ This document keeps track of tasks that need to be completed.
   guard drags staging/signing into every `build`. Consider moving it out of the main
   build graph (nightly job, manual rehearsal, or fixture against prebuilt staging).
   Once decoupled, the promote workflow's Verify step can go back to a plain
-  `./gradlew build` (dropping the `-x sign*` exclusions added for v0.1.0).
+  `./gradlew build` (dropping the `-x :e2e-published:test` carve-out).
