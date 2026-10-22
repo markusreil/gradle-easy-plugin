@@ -27,13 +27,13 @@ class PromotionGateTest {
         }
     }
 
-    private fun singleProject() =
+    private fun singleProject(version: String = "1.0.0") =
         ProjectBuilder
             .builder()
             .build()
             .also {
                 it.group = "com.example"
-                it.version = "1.0.0"
+                it.version = version
                 it.pluginManager.apply("java-library")
                 it.pluginManager.apply(ProjectPluginEntryPoint::class.java)
             }
@@ -102,6 +102,39 @@ class PromotionGateTest {
         val ex = assertThrows<GradleException> { project.evaluate() }
         assertSoftly { softly ->
             softly.assertThat(causesOf(ex)).contains("tier 2 and tier 3")
+        }
+    }
+
+    @Test
+    fun `promoteToCentral with flag on snapshot fails fast`() {
+        val project = singleProject(version = "1.0.0-SNAPSHOT")
+        val publish = publishOf(project)
+        publish.enabled.set(true)
+        publish.promoteToCentral()
+
+        val ex =
+            assertThrows<GradleException> {
+                withSystemProperty("promote", "true") {
+                    project.evaluate()
+                }
+            }
+        assertSoftly { softly ->
+            softly.assertThat(causesOf(ex)).contains("requires a release version")
+        }
+    }
+
+    @Test
+    fun `promoteToCentral without flag on snapshot is a silent no-op`() {
+        val project = singleProject(version = "1.0.0-SNAPSHOT")
+        val publish = publishOf(project)
+        publish.enabled.set(true)
+        publish.promoteToCentral()
+
+        project.evaluate()
+
+        assertSoftly { softly ->
+            softly.assertThat(project.tasks.findByName("generateJreleaserConfig")).isNull()
+            softly.assertThat(project.tasks.findByName("publishToMavenCentral")).isNull()
         }
     }
 
