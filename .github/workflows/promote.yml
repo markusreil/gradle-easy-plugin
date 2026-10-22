@@ -62,12 +62,11 @@ jobs:
       - name: Verify tag state
         # A broken tag fails here, before any quota is spent. This step deliberately holds
         # no GPG keys (TestKit children would inherit them and break credential-absence
-        # fixtures), so the e2e published-consumer guard is excluded: it is the only thing
-        # that schedules staging publishes, and those require signing. Everything else —
-        # compile, unit + functional tests, detekt, all other checks — runs in full. The
-        # e2e topology guard is proven on main CI; real signing is proven at the Promote
-        # step, which holds the keys and deploys for real.
-        run: ./gradlew build --build-cache -x :e2e-published:test
+        # fixtures). The e2e published-consumer guard is opt-in (`-Pe2e`, nightly workflow)
+        # and inert here, so this is a plain full build: compile, unit + functional tests,
+        # detekt, all other checks run. The guard's staging would need signing on a release
+        # tag; real signing is proven at the Promote step, which holds the keys.
+        run: ./gradlew build --build-cache
 
       - name: Reject snapshots
         run: |

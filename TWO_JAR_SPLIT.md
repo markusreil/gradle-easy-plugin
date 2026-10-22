@@ -53,7 +53,7 @@ is enforced mechanically by per-jar `verifyShadowPackaging`.
 
 ## Verification strategy
 
-- **Published-consumer E2E** `:e2e-published:test` is the only test that reproduces the settings/project classloader boundary (TestKit flattens it). It stages both markers to local Maven repos, applies settings in `settings.gradle.kts` and project in the root build with KGP + `java.targetVersion=11`, and asserts `jvmTarget=11` / `-Xjdk-release=11`. Green on Java 17 and 21; runs in the normal `check`/`build`.
+- **Published-consumer E2E** `:e2e-published:test` is the only test that reproduces the settings/project classloader boundary (TestKit flattens it). It stages both markers to local Maven repos, applies settings in `settings.gradle.kts` and project in the root build with KGP + `java.targetVersion=11`, and asserts `jvmTarget=11` / `-Xjdk-release=11`. Green on Java 17 and 21; opt-in via `-Pe2e` (`./gradlew :e2e-published:test -Pe2e`) and nightly in CI — kept out of the default build so staging + signing stay out of every `build`.
 - **Per-jar `verifyShadowPackaging`** enforces scope membership (settings jar: no `KotlinTargetWiring` / `EasyJvmDefaultsPlugin` / project contributors; project jar: no settings classes) and third-party publication.
 - **Dokka** covered in both integration modes: settings opt-in (`easy { jvmDefaults { dokkaJavadoc() } }`) and consumer-applied `dokka-javadoc` with only the project plugin.
 - The published plugin is a **Java-17 variant** (`org.gradle.jvm.version=17`, bytecode 61), so no Java-21 CI job is needed.

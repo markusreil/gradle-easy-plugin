@@ -63,3 +63,6 @@ This document keeps track of tasks that need to be completed.
   build graph (nightly job, manual rehearsal, or fixture against prebuilt staging).
   Once decoupled, the promote workflow's Verify step can go back to a plain
   `./gradlew build` (dropping the `-x :e2e-published:test` carve-out).
+  IN PROGRESS 2026-10-22 (branch decouple-e2e-guard): guard opt-in via `-Pe2e` +
+  nightly workflow; Verify back to plain `build`. Remaining: PR green, then confirm
+  the nightly run goes green on schedule.
