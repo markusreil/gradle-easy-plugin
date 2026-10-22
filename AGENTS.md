@@ -201,8 +201,8 @@ do this ad-hoc when a release/snapshot must be verified. Build a throwaway proje
 ## Promotion preflight (before any Central release or `promote.yml` change)
 
 - Workflow parity: every difference between Verify and the real Promote step is explicit
-  in `promote.yml` with its reason and its equivalent proof elsewhere (currently:
-  `:e2e-published:test` excluded from Verify, proven on main CI; signing proven at Promote).
+  in `promote.yml` with its reason and its equivalent proof elsewhere (currently: none —
+  Verify is a plain full build; the opt-in e2e guard runs nightly; signing proven at Promote).
 - Dogfood version: record which released plugin builds this repo, and treat a source fix
   as unproven in-repo until the release + dogfood bump have landed.
 - Quota budget: count the staging files (`publishAllPublicationsToMavenStagingRepository`

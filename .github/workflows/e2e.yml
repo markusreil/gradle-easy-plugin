@@ -1,0 +1,42 @@
+name: E2E guard
+
+# Nightly run of the published-consumer guard (`:e2e-published:test -Pe2e`), which is
+# opt-in and therefore absent from the main build graph (see e2e-published/build.gradle.kts).
+# The guard stages both markers to local Maven repos and asserts the settings/project
+# classloader boundary that TestKit's flattened classpath cannot reproduce
+# (TWO_JAR_SPLIT.md step 5).
+#
+# Runs on main snapshots (signing skipped, no secrets needed). Manual runs:
+# ./gradlew :e2e-published:test -Pe2e --build-cache
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: Published-consumer guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: E2E guard
+        run: ./gradlew :e2e-published:test -Pe2e --build-cache
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-reports-${{ github.run_number }}
+          retention-days: 7
+          path: |
+            build/reports/**
+            **/build/test-results/**
