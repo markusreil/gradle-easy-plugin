@@ -21,10 +21,9 @@ This document keeps track of tasks that need to be completed.
   `gradle-plugin-testutils`) stay published for external consumers. Decides the deferred
   TODO.md quota item on fixtures; see also the future-improvements list in AGENTS.md
   (shared `easy-plugin-core` dependency, dropping `-api` publishes, extracting utils).
-* publish: promotion/signing matrix test (unit, ProjectBuilder — would have caught the
-  snapshot-signing and Verify-sign iterations pre-CI): `promoteToCentral()` on a snapshot
-  registers no Sign tasks and needs no keys; on a release it requires signing keys;
-  plain `publish` activates nothing promotion-gated. Do before 0.2.0.
+* publish: promotion/signing matrix test — DONE 2026-10-22 (#41): `promoteToCentral()`
+  on a snapshot fails fast / is a silent no-op without the flag; release requires signing
+  keys; plain `publish` activates nothing promotion-gated.
 * publish: confirm the ~171-file target after the next dogfood bump carries the strip
   (re-run the staging count, update the plan ledger + DEVELOPMENT.md footprint note).
   Required before treating the quota work as done.
@@ -33,11 +32,10 @@ This document keeps track of tasks that need to be completed.
   artifacts wait for Central quota via `promoteToCentral()` + `-Ppromote`. Spell out
   when a Portal-only release is appropriate (e.g. marker bugfixes while Central is
   capped) and what plain `publish` vs `publish -Ppromote` each deploy to.
-* publish: Central quota optimization (measured 0.1.0 at ~492 files/month vs 1,000 limit;
-  see DEVELOPMENT.md). Extend checksum stripping to all Gradle-generated checksums
-  (Central generates its own), unpublish `e2e-published` (`easy.publish.enabled = false`
-  + DEVELOPMENT.md artifact list), keep test fixtures published only if external consumers
-  need them. Required before the next same-month release after 0.1.0.
+* publish: Central quota optimization, remaining: end-to-end strip proof after the next
+  dogfood bump carries it (re-run staging count, confirm ~171, update ledger + DEVELOPMENT.md
+  note); then any month may ship up to ~5 releases within the 1,000-file limit. October is
+  closed at 492 — no further Central release this month.
 
 * serialization: factor shared JSON file handling (pretty-print config, read/write) into
   `gradle-plugin-utils` alongside `GradleProperties` once a third consumer appears; keep
@@ -63,6 +61,5 @@ This document keeps track of tasks that need to be completed.
   build graph (nightly job, manual rehearsal, or fixture against prebuilt staging).
   Once decoupled, the promote workflow's Verify step can go back to a plain
   `./gradlew build` (dropping the `-x :e2e-published:test` carve-out).
-  IN PROGRESS 2026-10-22 (branch decouple-e2e-guard): guard opt-in via `-Pe2e` +
-  nightly workflow; Verify back to plain `build`. Remaining: PR green, then confirm
-  the nightly run goes green on schedule.
+  DONE 2026-10-22 (#42 merged): guard opt-in via `-Pe2e` + nightly workflow; Verify is
+  plain again. Remaining: confirm the first scheduled nightly run goes green.
