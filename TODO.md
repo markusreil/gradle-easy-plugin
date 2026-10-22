@@ -21,6 +21,18 @@ This document keeps track of tasks that need to be completed.
   `gradle-plugin-testutils`) stay published for external consumers. Decides the deferred
   TODO.md quota item on fixtures; see also the future-improvements list in AGENTS.md
   (shared `easy-plugin-core` dependency, dropping `-api` publishes, extracting utils).
+* publish: promotion/signing matrix test (unit, ProjectBuilder — would have caught the
+  snapshot-signing and Verify-sign iterations pre-CI): `promoteToCentral()` on a snapshot
+  registers no Sign tasks and needs no keys; on a release it requires signing keys;
+  plain `publish` activates nothing promotion-gated. Do before 0.2.0.
+* publish: confirm the ~171-file target after the next dogfood bump carries the strip
+  (re-run the staging count, update the plan ledger + DEVELOPMENT.md footprint note).
+  Required before treating the quota work as done.
+* publish: document the 2-tier deployment process (valid, established use case):
+  `deployToPortal()` ships markers on every release publish (no quota), while Maven
+  artifacts wait for Central quota via `promoteToCentral()` + `-Ppromote`. Spell out
+  when a Portal-only release is appropriate (e.g. marker bugfixes while Central is
+  capped) and what plain `publish` vs `publish -Ppromote` each deploy to.
 * publish: Central quota optimization (measured 0.1.0 at ~492 files/month vs 1,000 limit;
   see DEVELOPMENT.md). Extend checksum stripping to all Gradle-generated checksums
   (Central generates its own), unpublish `e2e-published` (`easy.publish.enabled = false`
@@ -50,4 +62,4 @@ This document keeps track of tasks that need to be completed.
   guard drags staging/signing into every `build`. Consider moving it out of the main
   build graph (nightly job, manual rehearsal, or fixture against prebuilt staging).
   Once decoupled, the promote workflow's Verify step can go back to a plain
-  `./gradlew build` (dropping the `-x sign*` exclusions added for v0.1.0).
+  `./gradlew build` (dropping the `-x :e2e-published:test` carve-out).

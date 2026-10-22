@@ -32,8 +32,10 @@ easy {
             passwordCredentials.set(true)
             promotionOnly.set(true)
         }
-        // Portal and Central are tier 3: only -Ppromote invocations reach them.
-        promoteToPortal()
+        // Portal is tier 2 (every release publish; no quota) while Central stays tier 3
+        // (only -Ppromote invocations): markers can ship often even when Maven
+        // artifacts must wait for quota headroom.
+        deployToPortal()
         promoteToCentral()
         mavenRepo(
             "mreilComGradlePluginsSnapshots",
